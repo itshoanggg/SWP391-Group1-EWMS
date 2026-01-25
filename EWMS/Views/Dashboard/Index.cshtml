@@ -1,0 +1,103 @@
+﻿@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="dashboard-wrapper">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <h2 class="logo">EWMS</h2>
+
+        <ul class="menu">
+            <li class="active">
+                <i class="fa-solid fa-chart-line"></i>
+                Dashboard
+            </li>
+            <li>
+                <i class="fa-solid fa-box"></i>
+                Products
+            </li>
+            <li>
+                <i class="fa-solid fa-warehouse"></i>
+                Warehouses
+            </li>
+            <li>
+                <i class="fa-solid fa-truck"></i>
+                Tracking
+            </li>
+            <li>
+                <i class="fa-solid fa-users"></i>
+                Users
+            </li>
+        </ul>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main-content">
+
+        <!-- TOP BAR -->
+        <header class="topbar">
+            <h1>Dashboard</h1>
+
+            <div class="user-info">
+                <i class="fa-solid fa-user"></i>
+                <span>@ViewBag.Role</span>
+            </div>
+        </header>
+
+        <!-- STATS -->
+        <section class="stats">
+            <div class="card">
+                <h3>Total Products</h3>
+                <p>1,250</p>
+            </div>
+
+            <div class="card">
+                <h3>In Stock</h3>
+                <p>980</p>
+            </div>
+
+            <div class="card">
+                <h3>Out of Stock</h3>
+                <p>270</p>
+            </div>
+
+            <div class="card">
+                <h3>Warehouses</h3>
+                <p>2</p>
+            </div>
+        </section>
+
+        <!-- TABLE -->
+        <section class="table-section">
+            <h2>Recent Activities</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Warehouse</th>
+                        <th>Quantity</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>RAM DDR4</td>
+                        <td>Warehouse A</td>
+                        <td>50</td>
+                        <td class="ok">In Stock</td>
+                    </tr>
+                    <tr>
+                        <td>SSD 1TB</td>
+                        <td>Warehouse B</td>
+                        <td>0</td>
+                        <td class="danger">Out</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+    </main>
+</div>

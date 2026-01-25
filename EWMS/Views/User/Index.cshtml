@@ -1,0 +1,130 @@
+﻿@{
+    ViewData["Title"] = "User Management";
+    Layout = "~/Views/Shared/_LayoutDashboard.cshtml";
+}
+
+<div class="flex-1 flex flex-col min-w-0">
+
+    <!-- HEADER -->
+    <header class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-8 flex items-center justify-between sticky top-0 z-10">
+        <div class="hidden md:flex items-center gap-1 text-sm text-slate-500">
+            <span>Management</span>
+            <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+            <span class="text-slate-900 dark:text-white font-medium">User Management</span>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <button class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+                <span class="material-symbols-outlined">notifications</span>
+            </button>
+
+            <div class="flex items-center gap-3">
+                <div class="text-right hidden sm:block">
+                    <p class="text-sm font-semibold leading-none">Admin Tuấn</p>
+                    <p class="text-xs text-slate-500 mt-1">System Administrator</p>
+                </div>
+                <div class="h-9 w-9 rounded-full bg-primary text-white flex items-center justify-center font-bold">
+                    T
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENT -->
+    <div class="p-8 flex-1 overflow-auto">
+
+        <!-- TITLE -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div>
+                <h1 class="text-2xl font-bold">User Management</h1>
+                <p class="text-slate-500 text-sm mt-1">
+                    Manage system access, roles, and department assignments for EWMS staff.
+                </p>
+            </div>
+
+            <a asp-action="Create"
+               class="bg-primary hover:bg-blue-700 text-white px-4 py-2 rounded-md font-semibold flex items-center gap-2 shadow-sm">
+                <span class="material-symbols-outlined">person_add</span>
+                Add New User
+            </a>
+        </div>
+
+        <!-- STATS -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border">
+                <p class="text-slate-500 text-sm">Total Users</p>
+                <p class="text-2xl font-bold">128</p>
+            </div>
+            <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border">
+                <p class="text-slate-500 text-sm">Active Now</p>
+                <p class="text-2xl font-bold text-emerald-600">42</p>
+            </div>
+            <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border">
+                <p class="text-slate-500 text-sm">Departments</p>
+                <p class="text-2xl font-bold">6</p>
+            </div>
+            <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border">
+                <p class="text-slate-500 text-sm">Pending Approvals</p>
+                <p class="text-2xl font-bold text-amber-600">3</p>
+            </div>
+        </div>
+
+        <!-- TABLE -->
+        <div class="bg-white dark:bg-slate-900 border rounded-xl overflow-hidden shadow-sm">
+
+            <table class="w-full text-left">
+                <thead class="bg-slate-50 dark:bg-slate-800 border-b">
+                    <tr>
+                        <th class="px-6 py-4 text-xs uppercase text-slate-500">User</th>
+                        <th class="px-6 py-4 text-xs uppercase text-slate-500">Department</th>
+                        <th class="px-6 py-4 text-xs uppercase text-slate-500">Role</th>
+                        <th class="px-6 py-4 text-xs uppercase text-slate-500">Status</th>
+                        <th class="px-6 py-4 text-xs uppercase text-slate-500 text-right">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody class="divide-y">
+
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="h-10 w-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                                    NT
+                                </div>
+                                <div>
+                                    <div class="font-semibold">Nguyễn Tuấn</div>
+                                    <div class="text-xs text-slate-500">tuan.nguyen@ewms.com</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-sm">IT Management</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 text-xs rounded-full bg-indigo-100 text-indigo-700">
+                                Admin
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 text-xs rounded-full bg-emerald-100 text-emerald-700">
+                                Active
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <a asp-action="Edit" asp-route-id="1" class="text-primary mr-2">
+                                <span class="material-symbols-outlined">edit</span>
+                            </a>
+                            <a href="#" class="text-red-500">
+                                <span class="material-symbols-outlined">delete</span>
+                            </a>
+                        </td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+            <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800 text-sm text-slate-500">
+                Showing 1 to 10 of 128 users
+            </div>
+
+        </div>
+    </div>
+</div>

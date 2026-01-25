@@ -1,0 +1,125 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login | EWMS - Enterprise Warehouse Management System</title>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
+
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#2563eb",
+                        "background-light": "#f8fafc",
+                        "background-dark": "#0f172a",
+                    },
+                    fontFamily: {
+                        display: ["Inter", "sans-serif"],
+                        body: ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.5rem",
+                    },
+                },
+            },
+        };
+
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .glass-effect {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+
+<body class="bg-background-light dark:bg-background-dark min-h-screen flex items-center justify-center font-body selection:bg-primary selection:text-white">
+
+    <!-- Background -->
+    <div class="fixed inset-0 z-0">
+        <img class="w-full h-full object-cover opacity-60 dark:opacity-30"
+             src="https://lh3.googleusercontent.com/aida-public/AB6AXuDUb2a_n0lX4cETa4AVhPSI_3U-Zu8ACtdQr4on8aMEJcER9QCE6lvRk6tgsfme6B5WFs79FGu1w_4K1i6IClVvQij9iRfLqAhu_dfbrmQ2WgkOBVVkLcGlBPhHaUhKYnq0OZgZSFOgInl5kGgxX3F417tH8u-3wMKiU3mXEO4uQueua49YwNqYHV9SW5Ix-0FPx4A0946JNHVM7FWdX-Gg97YmvH66Y-Lc-G6xfXYQjr8wtIuZ-b_UfMWIyIuuG0Dtfc-aHFjakK4"
+             alt="Warehouse" />
+        <div class="absolute inset-0 bg-gradient-to-tr from-slate-900/40 to-transparent"></div>
+    </div>
+
+    <!-- Dark mode toggle -->
+    <button onclick="toggleDarkMode()"
+            class="fixed top-6 right-6 z-50 p-3 rounded-full bg-white/80 dark:bg-slate-800/80 shadow-lg glass-effect border border-white/20 dark:border-slate-700 hover:scale-110 transition-transform">
+        <span class="material-icons-outlined text-slate-700 dark:text-slate-200 block dark:hidden">dark_mode</span>
+        <span class="material-icons-outlined text-yellow-400 hidden dark:block">light_mode</span>
+    </button>
+
+    <main class="relative z-10 w-full max-w-md px-6 py-12">
+
+        <div class="bg-white/95 dark:bg-slate-900/95 glass-effect rounded-2xl shadow-2xl border border-white/20 dark:border-slate-800 overflow-hidden">
+
+            <div class="p-8 pb-4 text-center">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-primary mb-6 shadow-lg shadow-primary/30">
+                    <span class="material-icons-outlined text-white text-3xl">inventory_2</span>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">Welcome Back</h1>
+                <p class="text-slate-500 dark:text-slate-400">Log in to your EWMS account to continue</p>
+            </div>
+
+            <div class="px-8 pb-10">
+                <form asp-controller="Auth" asp-action="Login" method="post" class="space-y-6">
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Username</label>
+                        <input name="username" required
+                               class="w-full pl-4 pr-3 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent dark:text-white"
+                               placeholder="username" />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Password</label>
+                        <input type="password" name="password" required
+                               class="w-full pl-4 pr-3 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent dark:text-white"
+                               placeholder="••••••••" />
+                    </div>
+
+                    @if (ViewBag.Error != null)
+                    {
+                        <div class="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-600">
+                            @ViewBag.Error
+                        </div>
+                    }
+
+                    <button type="submit"
+                            class="w-full flex justify-center items-center py-3.5 px-4 rounded-xl shadow-lg text-sm font-bold text-white bg-primary hover:bg-blue-700 transition-all">
+                        Sign In
+                        <span class="material-icons-outlined ml-2">login</span>
+                    </button>
+
+                </form>
+            </div>
+        </div>
+
+        <p class="mt-8 text-center text-sm text-slate-600 dark:text-slate-500 font-medium">
+            © 2024 EWMS • Enterprise Logistics Solutions
+        </p>
+    </main>
+</body>
+</html>
