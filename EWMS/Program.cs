@@ -1,3 +1,6 @@
+using EWMS.Models;
+using Microsoft.EntityFrameworkCore;
+
 namespace EWMS
 {
     public class Program
@@ -9,7 +12,14 @@ namespace EWMS
             // Add services to the container.
             builder.Services.AddControllersWithViews();
 
+            builder.Services.AddDbContext<EWMSContext>(options =>
+                options.UseSqlServer(
+                    builder.Configuration.GetConnectionString("DBContext")
+                ));
+
             var app = builder.Build();
+
+
 
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment())
