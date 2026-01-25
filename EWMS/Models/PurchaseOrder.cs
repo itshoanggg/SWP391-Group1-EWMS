@@ -15,13 +15,16 @@ public partial class PurchaseOrder
     [Column("SupplierID")]
     public int SupplierId { get; set; }
 
-    public int CreatedBy { get; set; }
+    [Column("WarehouseID")]
+    public int WarehouseId { get; set; }
 
-    [Column(TypeName = "datetime")]
-    public DateTime? OrderDate { get; set; }
+    public int CreatedBy { get; set; }
 
     [StringLength(30)]
     public string? Status { get; set; }
+
+    [Column(TypeName = "datetime")]
+    public DateTime? CreatedAt { get; set; }
 
     [ForeignKey("CreatedBy")]
     [InverseProperty("PurchaseOrders")]
@@ -36,4 +39,8 @@ public partial class PurchaseOrder
     [ForeignKey("SupplierId")]
     [InverseProperty("PurchaseOrders")]
     public virtual Supplier Supplier { get; set; } = null!;
+
+    [ForeignKey("WarehouseId")]
+    [InverseProperty("PurchaseOrders")]
+    public virtual Warehouse Warehouse { get; set; } = null!;
 }

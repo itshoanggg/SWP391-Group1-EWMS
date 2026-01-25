@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EWMS.Models;
 
+[Index("WarehouseId", "LocationCode", Name = "UQ_Location_Code", IsUnique = true)]
 public partial class Location
 {
     [Key]
@@ -18,7 +19,11 @@ public partial class Location
     [StringLength(50)]
     public string LocationCode { get; set; } = null!;
 
-    public bool? IsActive { get; set; }
+    [StringLength(100)]
+    public string? LocationName { get; set; }
+
+    [StringLength(20)]
+    public string? Rack { get; set; }
 
     [InverseProperty("Location")]
     public virtual ICollection<Inventory> Inventories { get; set; } = new List<Inventory>();

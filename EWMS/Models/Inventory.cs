@@ -6,19 +6,26 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EWMS.Models;
 
-[PrimaryKey("ProductId", "LocationId")]
 [Table("Inventory")]
+[Index("LocationId", Name = "IX_Inventory_LocationID")]
+[Index("ProductId", Name = "IX_Inventory_ProductID")]
+[Index("ProductId", "LocationId", Name = "UQ_Product_Location", IsUnique = true)]
 public partial class Inventory
 {
     [Key]
+    [Column("InventoryID")]
+    public int InventoryId { get; set; }
+
     [Column("ProductID")]
     public int ProductId { get; set; }
 
-    [Key]
     [Column("LocationID")]
     public int LocationId { get; set; }
 
     public int? Quantity { get; set; }
+
+    [Column(TypeName = "datetime")]
+    public DateTime? LastUpdated { get; set; }
 
     [ForeignKey("LocationId")]
     [InverseProperty("Inventories")]

@@ -15,6 +15,8 @@ public partial class EWMSContext : DbContext
     {
     }
 
+    public virtual DbSet<ActivityLog> ActivityLogs { get; set; }
+
     public virtual DbSet<Inventory> Inventories { get; set; }
 
     public virtual DbSet<Location> Locations { get; set; }
@@ -54,53 +56,61 @@ public partial class EWMSContext : DbContext
     public virtual DbSet<Warehouse> Warehouses { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseSqlServer("Name=ConnectionStrings:DBContext");
+        => optionsBuilder.UseSqlServer("Name=connectionStrings:DBContext");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<ActivityLog>(entity =>
+        {
+            entity.HasKey(e => e.LogId).HasName("PK__Activity__5E5499A82C4F0A7F");
+
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+
+            entity.HasOne(d => d.User).WithMany(p => p.ActivityLogs)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ActivityLogs_Users");
+        });
+
         modelBuilder.Entity<Inventory>(entity =>
         {
+            entity.HasKey(e => e.InventoryId).HasName("PK__Inventor__F5FDE6D3360C993B");
+
+            entity.Property(e => e.LastUpdated).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.Quantity).HasDefaultValue(0);
 
-            entity.HasOne(d => d.Location).WithMany(p => p.Inventories)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Inventory_Locations");
+            entity.HasOne(d => d.Location).WithMany(p => p.Inventories).HasConstraintName("FK_Inventory_Locations");
 
-            entity.HasOne(d => d.Product).WithMany(p => p.Inventories)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Inventory_Products");
+            entity.HasOne(d => d.Product).WithMany(p => p.Inventories).HasConstraintName("FK_Inventory_Products");
         });
 
         modelBuilder.Entity<Location>(entity =>
         {
-            entity.HasKey(e => e.LocationId).HasName("PK__Location__E7FEA4773AABBA9D");
+            entity.HasKey(e => e.LocationId).HasName("PK__Location__E7FEA477613B303E");
 
-            entity.Property(e => e.IsActive).HasDefaultValue(true);
-
-            entity.HasOne(d => d.Warehouse).WithMany(p => p.Locations)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Locations_Warehouses");
+            entity.HasOne(d => d.Warehouse).WithMany(p => p.Locations).HasConstraintName("FK_Locations_Warehouses");
         });
 
         modelBuilder.Entity<Product>(entity =>
         {
-            entity.HasKey(e => e.ProductId).HasName("PK__Products__B40CC6EDF19BF9E4");
+            entity.HasKey(e => e.ProductId).HasName("PK__Products__B40CC6EDC7A61A4B");
 
-            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.CostPrice).HasDefaultValue(0m);
+            entity.Property(e => e.SellingPrice).HasDefaultValue(0m);
 
             entity.HasOne(d => d.Category).WithMany(p => p.Products).HasConstraintName("FK_Products_Categories");
         });
 
         modelBuilder.Entity<ProductCategory>(entity =>
         {
-            entity.HasKey(e => e.CategoryId).HasName("PK__ProductC__19093A2B72635DA0");
+            entity.HasKey(e => e.CategoryId).HasName("PK__ProductC__19093A2B93B9B1E2");
         });
 
         modelBuilder.Entity<PurchaseOrder>(entity =>
         {
-            entity.HasKey(e => e.PurchaseOrderId).HasName("PK__Purchase__036BAC44E63D70BD");
+            entity.HasKey(e => e.PurchaseOrderId).HasName("PK__Purchase__036BAC447FBF68B3");
 
-            entity.Property(e => e.OrderDate).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.Status).HasDefaultValue("Pending");
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.PurchaseOrders)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -109,48 +119,66 @@ public partial class EWMSContext : DbContext
             entity.HasOne(d => d.Supplier).WithMany(p => p.PurchaseOrders)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_PurchaseOrders_Suppliers");
+
+            entity.HasOne(d => d.Warehouse).WithMany(p => p.PurchaseOrders)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_PurchaseOrders_Warehouses");
         });
 
         modelBuilder.Entity<PurchaseOrderDetail>(entity =>
         {
+            entity.HasKey(e => e.PurchaseOrderDetailId).HasName("PK__Purchase__5026B6F84F5F19A5");
+
+            entity.Property(e => e.TotalPrice).HasComputedColumnSql("([Quantity]*[UnitPrice])", true);
+
             entity.HasOne(d => d.Product).WithMany(p => p.PurchaseOrderDetails)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_POD_Products");
 
-            entity.HasOne(d => d.PurchaseOrder).WithMany(p => p.PurchaseOrderDetails)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_POD_PurchaseOrders");
+            entity.HasOne(d => d.PurchaseOrder).WithMany(p => p.PurchaseOrderDetails).HasConstraintName("FK_POD_PurchaseOrders");
         });
 
         modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasKey(e => e.RoleId).HasName("PK__Roles__8AFACE3A952A33DE");
+            entity.HasKey(e => e.RoleId).HasName("PK__Roles__8AFACE3A148249CC");
         });
 
         modelBuilder.Entity<SalesOrder>(entity =>
         {
-            entity.HasKey(e => e.SalesOrderId).HasName("PK__SalesOrd__B14003C2B2CCFFAB");
+            entity.HasKey(e => e.SalesOrderId).HasName("PK__SalesOrd__B14003C2F4BA375C");
 
-            entity.Property(e => e.OrderDate).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.Status).HasDefaultValue("Pending");
+            entity.Property(e => e.TotalAmount).HasDefaultValue(0m);
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.SalesOrders)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_SalesOrders_Users");
+
+            entity.HasOne(d => d.Warehouse).WithMany(p => p.SalesOrders)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_SalesOrders_Warehouses");
         });
 
         modelBuilder.Entity<SalesOrderDetail>(entity =>
         {
+            entity.HasKey(e => e.SalesOrderDetailId).HasName("PK__SalesOrd__6B9B51056BE74B36");
+
+            entity.Property(e => e.TotalPrice).HasComputedColumnSql("([Quantity]*[UnitPrice])", true);
+
             entity.HasOne(d => d.Product).WithMany(p => p.SalesOrderDetails)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_SOD_Products");
 
-            entity.HasOne(d => d.SalesOrder).WithMany(p => p.SalesOrderDetails)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_SOD_SalesOrders");
+            entity.HasOne(d => d.SalesOrder).WithMany(p => p.SalesOrderDetails).HasConstraintName("FK_SOD_SalesOrders");
         });
 
         modelBuilder.Entity<StockInDetail>(entity =>
         {
+            entity.HasKey(e => e.StockInDetailId).HasName("PK__StockInD__EEDA103318348378");
+
+            entity.Property(e => e.TotalPrice).HasComputedColumnSql("([Quantity]*[UnitPrice])", true);
+
             entity.HasOne(d => d.Location).WithMany(p => p.StockInDetails)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_SID_Location");
@@ -159,16 +187,16 @@ public partial class EWMSContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_SID_Product");
 
-            entity.HasOne(d => d.StockIn).WithMany(p => p.StockInDetails)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_SID_StockIn");
+            entity.HasOne(d => d.StockIn).WithMany(p => p.StockInDetails).HasConstraintName("FK_SID_StockIn");
         });
 
         modelBuilder.Entity<StockInReceipt>(entity =>
         {
-            entity.HasKey(e => e.StockInId).HasName("PK__StockInR__794DA64C84A1EF3E");
+            entity.HasKey(e => e.StockInId).HasName("PK__StockInR__794DA64C84130DCB");
 
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.ReceivedDate).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.TotalAmount).HasDefaultValue(0m);
 
             entity.HasOne(d => d.PurchaseOrder).WithMany(p => p.StockInReceipts).HasConstraintName("FK_StockIn_PurchaseOrder");
 
@@ -185,6 +213,10 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<StockOutDetail>(entity =>
         {
+            entity.HasKey(e => e.StockOutDetailId).HasName("PK__StockOut__EB248EFF9FC5E871");
+
+            entity.Property(e => e.TotalPrice).HasComputedColumnSql("([Quantity]*[UnitPrice])", true);
+
             entity.HasOne(d => d.Location).WithMany(p => p.StockOutDetails)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_SOD_Location");
@@ -193,16 +225,16 @@ public partial class EWMSContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_SOD_Product");
 
-            entity.HasOne(d => d.StockOut).WithMany(p => p.StockOutDetails)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_SOD_StockOut");
+            entity.HasOne(d => d.StockOut).WithMany(p => p.StockOutDetails).HasConstraintName("FK_SOD_StockOut");
         });
 
         modelBuilder.Entity<StockOutReceipt>(entity =>
         {
-            entity.HasKey(e => e.StockOutId).HasName("PK__StockOut__C5308D9AF76E029D");
+            entity.HasKey(e => e.StockOutId).HasName("PK__StockOut__C5308D9A54B5C975");
 
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.IssuedDate).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.TotalAmount).HasDefaultValue(0m);
 
             entity.HasOne(d => d.IssuedByNavigation).WithMany(p => p.StockOutReceipts)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -219,27 +251,27 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<Supplier>(entity =>
         {
-            entity.HasKey(e => e.SupplierId).HasName("PK__Supplier__4BE666945AA97937");
+            entity.HasKey(e => e.SupplierId).HasName("PK__Supplier__4BE6669411A3F6FF");
         });
 
         modelBuilder.Entity<TransferDetail>(entity =>
         {
-            entity.HasKey(e => e.TransferDetailId).HasName("PK__Transfer__F9BF690FEA2D281E");
+            entity.HasKey(e => e.TransferDetailId).HasName("PK__Transfer__F9BF690F254219EF");
 
             entity.HasOne(d => d.Product).WithMany(p => p.TransferDetails)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_TransferDetails_Product");
 
-            entity.HasOne(d => d.Transfer).WithMany(p => p.TransferDetails)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_TransferDetails_Transfer");
+            entity.HasOne(d => d.Transfer).WithMany(p => p.TransferDetails).HasConstraintName("FK_TransferDetails_Transfer");
         });
 
         modelBuilder.Entity<TransferRequest>(entity =>
         {
-            entity.HasKey(e => e.TransferId).HasName("PK__Transfer__95490171F8BC22A5");
+            entity.HasKey(e => e.TransferId).HasName("PK__Transfer__954901715439A3D4");
 
             entity.Property(e => e.RequestedDate).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.Status).HasDefaultValue("Pending");
+            entity.Property(e => e.TransferType).HasDefaultValue("Warehouse");
 
             entity.HasOne(d => d.ApprovedByNavigation).WithMany(p => p.TransferRequestApprovedByNavigations).HasConstraintName("FK_TR_ApprovedBy");
 
@@ -258,10 +290,11 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.UserId).HasName("PK__Users__1788CCAC920AA516");
+            entity.HasKey(e => e.UserId).HasName("PK__Users__1788CCAC12569D20");
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())");
 
             entity.HasOne(d => d.Role).WithMany(p => p.Users)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -270,23 +303,20 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<UserWarehouse>(entity =>
         {
-            entity.HasKey(e => e.UserWarehouseId).HasName("PK__UserWare__BEEFA846C68072C1");
+            entity.HasKey(e => e.UserWarehouseId).HasName("PK__UserWare__BEEFA8468367BB9B");
 
             entity.Property(e => e.AssignedDate).HasDefaultValueSql("(getdate())");
-            entity.Property(e => e.IsPrimary).HasDefaultValue(true);
 
-            entity.HasOne(d => d.User).WithMany(p => p.UserWarehouses)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_UserWarehouses_Users");
+            entity.HasOne(d => d.User).WithMany(p => p.UserWarehouses).HasConstraintName("FK_UserWarehouses_Users");
 
-            entity.HasOne(d => d.Warehouse).WithMany(p => p.UserWarehouses)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_UserWarehouses_Warehouses");
+            entity.HasOne(d => d.Warehouse).WithMany(p => p.UserWarehouses).HasConstraintName("FK_UserWarehouses_Warehouses");
         });
 
         modelBuilder.Entity<Warehouse>(entity =>
         {
-            entity.HasKey(e => e.WarehouseId).HasName("PK__Warehous__2608AFD973461DFF");
+            entity.HasKey(e => e.WarehouseId).HasName("PK__Warehous__2608AFD9B08FC7A7");
+
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
         });
 
         OnModelCreatingPartial(modelBuilder);

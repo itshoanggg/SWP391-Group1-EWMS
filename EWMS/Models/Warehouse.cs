@@ -15,8 +15,20 @@ public partial class Warehouse
     [StringLength(100)]
     public string WarehouseName { get; set; } = null!;
 
+    [StringLength(255)]
+    public string? Address { get; set; }
+
+    [Column(TypeName = "datetime")]
+    public DateTime? CreatedAt { get; set; }
+
     [InverseProperty("Warehouse")]
     public virtual ICollection<Location> Locations { get; set; } = new List<Location>();
+
+    [InverseProperty("Warehouse")]
+    public virtual ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();
+
+    [InverseProperty("Warehouse")]
+    public virtual ICollection<SalesOrder> SalesOrders { get; set; } = new List<SalesOrder>();
 
     [InverseProperty("Warehouse")]
     public virtual ICollection<StockInReceipt> StockInReceipts { get; set; } = new List<StockInReceipt>();

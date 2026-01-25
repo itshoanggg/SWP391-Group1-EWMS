@@ -34,6 +34,9 @@ public partial class TransferRequest
     [StringLength(30)]
     public string? Status { get; set; }
 
+    [StringLength(500)]
+    public string? Reason { get; set; }
+
     [ForeignKey("ApprovedBy")]
     [InverseProperty("TransferRequestApprovedByNavigations")]
     public virtual User? ApprovedByNavigation { get; set; }

@@ -6,22 +6,29 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EWMS.Models;
 
-[PrimaryKey("StockOutId", "ProductId", "LocationId")]
+[Index("StockOutId", Name = "IX_StockOutDetails_StockOutID")]
 public partial class StockOutDetail
 {
     [Key]
+    [Column("StockOutDetailID")]
+    public int StockOutDetailId { get; set; }
+
     [Column("StockOutID")]
     public int StockOutId { get; set; }
 
-    [Key]
     [Column("ProductID")]
     public int ProductId { get; set; }
 
-    [Key]
     [Column("LocationID")]
     public int LocationId { get; set; }
 
     public int Quantity { get; set; }
+
+    [Column(TypeName = "decimal(18, 2)")]
+    public decimal UnitPrice { get; set; }
+
+    [Column(TypeName = "decimal(29, 2)")]
+    public decimal? TotalPrice { get; set; }
 
     [ForeignKey("LocationId")]
     [InverseProperty("StockOutDetails")]

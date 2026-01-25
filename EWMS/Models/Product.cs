@@ -21,7 +21,11 @@ public partial class Product
     [StringLength(20)]
     public string? Unit { get; set; }
 
-    public bool? IsActive { get; set; }
+    [Column(TypeName = "decimal(18, 2)")]
+    public decimal? CostPrice { get; set; }
+
+    [Column(TypeName = "decimal(18, 2)")]
+    public decimal? SellingPrice { get; set; }
 
     [ForeignKey("CategoryId")]
     [InverseProperty("Products")]

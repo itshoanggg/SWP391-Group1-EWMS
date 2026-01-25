@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EWMS.Models;
 
-[Index("Username", Name = "UQ__Users__536C85E43E7BDF72", IsUnique = true)]
+[Index("Username", Name = "UQ__Users__536C85E4A34062BE", IsUnique = true)]
 public partial class User
 {
     [Key]
@@ -22,6 +22,12 @@ public partial class User
     [StringLength(100)]
     public string? FullName { get; set; }
 
+    [StringLength(100)]
+    public string? Email { get; set; }
+
+    [StringLength(20)]
+    public string? Phone { get; set; }
+
     [Column("RoleID")]
     public int RoleId { get; set; }
 
@@ -29,6 +35,12 @@ public partial class User
 
     [Column(TypeName = "datetime")]
     public DateTime? CreatedAt { get; set; }
+
+    [Column(TypeName = "datetime")]
+    public DateTime? UpdatedAt { get; set; }
+
+    [InverseProperty("User")]
+    public virtual ICollection<ActivityLog> ActivityLogs { get; set; } = new List<ActivityLog>();
 
     [InverseProperty("CreatedByNavigation")]
     public virtual ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();

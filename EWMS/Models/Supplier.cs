@@ -15,6 +15,18 @@ public partial class Supplier
     [StringLength(150)]
     public string SupplierName { get; set; } = null!;
 
+    [StringLength(100)]
+    public string? ContactPerson { get; set; }
+
+    [StringLength(100)]
+    public string? Email { get; set; }
+
+    [StringLength(20)]
+    public string? Phone { get; set; }
+
+    [StringLength(255)]
+    public string? Address { get; set; }
+
     [InverseProperty("Supplier")]
     public virtual ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();
 }

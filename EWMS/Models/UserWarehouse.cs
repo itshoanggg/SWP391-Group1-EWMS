@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EWMS.Models;
 
+[Index("UserId", Name = "IX_UserWarehouses_UserID")]
+[Index("WarehouseId", Name = "IX_UserWarehouses_WarehouseID")]
 [Index("UserId", "WarehouseId", Name = "UQ_User_Warehouse", IsUnique = true)]
 public partial class UserWarehouse
 {
@@ -18,8 +20,6 @@ public partial class UserWarehouse
 
     [Column("WarehouseID")]
     public int WarehouseId { get; set; }
-
-    public bool? IsPrimary { get; set; }
 
     [Column(TypeName = "datetime")]
     public DateTime? AssignedDate { get; set; }

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EWMS.Models;
 
+[Index("WarehouseId", "ReceivedDate", Name = "IX_StockInReceipts_WarehouseID_Date")]
 public partial class StockInReceipt
 {
     [Key]
@@ -28,6 +29,12 @@ public partial class StockInReceipt
 
     [Column("TransferID")]
     public int? TransferId { get; set; }
+
+    [Column(TypeName = "decimal(18, 2)")]
+    public decimal? TotalAmount { get; set; }
+
+    [Column(TypeName = "datetime")]
+    public DateTime? CreatedAt { get; set; }
 
     [ForeignKey("PurchaseOrderId")]
     [InverseProperty("StockInReceipts")]
