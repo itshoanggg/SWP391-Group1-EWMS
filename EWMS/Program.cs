@@ -38,7 +38,7 @@ namespace EWMS
 
             app.MapControllerRoute(
                 name: "default",
-                pattern: "{controller=Home}/{action=Index}/{id?}");
+                pattern: "{controller=Dashboard}/{action=InventoryDashboard}/{id?}");
 
             app.Run();
         }
