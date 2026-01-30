@@ -8,11 +8,11 @@ using System.Threading.Tasks;
 
 namespace EWMS.Controllers
 {
-    public class DashboardController : Controller
+    public class InventoryDashboardController : Controller
     {
         private readonly EWMSContext _context;
 
-        public DashboardController(EWMSContext context)
+        public InventoryDashboardController(EWMSContext context)
         {
             _context = context;
         }
@@ -44,7 +44,7 @@ namespace EWMS.Controllers
             ViewBag.WarehouseId = warehouseId;
             ViewBag.UserId = userId;
 
-            return View("InventoryDashboard");
+            return View();
         }
 
         // API: Get KPI Metrics
