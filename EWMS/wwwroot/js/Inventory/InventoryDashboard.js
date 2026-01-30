@@ -88,12 +88,9 @@ async function updateStockMovement(period = 'week', btn) {
                         {
                             label: 'Tồn',
                             data: data.map(x => x.stock),
-                            type: 'line',
-                            tension: 0.4,
+                            backgroundColor: 'rgba(75, 192, 192, 0.6)',
                             borderColor: 'rgba(75, 192, 192, 1)',
-                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                            borderWidth: 2,
-                            fill: true
+                            borderWidth: 1
                         }
                     ]
                 },
