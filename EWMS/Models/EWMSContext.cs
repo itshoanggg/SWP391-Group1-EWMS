@@ -87,6 +87,9 @@ public partial class EWMSContext : DbContext
         {
             entity.HasKey(e => e.LocationId).HasName("PK__Location__E7FEA477613B303E");
 
+            entity.Property(e => e.Capacity)
+          .HasDefaultValue(200);
+
             entity.HasOne(d => d.Warehouse).WithMany(p => p.Locations).HasConstraintName("FK_Locations_Warehouses");
         });
 

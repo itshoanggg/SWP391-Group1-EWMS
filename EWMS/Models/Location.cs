@@ -25,6 +25,9 @@ public partial class Location
     [StringLength(20)]
     public string? Rack { get; set; }
 
+    [Column("Capacity")]
+    public int Capacity { get; set; }
+
     [InverseProperty("Location")]
     public virtual ICollection<Inventory> Inventories { get; set; } = new List<Inventory>();
 
