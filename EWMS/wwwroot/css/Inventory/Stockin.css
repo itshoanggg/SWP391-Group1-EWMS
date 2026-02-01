@@ -1,0 +1,310 @@
+﻿/* =========================================================
+   STOCK IN - LIST PAGE STYLES
+========================================================= */
+
+/* =========================================================
+   CARD STYLES
+========================================================= */
+.card {
+    border: none;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+    .card:hover {
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: 600;
+    border-bottom: none;
+    padding: 1rem 1.5rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* =========================================================
+   STATISTICS CARDS
+========================================================= */
+.bg-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.bg-warning {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+}
+
+.bg-info {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+}
+
+.bg-success {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important;
+}
+
+.icon-box {
+    opacity: 0.3;
+    transition: opacity 0.3s ease;
+}
+
+.card:hover .icon-box {
+    opacity: 0.5;
+}
+
+/* =========================================================
+   TABLE STYLES
+========================================================= */
+.table {
+    margin-bottom: 0;
+}
+
+    .table thead th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .table tbody tr {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+.table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: scale(1.01);
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+/* =========================================================
+   STATUS BADGES
+========================================================= */
+.badge {
+    padding: 0.5rem 0.8rem;
+    font-weight: 500;
+    font-size: 0.8rem;
+    border-radius: 5px;
+}
+
+.status-pending {
+    background-color: #ffc107 !important;
+    color: #000 !important;
+}
+
+.status-approved {
+    background-color: #17a2b8 !important;
+}
+
+.status-received {
+    background-color: #28a745 !important;
+}
+
+.status-cancelled {
+    background-color: #dc3545 !important;
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+.btn {
+    border-radius: 5px;
+    font-weight: 500;
+    padding: 0.5rem 1.2rem;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+.btn-sm {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.85rem;
+}
+
+.btn i {
+    margin-right: 0.5rem;
+}
+
+.btn-sm i {
+    margin-right: 0.3rem;
+}
+
+/* =========================================================
+   FORM CONTROLS
+========================================================= */
+.form-select,
+.form-control {
+    border-radius: 5px;
+    border: 1px solid #dee2e6;
+    transition: all 0.3s ease;
+}
+
+    .form-select:focus,
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: #495057;
+}
+
+/* =========================================================
+   ACTION BUTTONS
+========================================================= */
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+    .action-buttons .btn {
+        padding: 0.25rem 0.5rem;
+    }
+
+/* =========================================================
+   ANIMATIONS
+========================================================= */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* =========================================================
+   LOADING STATE
+========================================================= */
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* =========================================================
+   RESPONSIVE STYLES
+========================================================= */
+@media (max-width: 768px) {
+    .card-body {
+        padding: 1rem;
+    }
+
+    .table {
+        font-size: 0.85rem;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+    }
+
+    .btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.9rem;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 576px) {
+    .table-responsive {
+        font-size: 0.75rem;
+    }
+
+    .icon-box i {
+        font-size: 1.5rem !important;
+    }
+
+    .badge {
+        font-size: 0.7rem;
+        padding: 0.3rem 0.5rem;
+    }
+}
+
+/* =========================================================
+   UTILITY CLASSES
+========================================================= */
+.text-muted {
+    color: #6c757d !important;
+}
+
+.text-primary {
+    color: #667eea !important;
+}
+
+.fw-bold {
+    font-weight: 600 !important;
+}
+
+/* =========================================================
+   SCROLLBAR CUSTOMIZATION
+========================================================= */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+}
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #764ba2;
+    }
+
+/* =========================================================
+   PRINT STYLES
+========================================================= */
+@media print {
+    .btn,
+    .form-select,
+    .form-control,
+    .input-group {
+        display: none;
+    }
+
+    .card {
+        box-shadow: none;
+        border: 1px solid #dee2e6;
+        page-break-inside: avoid;
+    }
+
+    .table {
+        font-size: 0.85rem;
+    }
+}
