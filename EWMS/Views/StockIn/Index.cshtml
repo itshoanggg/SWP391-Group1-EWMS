@@ -1,0 +1,88 @@
+﻿@{
+    ViewData["Title"] = "Nhập Kho - Danh Sách Đơn Hàng";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/Inventory/Stockin.css" />
+}
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-inbox"></i> Nhập Kho</h2>
+        <div>
+            <button class="btn btn-primary" onclick="refreshData()">
+                <i class="fas fa-sync-alt"></i> Làm mới
+            </button>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Trạng thái:</label>
+                    <select class="form-select" id="filter-status" onchange="loadPurchaseOrders()">
+                        <option value="All">Tất cả</option>
+                        <option value="Pending">Chờ duyệt</option>
+                        <option value="Received">Đã nhận</option>
+                    </select>
+
+                </div>
+
+                <div class="col-md-8 mb-3">
+                    <label class="form-label">Tìm kiếm:</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="search-input"
+                               placeholder="Tìm theo mã đơn hoặc nhà cung cấp..."
+                               onkeyup="handleSearch()">
+                        <button class="btn btn-outline-secondary" type="button" onclick="loadPurchaseOrders()">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Purchase Orders List -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list"></i> Danh Sách Đơn Đặt Hàng</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="purchase-orders-table">
+                    <thead>
+                        <tr>
+                            <th>Mã đơn</th>
+                            <th>Nhà cung cấp</th>
+                            <th>Số lượng</th>
+                            <th>Tổng tiền</th>
+                            <th>Người tạo</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="7" class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Đang tải...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const warehouseId = @ViewBag.WarehouseId;
+    </script>
+    <script src="~/js/Inventory/StockIn.js"></script>
+}
