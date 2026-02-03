@@ -21,8 +21,7 @@ namespace EWMS.Controllers
         public async Task<IActionResult> InventoryDashboard()
         {
             // Lấy UserID từ session/authentication
-            //var userId = GetCurrentUserId();
-            var userId = 7;
+            var userId = GetCurrentUserId();
 
             if (userId == 0)
             {
@@ -365,15 +364,7 @@ namespace EWMS.Controllers
         // TODO: Thay thế bằng authentication thực tế
         private int GetCurrentUserId()
         {
-            // Option 1: Session-based
-            // return HttpContext.Session.GetInt32("UserId") ?? 0;
-
-            // Option 2: Claims-based
-            // var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            // return int.Parse(userIdClaim ?? "0");
-
-            // Option 3: For testing - REMOVE in production
-            return 7; // Default: hn_inventory_01
+            return 5; 
         }
     }
 }

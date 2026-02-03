@@ -1,0 +1,128 @@
+﻿@model IEnumerable<EWMS.Models.PurchaseOrder>
+
+@{
+    ViewData["Title"] = "Danh Sách Đơn Mua Hàng";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-shopping-bag"></i> Đơn Mua Hàng</h2>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Tạo Đơn Hàng
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle"></i> @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle"></i> @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="col-md-6">
+                    <label class="form-label">Tìm kiếm:</label>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Tìm theo mã đơn hoặc nhà cung cấp...">
+            </div>
+        </div>
+    </div>
+
+    <!-- Purchase Orders Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Danh Sách Đơn Đặt Hàng</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="purchaseOrderTable">
+                    <thead>
+                        <tr>
+                            <th>MÃ ĐƠN</th>
+                            <th>NHÀ CUNG CẤP</th>
+                            <th>SỐ LƯỢNG</th>
+                            <th>TỔNG TIỀN</th>
+                            <th>NGƯỜI TẠO</th>
+                            <th>TRẠNG THÁI</th>
+                            <th>THAO TÁC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Any())
+                        {
+                            @foreach (var po in Model)
+                            {
+                                var totalQty = po.PurchaseOrderDetails.Sum(d => d.Quantity);
+                                var totalAmount = po.PurchaseOrderDetails.Sum(d => d.TotalPrice ?? 0);
+                                var statusBadge = po.Status switch
+                                {
+                                    "Pending" => "badge bg-warning text-dark",
+                                    "Approved" => "badge bg-info",
+                                    "Received" => "badge bg-success",
+                                    "Cancelled" => "badge bg-danger",
+                                    _ => "badge bg-secondary"
+                                };
+                                var statusText = po.Status switch
+                                {
+                                    "Pending" => "Chờ duyệt",
+                                    "Approved" => "Đã duyệt",
+                                    "Received" => "Đã nhận",
+                                    "Cancelled" => "Đã hủy",
+                                    _ => po.Status
+                                };
+
+                                <tr>
+                                    <td><strong>PO-@po.PurchaseOrderId.ToString("D4")</strong></td>
+                                    <td>@po.Supplier.SupplierName</td>
+                                    <td>@totalQty</td>
+                                    <td>@totalAmount.ToString("N0") đ</td>
+                                    <td>@(po.CreatedByNavigation?.FullName ?? "N/A")</td>
+                                    <td><span class="@statusBadge">@statusText</span></td>
+                                    <td>
+                                        <a asp-action="Details" asp-route-id="@po.PurchaseOrderId" 
+                                           class="btn btn-sm btn-info" title="Xem chi tiết">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        @if (po.Status == "Pending")
+                                        {
+                                            <button onclick="deletePurchaseOrder(@po.PurchaseOrderId)" 
+                                                    class="btn btn-sm btn-danger" title="Xóa">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">
+                                    Chưa có đơn mua hàng nào
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script src="~/js/PurchaseOrder/PurchaseOrder.js"></script>
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/PurchaseOrder/PurchaseOrder.css" />
+}
