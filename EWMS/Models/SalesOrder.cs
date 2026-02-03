@@ -36,6 +36,9 @@ public partial class SalesOrder
     public string? Notes { get; set; }
 
     [Column(TypeName = "datetime")]
+    public DateTime? ExpectedDeliveryDate { get; set; }
+
+    [Column(TypeName = "datetime")]
     public DateTime? CreatedAt { get; set; }
 
     [ForeignKey("CreatedBy")]

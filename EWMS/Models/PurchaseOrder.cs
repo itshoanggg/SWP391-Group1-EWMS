@@ -24,6 +24,10 @@ public partial class PurchaseOrder
     public string? Status { get; set; }
 
     [Column(TypeName = "datetime")]
+    public DateTime? ExpectedReceivingDate { get; set; }
+
+
+    [Column(TypeName = "datetime")]
     public DateTime? CreatedAt { get; set; }
 
     [ForeignKey("CreatedBy")]

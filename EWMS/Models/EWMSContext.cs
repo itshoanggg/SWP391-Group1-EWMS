@@ -126,6 +126,8 @@ public partial class EWMSContext : DbContext
             entity.HasOne(d => d.Warehouse).WithMany(p => p.PurchaseOrders)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_PurchaseOrders_Warehouses");
+            entity.Property(e => e.ExpectedReceivingDate)
+                .HasDefaultValueSql("DATEADD(day, 3, GETDATE())");
         });
 
         modelBuilder.Entity<PurchaseOrderDetail>(entity =>
@@ -161,6 +163,8 @@ public partial class EWMSContext : DbContext
             entity.HasOne(d => d.Warehouse).WithMany(p => p.SalesOrders)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_SalesOrders_Warehouses");
+            entity.Property(e => e.ExpectedDeliveryDate)
+                .HasDefaultValueSql("DATEADD(day, 3, GETDATE())");
         });
 
         modelBuilder.Entity<SalesOrderDetail>(entity =>
