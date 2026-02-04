@@ -1,0 +1,129 @@
+﻿@model EWMS.ViewModels.SalesOrderViewModel
+
+@{
+    ViewData["Title"] = "Chi Tiết Đơn Hàng";
+}
+
+<div class="page-header">
+    <h1>Chi Tiết Đơn Hàng @Model.OrderNumber</h1>
+    <p>Xem thông tin chi tiết đơn hàng</p>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3>Thông Tin Đơn Hàng</h3>
+        <div>
+            <button onclick="window.print()" class="btn btn-success btn-sm">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Xuất PDF
+            </button>
+            <a asp-action="Index" class="btn btn-secondary btn-sm">Quay Lại</a>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <div class="detail-section">
+            <h4>Thông Tin Đơn Hàng</h4>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Mã Đơn Hàng:</div>
+                    <div class="detail-value">@Model.OrderNumber</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Trạng Thái:</div>
+                    <div class="detail-value">
+                        @{
+                            var badgeClass = Model.Status switch
+                            {
+                                "Pending" => "badge-pending",
+                                "Approved" => "badge-approved",
+                                "Completed" => "badge-completed",
+                                "Rejected" => "badge-rejected",
+                                _ => "badge-secondary"
+                            };
+                        }
+                        <span class="badge @badgeClass">@Model.Status</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Ngày Tạo:</div>
+                    <div class="detail-value">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Ngày Xuất DK:</div>
+                    <div class="detail-value">@Model.ExpectedDeliveryDate.ToString("dd/MM/yyyy")</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Kho Hàng:</div>
+                    <div class="detail-value">@Model.WarehouseName</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h4>Thông Tin Khách Hàng</h4>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Tên Khách Hàng:</div>
+                    <div class="detail-value">@Model.CustomerName</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Số Điện Thoại:</div>
+                    <div class="detail-value">@Model.CustomerPhone</div>
+                </div>
+                <div class="detail-item" style="grid-column: 1 / -1;">
+                    <div class="detail-label">Địa Chỉ:</div>
+                    <div class="detail-value">@Model.CustomerAddress</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h4>Chi Tiết Sản Phẩm</h4>
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Sản Phẩm</th>
+                            <th class="text-end">Số Lượng</th>
+                            <th class="text-end">Đơn Giá</th>
+                            <th class="text-end">Thành Tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var detail in Model.Details)
+                        {
+                            <tr>
+                                <td>@detail.ProductName</td>
+                                <td class="text-end">@detail.Quantity @detail.Unit</td>
+                                <td class="text-end">@detail.UnitPrice.ToString("N0") ₫</td>
+                                <td class="text-end">@detail.TotalPrice.ToString("N0") ₫</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-active">
+                            <td colspan="3" class="text-end"><strong>Tổng Cộng:</strong></td>
+                            <td class="text-end"><strong style="color: var(--accent);">@Model.TotalAmount.ToString("N0") ₫</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/salesorder.css" />
+    <style>
+        @@media print {
+            .btn, .page-header p, .card-header .btn {
+                display: none !important;
+            }
+        }
+    </style>
+}
