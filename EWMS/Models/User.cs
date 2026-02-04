@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EWMS.Models;
 
-[Index("Username", Name = "UQ__Users__536C85E4A34062BE", IsUnique = true)]
+[Index("Username", Name = "UQ__Users__536C85E4E1CC2CF9", IsUnique = true)]
 public partial class User
 {
     [Key]

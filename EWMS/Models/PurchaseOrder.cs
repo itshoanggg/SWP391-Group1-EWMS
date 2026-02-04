@@ -21,10 +21,19 @@ public partial class PurchaseOrder
     public int CreatedBy { get; set; }
 
     [StringLength(30)]
-    public string? Status { get; set; }
+    public string Status { get; set; } = null!;
 
     [Column(TypeName = "datetime")]
-    public DateTime? CreatedAt { get; set; }
+    public DateTime ExpectedReceivingDate { get; set; }
+
+    [Column(TypeName = "decimal(18, 2)")]
+    public decimal TotalAmount { get; set; }
+
+    [StringLength(500)]
+    public string? Notes { get; set; }
+
+    [Column(TypeName = "datetime")]
+    public DateTime CreatedAt { get; set; }
 
     [ForeignKey("CreatedBy")]
     [InverseProperty("PurchaseOrders")]
