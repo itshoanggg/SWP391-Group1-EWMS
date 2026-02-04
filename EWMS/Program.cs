@@ -1,4 +1,6 @@
 using EWMS.Models;
+using EWMS.Repositories;
+using EWMS.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace EWMS
@@ -12,17 +14,19 @@ namespace EWMS
             // Add services to the container.
             builder.Services.AddControllersWithViews();
 
-            builder.Services.AddDbContext<EWMSContext>(options =>
-                options.UseSqlServer(
-                    builder.Configuration.GetConnectionString("DBContext")
-                ));
+            // Add DbContext
+            builder.Services.AddDbContext<EWMSDbContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DBContext")));
 
-            builder.Services.AddSession(options =>
-            {
-                options.IdleTimeout = TimeSpan.FromMinutes(30);
-                options.Cookie.HttpOnly = true;
-                options.Cookie.IsEssential = true;
-            });
+            // Register Repositories
+            builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
+            builder.Services.AddScoped<ISalesOrderRepository, SalesOrderRepository>();
+            builder.Services.AddScoped<IProductRepository, ProductRepository>();
+
+            // Register Services
+            builder.Services.AddScoped<IInventoryCheckService, InventoryCheckService>();
+            builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
+
 
             var app = builder.Build();
 
