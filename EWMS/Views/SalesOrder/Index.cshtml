@@ -1,0 +1,98 @@
+﻿@model EWMS.ViewModels.SalesOrderListViewModel
+
+@{
+    ViewData["Title"] = "Quản Lý Đơn Bán Hàng";
+}
+
+<div class="page-header">
+    <h1>Quản Lý Đơn Bán Hàng</h1>
+    <p>Tạo và quản lý các đơn hàng bán ra - @Model.WarehouseName</p>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <strong>✓</strong> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>⚠</strong> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3>Danh Sách Đơn Hàng</h3>
+        <a asp-action="Create" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Tạo Đơn Hàng Mới
+        </a>
+    </div>
+
+    <div class="table-container">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Mã ĐH</th>
+                    <th>Khách Hàng</th>
+                    <th>SĐT</th>
+                    <th>Ngày Xuất DK</th>
+                    <th>Tổng Tiền</th>
+                    <th>Trạng Thái</th>
+                    <th>Thao Tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Orders.Any())
+                {
+                    @foreach (var order in Model.Orders)
+                    {
+                        <tr>
+                            <td>@order.OrderNumber</td>
+                            <td>@order.CustomerName</td>
+                            <td>@order.CustomerPhone</td>
+                            <td>@order.ExpectedDeliveryDate.ToString("dd/MM/yyyy")</td>
+                            <td>@order.TotalAmount.ToString("N0") ₫</td>
+                            <td>
+                                @{
+                                    var badgeClass = order.Status switch
+                                    {
+                                        "Pending" => "badge-pending",
+                                        "Approved" => "badge-approved",
+                                        "Completed" => "badge-completed",
+                                        "Rejected" => "badge-rejected",
+                                        _ => "badge-secondary"
+                                    };
+                                }
+                                <span class="badge @badgeClass">@order.Status</span>
+                            </td>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@order.SalesOrderId" class="btn btn-primary btn-sm">
+                                    Xem Chi Tiết
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="7" class="text-center">Chưa có đơn hàng nào</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/salesorder.css" />
+}
