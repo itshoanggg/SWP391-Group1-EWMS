@@ -159,13 +159,13 @@
 
         <a href="@Url.Action("Index", "Transfer")" class="sidebar-menu-item">
             <i class="bi bi-arrow-left-right"></i>
-            <span>Chuyển kho</span>
+            <span>Transfer</span>
         </a>
 
         <a href="@Url.Action("Create", "SalesOrder")"
            class="sidebar-menu-item">
             <i class="bi bi-box-arrow-in-down"></i>
-            <span>Nhập kho</span>
+            <span>Stock In</span>
         </a>
 
         <a href="@Url.Action("Index", "SalesOrder")" class="sidebar-menu-item">
@@ -173,16 +173,22 @@
             <span>Sales Order</span>
         </a>
 
-        <a href="@Url.Action("Index", "Stockout")"
+        <a href="@Url.Action("Index", "StockOutReceipt")"
            class="sidebar-menu-item">
             <i class="bi bi-box-arrow-up"></i>
-            <span>Xuất kho</span>
+            <span>Stock Out</span>
+        </a>
+
+        <a href="@Url.Action("History", "StockOutReceipt")"
+           class="sidebar-menu-item">
+            <i class="bi bi-clock-history"></i>
+            <span>Stock Out History</span>
         </a>
 
         <a href="@Url.Action("Index", "Stock")"
            class="sidebar-menu-item">
             <i class="bi bi-boxes"></i>
-            <span>Tồn kho</span>
+            <span>Inventory</span>
         </a>
 
 
