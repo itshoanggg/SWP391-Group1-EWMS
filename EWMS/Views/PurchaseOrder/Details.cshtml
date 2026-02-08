@@ -4,7 +4,39 @@
     ViewData["Title"] = "Chi Tiết Đơn Mua Hàng";
     var totalQty = ViewBag.TotalQuantity;
     var totalAmount = ViewBag.TotalAmount;
+
+    // Tính trạng thái hàng về
+    bool isArrived = false;
+    string arrivalStatus = "";
+    string arrivalClass = "";
+    int daysRemaining = 0;
+
+    if (Model.ExpectedReceivingDate.HasValue)
+    {
+        daysRemaining = (Model.ExpectedReceivingDate.Value.Date - DateTime.Today).Days;
+
+        if (daysRemaining < 0)
+        {
+            isArrived = true;
+            arrivalStatus = "Đã quá hạn " + Math.Abs(daysRemaining) + " ngày";
+            arrivalClass = "text-danger";
+        }
+        else if (daysRemaining == 0)
+        {
+            isArrived = true;
+            arrivalStatus = "Hàng về hôm nay";
+            arrivalClass = "text-success";
+        }
+        else
+        {
+            isArrived = false;
+            arrivalStatus = "Còn " + daysRemaining + " ngày";
+            arrivalClass = "text-warning";
+        }
+    }
 }
+
+<link rel="stylesheet" href="~/css/PurchaseOrder/PurchaseOrder.css" />
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -13,6 +45,28 @@
             <i class="fas fa-arrow-left"></i> Quay lại
         </a>
     </div>
+
+    <!-- Cảnh báo trạng thái hàng về -->
+    @if (Model.ExpectedReceivingDate.HasValue)
+    {
+        <div class="alert alert-@(isArrived ? "success" : "warning") alert-dismissible fade show" role="alert">
+            <i class="fas fa-@(isArrived ? "check-circle" : "clock")"></i>
+            <strong>Trạng thái hàng về:</strong>
+            @if (isArrived && Model.Status != "Received" && Model.Status != "PartiallyReceived")
+            {
+                <span class="@arrivalClass">Hàng đã đến kho (dự kiến: @Model.ExpectedReceivingDate.Value.ToString("dd/MM/yyyy"))</span>
+            }
+            else if (!isArrived)
+            {
+                <span class="@arrivalClass">Chưa đến ngày dự kiến (@Model.ExpectedReceivingDate.Value.ToString("dd/MM/yyyy")) - @arrivalStatus</span>
+            }
+            else
+            {
+                <span class="text-info">Hàng đã được nhập kho</span>
+            }
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
 
     <div class="row">
         <!-- Thông tin PO -->
@@ -33,6 +87,19 @@
                         </div>
                     </div>
 
+                    @if (Model.ExpectedReceivingDate.HasValue)
+                    {
+                        <div class="mb-3">
+                            <label class="text-muted">Ngày nhận hàng dự kiến:</label>
+                            <p class="fw-bold">
+                                @Model.ExpectedReceivingDate.Value.ToString("dd/MM/yyyy")
+                                <span class="badge @(isArrived ? "bg-success" : "bg-warning")">
+                                    @(isArrived ? "Hàng đã về" : $"Còn {daysRemaining} ngày")
+                                </span>
+                            </p>
+                        </div>
+                    }
+
                     <div class="mb-3">
                         <label class="text-muted">Người phụ trách:</label>
                         <p class="fw-bold">@(Model.CreatedByNavigation?.FullName ?? "N/A")</p>
@@ -46,6 +113,7 @@
                                 {
                                     "Pending" => "badge bg-warning text-dark",
                                     "Approved" => "badge bg-info",
+                                    "PartiallyReceived" => "badge bg-primary",
                                     "Received" => "badge bg-success",
                                     "Cancelled" => "badge bg-danger",
                                     _ => "badge bg-secondary"
@@ -54,7 +122,8 @@
                                 {
                                     "Pending" => "Chờ duyệt",
                                     "Approved" => "Đã duyệt",
-                                    "Received" => "Đã nhận",
+                                    "PartiallyReceived" => "Nhận một phần",
+                                    "Received" => "Đã nhận đủ",
                                     "Cancelled" => "Đã hủy",
                                     _ => Model.Status
                                 };
@@ -72,6 +141,29 @@
                             <button class="btn btn-danger btn-sm" onclick="updateStatus('Cancelled')">
                                 <i class="fas fa-times"></i> Hủy đơn
                             </button>
+                        </div>
+                    }
+
+                    @if ((Model.Status == "Approved" || Model.Status == "PartiallyReceived") && isArrived)
+                    {
+                        <div class="mt-4">
+                            <a asp-controller="StockIn" asp-action="Create" asp-route-poId="@Model.PurchaseOrderId"
+                               class="btn btn-success btn-lg w-100">
+                                <i class="fas fa-inbox"></i> Nhập kho
+                            </a>
+                            @if (Model.Status == "PartiallyReceived")
+                            {
+                                <small class="text-muted d-block mt-2">Đơn hàng đang nhận từng phần. Click để nhập tiếp.</small>
+                            }
+                        </div>
+                    }
+                    else if ((Model.Status == "Approved" || Model.Status == "PartiallyReceived") && !isArrived)
+                    {
+                        <div class="mt-4">
+                            <button class="btn btn-secondary btn-lg w-100" disabled>
+                                <i class="fas fa-clock"></i> Chưa đến ngày nhận hàng
+                            </button>
+                            <small class="text-muted d-block mt-2">Ngày nhận dự kiến: @Model.ExpectedReceivingDate.Value.ToString("dd/MM/yyyy")</small>
                         </div>
                     }
                 </div>
@@ -128,15 +220,22 @@
                             <th width="8%">SKU</th>
                             <th width="30%">TÊN SẢN PHẨM</th>
                             <th width="12%">SL ĐẶT</th>
-                            <th width="12%">SL THỰC NHẬN</th>
+                            <th width="12%">SL ĐÃ NHẬN</th>
+                            <th width="12%">SL CÒN LẠI</th>
                             <th width="15%">GIÁ NHẬP</th>
                             <th width="18%">THÀNH TIỀN</th>
-                            <th width="5%">VỊ TRÍ</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var detail in Model.PurchaseOrderDetails)
                         {
+                            // Tính số lượng đã nhận
+                            var receivedQty = Model.StockInReceipts
+                            .SelectMany(si => si.StockInDetails)
+                            .Where(sid => sid.ProductId == detail.ProductId)
+                            .Sum(sid => sid.Quantity);
+                            var remainingQty = detail.Quantity - receivedQty;
+
                             <tr>
                                 <td>
                                     <span class="badge bg-primary">SKU-@detail.ProductId.ToString("D5")</span>
@@ -149,27 +248,27 @@
                                     <span class="badge bg-secondary">@detail.Quantity</span>
                                 </td>
                                 <td class="text-center">
-                                    @if (Model.Status == "Received")
+                                    @if (receivedQty > 0)
                                     {
-                                        <span class="badge bg-success">@detail.Quantity</span>
+                                        <span class="badge bg-success">@receivedQty</span>
                                     }
                                     else
                                     {
-                                        <span class="text-muted">--</span>
+                                        <span class="text-muted">0</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    @if (remainingQty > 0)
+                                    {
+                                        <span class="badge bg-warning text-dark">@remainingQty</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success">Đủ</span>
                                     }
                                 </td>
                                 <td class="text-end">@detail.UnitPrice.ToString("N0") đ</td>
                                 <td class="text-end"><strong>@detail.TotalPrice?.ToString("N0") đ</strong></td>
-                                <td class="text-center">
-                                    @if (Model.Status == "Received")
-                                    {
-                                        <span class="text-muted">--</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted">--</span>
-                                    }
-                                </td>
                             </tr>
                         }
                     </tbody>
@@ -177,75 +276,21 @@
                         <tr>
                             <td colspan="2"><strong>Tổng mã SKU:</strong></td>
                             <td class="text-center"><strong>@Model.PurchaseOrderDetails.Count</strong></td>
-                            <td colspan="2"><strong>Tổng SL Đặt:</strong></td>
+                            <td colspan="3"><strong>Tổng SL Đặt:</strong></td>
                             <td colspan="2"><strong>@totalQty</strong></td>
                         </tr>
                         <tr>
                             <td colspan="2"></td>
-                            <td colspan="2"><strong>Tổng SL Thực Nhận:</strong></td>
-                            <td colspan="3">
-                                <strong>
-                                    @if (Model.Status == "Received")
-                                    {
-                                        @totalQty
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted">0</span>
-                                    }
-                                </strong>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="2"></td>
-                            <td colspan="2"><strong>Tổng tiền:</strong></td>
+                            <td colspan="3"><strong>Tổng tiền:</strong></td>
                             <td colspan="3"><strong class="text-danger fs-5">@totalAmount.ToString("N0") đ</strong></td>
-                        </tr>
-                        <tr>
-                            <td colspan="2"></td>
-                            <td colspan="2"><strong>Tình trạng:</strong></td>
-                            <td colspan="3">
-                                <strong class="text-success">
-                                    @if (Model.Status == "Received")
-                                    {
-                                        <span>Đủ hàng</span>
-                                    }
-                                    else if (Model.Status == "Approved")
-                                    {
-                                        <span>Chờ nhận hàng</span>
-                                    }
-                                    else
-                                    {
-                                        <span>Đang xử lý</span>
-                                    }
-                                </strong>
-                            </td>
                         </tr>
                     </tfoot>
                 </table>
             </div>
         </div>
     </div>
-
-    <div class="mt-4 text-end">
-        <a asp-action="Index" class="btn btn-secondary btn-lg">
-            <i class="fas fa-arrow-left"></i> Quay lại danh sách
-        </a>
-
-        @if (Model.Status == "Approved")
-        {
-            <a asp-controller="StockIn" asp-action="Create" asp-route-poId="@Model.PurchaseOrderId"
-               class="btn btn-success btn-lg">
-                <i class="fas fa-inbox"></i> Nhập kho
-            </a>
-        }
-    </div>
 </div>
-
 
 @section Scripts {
     <script src="~/js/PurchaseOrder/PurchaseOrder.js"></script>
-}
-@section Styles {
-    <link rel="stylesheet" href="~/css/PurchaseOrder/PurchaseOrder.css" />
 }

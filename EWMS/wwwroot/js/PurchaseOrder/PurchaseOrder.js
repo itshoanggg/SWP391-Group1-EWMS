@@ -74,7 +74,6 @@ async function loadSupplierInfo() {
         return;
     }
 
-    // Show supplier info section
     document.getElementById('supplierInfo').style.display = 'block';
     document.getElementById('supplierCode').value = 'NCC-' + supplierId;
 
@@ -82,7 +81,6 @@ async function loadSupplierInfo() {
     await loadProducts(supplierId);
 }
 
-// Load products from API
 async function loadProducts(supplierId) {
     try {
         const response = await fetch(`/PurchaseOrder/GetProductsBySupplier?supplierId=${supplierId}`);
@@ -103,18 +101,16 @@ async function loadProducts(supplierId) {
                 select.appendChild(option);
             });
 
-            // Restore previous selection if exists
             if (currentValue) {
                 select.value = currentValue;
             }
         });
     } catch (error) {
         console.error('Error loading products:', error);
-        showAlert('error', 'Không thể tải danh sách sản phẩm');
+        alert('Không thể tải danh sách sản phẩm');
     }
 }
 
-// Update product info when selected
 function updateProduct(select, index) {
     const row = select.closest('.product-row');
     const selectedOption = select.options[select.selectedIndex];
@@ -136,11 +132,8 @@ function updateProduct(select, index) {
     updateTotals();
 }
 
-// Calculate total for a row
 function calculateTotal(index) {
     const row = document.querySelector(`.product-row[data-index="${index}"]`);
-    if (!row) return;
-
     const quantity = parseFloat(row.querySelector('.quantity-input').value) || 0;
     const price = parseFloat(row.querySelector('.price-input').value) || 0;
     const total = quantity * price;
@@ -150,12 +143,11 @@ function calculateTotal(index) {
     updateTotals();
 }
 
-// Add new product row
 function addProductRow() {
     const supplierId = document.getElementById('supplierSelect').value;
 
     if (!supplierId) {
-        showAlert('warning', 'Vui lòng chọn nhà cung cấp trước');
+        alert('Vui lòng chọn nhà cung cấp trước');
         return;
     }
 
@@ -165,31 +157,31 @@ function addProductRow() {
     newRow.dataset.index = productIndex;
 
     newRow.innerHTML = `
-        <td>
-            <span class="sku-display"></span>
-        </td>
-        <td>
-            <select name="Details[${productIndex}].ProductId" class="form-select product-select" required onchange="updateProduct(this, ${productIndex})">
-                <option value="">-- Chọn sản phẩm --</option>
-            </select>
-        </td>
-        <td>
-            <input type="number" name="Details[${productIndex}].Quantity" class="form-control quantity-input" 
-                   min="1" value="1" required onchange="calculateTotal(${productIndex})">
-        </td>
-        <td>
-            <input type="number" name="Details[${productIndex}].UnitPrice" class="form-control price-input" 
-                   min="0" step="1000" required onchange="calculateTotal(${productIndex})">
-        </td>
-        <td>
-            <input type="text" class="form-control total-display" readonly value="0">
-        </td>
-        <td class="text-center">
-            <button type="button" class="btn btn-sm btn-danger" onclick="removeRow(this)">
-                <i class="fas fa-times"></i>
-            </button>
-        </td>
-    `;
+                <td>
+                    <span class="sku-display"></span>
+                </td>
+                <td>
+                    <select name="Details[${productIndex}].ProductId" class="form-select product-select" required onchange="updateProduct(this, ${productIndex})">
+                        <option value="">-- Chọn sản phẩm --</option>
+                    </select>
+                </td>
+                <td>
+                    <input type="number" name="Details[${productIndex}].Quantity" class="form-control quantity-input"
+                           min="1" value="1" required onchange="calculateTotal(${productIndex})">
+                </td>
+                <td>
+                    <input type="number" name="Details[${productIndex}].UnitPrice" class="form-control price-input"
+                           min="0" step="1000" required onchange="calculateTotal(${productIndex})">
+                </td>
+                <td>
+                    <input type="text" class="form-control total-display" readonly value="0">
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removeRow(this)">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </td>
+            `;
 
     tbody.appendChild(newRow);
 
@@ -208,14 +200,11 @@ function addProductRow() {
     updateTotals();
 }
 
-// Remove product row
 function removeRow(button) {
-    const row = button.closest('.product-row');
-    row.remove();
+    button.closest('.product-row').remove();
     updateTotals();
 }
 
-// Update totals footer
 function updateTotals() {
     const rows = document.querySelectorAll('.product-row');
     let totalSKU = 0;
@@ -233,14 +222,11 @@ function updateTotals() {
 
     const totalSKUElement = document.getElementById('totalSKU');
     const totalQuantityElement = document.getElementById('totalQuantity');
-    const totalReceivedElement = document.getElementById('totalReceived');
 
     if (totalSKUElement) totalSKUElement.textContent = totalSKU;
     if (totalQuantityElement) totalQuantityElement.textContent = totalQty;
-    if (totalReceivedElement) totalReceivedElement.textContent = totalQty;
 }
 
-// Clear product selects
 function clearProductSelects() {
     const selects = document.querySelectorAll('.product-select');
     selects.forEach(select => {
@@ -282,31 +268,18 @@ function validateCreateForm(event) {
    DETAILS PAGE FUNCTIONS
 ========================================================= */
 
-// Update order status
-async function updateStatus(newStatus) {
-    const orderId = document.querySelector('[data-order-id]')?.dataset.orderId;
-
-    if (!orderId) {
-        showAlert('error', 'Không tìm thấy mã đơn hàng');
-        return;
-    }
-
-    const statusText = newStatus === 'Approved' ? 'duyệt' : 'hủy';
-
-    if (!confirm(`Bạn có chắc chắn muốn ${statusText} đơn hàng này?`)) {
+// Mark as delivered (thay thế updateStatus)
+async function markAsDelivered(purchaseOrderId) {
+    if (!confirm('Xác nhận hàng đã về kho?')) {
         return;
     }
 
     try {
-        const response = await fetch('/PurchaseOrder/UpdateStatus', {
+        const response = await fetch(`/PurchaseOrder/MarkAsDelivered/${purchaseOrderId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                id: parseInt(orderId),
-                status: newStatus
-            })
+            }
         });
 
         const result = await response.json();
@@ -406,7 +379,7 @@ window.PurchaseOrderModule = {
     calculateTotal,
     addProductRow,
     removeRow,
-    updateStatus,
+    markAsDelivered,
     showAlert,
     formatCurrency,
     formatNumber
