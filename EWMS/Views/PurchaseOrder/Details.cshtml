@@ -1,0 +1,251 @@
+﻿@model EWMS.Models.PurchaseOrder
+
+@{
+    ViewData["Title"] = "Chi Tiết Đơn Mua Hàng";
+    var totalQty = ViewBag.TotalQuantity;
+    var totalAmount = ViewBag.TotalAmount;
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-file-alt"></i> Chi Tiết Đơn Mua Hàng</h2>
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Quay lại
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Thông tin PO -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-gradient-primary text-white">
+                    <h5 class="mb-0">Thông tin PO</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="text-muted">Số đơn hàng:</label>
+                            <p class="fw-bold">PO-@Model.PurchaseOrderId.ToString("D4")</p>
+                        </div>
+                        <div class="col-6">
+                            <label class="text-muted">Ngày đặt:</label>
+                            <p class="fw-bold">@Model.CreatedAt?.ToString("dd/MM/yyyy")</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="text-muted">Người phụ trách:</label>
+                        <p class="fw-bold">@(Model.CreatedByNavigation?.FullName ?? "N/A")</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="text-muted">Trạng thái:</label>
+                        <p>
+                            @{
+                                var statusBadge = Model.Status switch
+                                {
+                                    "Pending" => "badge bg-warning text-dark",
+                                    "Approved" => "badge bg-info",
+                                    "Received" => "badge bg-success",
+                                    "Cancelled" => "badge bg-danger",
+                                    _ => "badge bg-secondary"
+                                };
+                                var statusText = Model.Status switch
+                                {
+                                    "Pending" => "Chờ duyệt",
+                                    "Approved" => "Đã duyệt",
+                                    "Received" => "Đã nhận",
+                                    "Cancelled" => "Đã hủy",
+                                    _ => Model.Status
+                                };
+                            }
+                            <span class="@statusBadge fs-6">@statusText</span>
+                        </p>
+                    </div>
+
+                    @if (Model.Status == "Pending")
+                    {
+                        <div class="mt-4">
+                            <button class="btn btn-success btn-sm" onclick="updateStatus('Approved')">
+                                <i class="fas fa-check"></i> Duyệt đơn
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="updateStatus('Cancelled')">
+                                <i class="fas fa-times"></i> Hủy đơn
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Nhà cung cấp -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-gradient-danger text-white">
+                    <h5 class="mb-0">Nhà cung cấp</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="text-muted">Tên:</label>
+                        <p class="fw-bold">@Model.Supplier.SupplierName</p>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="text-muted">Mã NCC:</label>
+                            <p class="fw-bold">NCC-@Model.Supplier.SupplierId</p>
+                        </div>
+                        <div class="col-6">
+                            <label class="text-muted">SĐT:</label>
+                            <p class="fw-bold">@(Model.Supplier.Phone ?? "N/A")</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="text-muted">Email:</label>
+                        <p class="fw-bold">@(Model.Supplier.Email ?? "N/A")</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="text-muted">Địa chỉ:</label>
+                        <p class="fw-bold">@(Model.Supplier.Address ?? "N/A")</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Danh sách sản phẩm -->
+    <div class="card">
+        <div class="card-header bg-gradient-purple text-white">
+            <h5 class="mb-0">Danh sách sản phẩm</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="8%">SKU</th>
+                            <th width="30%">TÊN SẢN PHẨM</th>
+                            <th width="12%">SL ĐẶT</th>
+                            <th width="12%">SL THỰC NHẬN</th>
+                            <th width="15%">GIÁ NHẬP</th>
+                            <th width="18%">THÀNH TIỀN</th>
+                            <th width="5%">VỊ TRÍ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var detail in Model.PurchaseOrderDetails)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="badge bg-primary">SKU-@detail.ProductId.ToString("D5")</span>
+                                </td>
+                                <td>
+                                    <strong>@detail.Product.ProductName</strong><br>
+                                    <small class="text-muted">@(detail.Product.Category?.CategoryName ?? "N/A")</small>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary">@detail.Quantity</span>
+                                </td>
+                                <td class="text-center">
+                                    @if (Model.Status == "Received")
+                                    {
+                                        <span class="badge bg-success">@detail.Quantity</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">--</span>
+                                    }
+                                </td>
+                                <td class="text-end">@detail.UnitPrice.ToString("N0") đ</td>
+                                <td class="text-end"><strong>@detail.TotalPrice?.ToString("N0") đ</strong></td>
+                                <td class="text-center">
+                                    @if (Model.Status == "Received")
+                                    {
+                                        <span class="text-muted">--</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">--</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="2"><strong>Tổng mã SKU:</strong></td>
+                            <td class="text-center"><strong>@Model.PurchaseOrderDetails.Count</strong></td>
+                            <td colspan="2"><strong>Tổng SL Đặt:</strong></td>
+                            <td colspan="2"><strong>@totalQty</strong></td>
+                        </tr>
+                        <tr>
+                            <td colspan="2"></td>
+                            <td colspan="2"><strong>Tổng SL Thực Nhận:</strong></td>
+                            <td colspan="3">
+                                <strong>
+                                    @if (Model.Status == "Received")
+                                    {
+                                        @totalQty
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">0</span>
+                                    }
+                                </strong>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2"></td>
+                            <td colspan="2"><strong>Tổng tiền:</strong></td>
+                            <td colspan="3"><strong class="text-danger fs-5">@totalAmount.ToString("N0") đ</strong></td>
+                        </tr>
+                        <tr>
+                            <td colspan="2"></td>
+                            <td colspan="2"><strong>Tình trạng:</strong></td>
+                            <td colspan="3">
+                                <strong class="text-success">
+                                    @if (Model.Status == "Received")
+                                    {
+                                        <span>Đủ hàng</span>
+                                    }
+                                    else if (Model.Status == "Approved")
+                                    {
+                                        <span>Chờ nhận hàng</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Đang xử lý</span>
+                                    }
+                                </strong>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4 text-end">
+        <a asp-action="Index" class="btn btn-secondary btn-lg">
+            <i class="fas fa-arrow-left"></i> Quay lại danh sách
+        </a>
+
+        @if (Model.Status == "Approved")
+        {
+            <a asp-controller="StockIn" asp-action="Create" asp-route-poId="@Model.PurchaseOrderId"
+               class="btn btn-success btn-lg">
+                <i class="fas fa-inbox"></i> Nhập kho
+            </a>
+        }
+    </div>
+</div>
+
+
+@section Scripts {
+    <script src="~/js/PurchaseOrder/PurchaseOrder.js"></script>
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/PurchaseOrder/PurchaseOrder.css" />
+}

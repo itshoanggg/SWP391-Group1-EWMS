@@ -1,0 +1,376 @@
+﻿@model EWMS.Controllers.PurchaseOrderCreateViewModel
+
+@{
+    ViewData["Title"] = "Tạo Đơn Mua Hàng";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-plus-circle"></i> Tạo Đơn Mua Hàng</h2>
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Quay lại
+        </a>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle"></i> @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <form asp-action="Create" method="post" id="createPurchaseOrderForm">
+        @Html.AntiForgeryToken()
+
+        <div class="row">
+            <!-- Thông tin PO -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header bg-gradient-primary text-white">
+                        <h5 class="mb-0">Thông tin PO</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Số đơn hàng:</label>
+                            <input type="text" class="form-control" value="PO-AUTO" readonly disabled>
+                            <small class="text-muted">Hệ thống tự động tạo</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Ngày đặt:</label>
+                            <input type="text" class="form-control" value="@DateTime.Now.ToString("dd/MM/yyyy")" readonly disabled>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Người phụ trách:</label>
+                            <input type="text" class="form-control" value="Purchasing Staff" readonly disabled>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nhà cung cấp -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header bg-gradient-danger text-white">
+                        <h5 class="mb-0">Nhà cung cấp</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Tên: <span class="text-danger">*</span></label>
+                            <select asp-for="SupplierId" class="form-select" asp-items="ViewBag.Suppliers"
+                                    id="supplierSelect" required onchange="loadSupplierInfo()">
+                                <option value="">-- Chọn nhà cung cấp --</option>
+                            </select>
+                        </div>
+
+                        <div id="supplierInfo" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">Mã NCC:</label>
+                                <input type="text" class="form-control" id="supplierCode" readonly>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">SĐT:</label>
+                                <input type="text" class="form-control" id="supplierPhone" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Danh sách sản phẩm -->
+        <div class="card">
+            <div class="card-header bg-gradient-purple text-white">
+                <h5 class="mb-0">Danh sách sản phẩm</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="productTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="5%">SKU</th>
+                                <th width="35%">TÊN SẢN PHẨM</th>
+                                <th width="15%">SL ĐẶT</th>
+                                <th width="20%">GIÁ NHẬP</th>
+                                <th width="20%">THÀNH TIỀN</th>
+                                <th width="5%">THAO TÁC</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productTableBody">
+                            <tr class="product-row" data-index="0">
+                                <td>
+                                    <span class="sku-display"></span>
+                                </td>
+                                <td>
+                                    <select name="Details[0].ProductId" class="form-select product-select" required onchange="updateProduct(this, 0)">
+                                        <option value="">-- Chọn sản phẩm --</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" name="Details[0].Quantity" class="form-control quantity-input"
+                                           min="1" value="1" required onchange="calculateTotal(0)">
+                                </td>
+                                <td>
+                                    <input type="number" name="Details[0].UnitPrice" class="form-control price-input"
+                                           min="0" step="1000" required onchange="calculateTotal(0)">
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control total-display" readonly value="0">
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-danger" onclick="removeRow(this)" disabled>
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="6">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="addProductRow()">
+                                        <i class="fas fa-plus"></i> Thêm sản phẩm
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="table-light">
+                                <td colspan="2"><strong>Tổng mã SKU:</strong></td>
+                                <td><strong id="totalSKU">0</strong></td>
+                                <td colspan="2"><strong>Tổng SL Đặt:</strong></td>
+                                <td><strong id="totalQuantity">1</strong></td>
+                            </tr>
+                            <tr class="table-light">
+                                <td colspan="2"></td>
+                                <td colspan="2"><strong>Tổng SL Thực Nhận:</strong></td>
+                                <td colspan="2"><strong id="totalReceived">0</strong></td>
+                            </tr>
+                            <tr class="table-light">
+                                <td colspan="2"></td>
+                                <td colspan="2"><strong>Tình trạng:</strong></td>
+                                <td colspan="2"><strong class="text-success">Đủ hàng</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4 text-end">
+            <a asp-action="Index" class="btn btn-secondary btn-lg">
+                <i class="fas fa-times"></i> Hủy
+            </a>
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="fas fa-save"></i> Tạo Đơn Hàng
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        let productIndex = 1;
+        let productsData = [];
+
+        // Load supplier info
+        async function loadSupplierInfo() {
+            const supplierId = document.getElementById('supplierSelect').value;
+
+            if (!supplierId) {
+                document.getElementById('supplierInfo').style.display = 'none';
+                clearProductSelects();
+                return;
+            }
+
+            document.getElementById('supplierInfo').style.display = 'block';
+            document.getElementById('supplierCode').value = 'NCC-' + supplierId;
+
+            // Load products by supplier
+            await loadProducts(supplierId);
+        }
+
+        async function loadProducts(supplierId) {
+            try {
+                const response = await fetch(`/PurchaseOrder/GetProductsBySupplier?supplierId=${supplierId}`);
+                productsData = await response.json();
+
+                // Update all product selects
+                const selects = document.querySelectorAll('.product-select');
+                selects.forEach(select => {
+                    const currentValue = select.value;
+                    select.innerHTML = '<option value="">-- Chọn sản phẩm --</option>';
+
+                    productsData.forEach(product => {
+                        const option = document.createElement('option');
+                        option.value = product.productId;
+                        option.text = `${product.productName} (${product.categoryName})`;
+                        option.dataset.sku = 'SKU-' + String(product.productId).padStart(5, '0');
+                        option.dataset.costPrice = product.costPrice;
+                        select.appendChild(option);
+                    });
+
+                    if (currentValue) {
+                        select.value = currentValue;
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading products:', error);
+                alert('Không thể tải danh sách sản phẩm');
+            }
+        }
+
+        function updateProduct(select, index) {
+            const row = select.closest('.product-row');
+            const selectedOption = select.options[select.selectedIndex];
+
+            if (selectedOption.value) {
+                const sku = selectedOption.dataset.sku;
+                const costPrice = selectedOption.dataset.costPrice;
+
+                row.querySelector('.sku-display').textContent = sku;
+                row.querySelector('.price-input').value = costPrice;
+
+                calculateTotal(index);
+            } else {
+                row.querySelector('.sku-display').textContent = '';
+                row.querySelector('.price-input').value = '';
+                row.querySelector('.total-display').value = '0';
+            }
+
+            updateTotals();
+        }
+
+        function calculateTotal(index) {
+            const row = document.querySelector(`.product-row[data-index="${index}"]`);
+            const quantity = parseFloat(row.querySelector('.quantity-input').value) || 0;
+            const price = parseFloat(row.querySelector('.price-input').value) || 0;
+            const total = quantity * price;
+
+            row.querySelector('.total-display').value = total.toLocaleString('vi-VN');
+
+            updateTotals();
+        }
+
+        function addProductRow() {
+            const supplierId = document.getElementById('supplierSelect').value;
+
+            if (!supplierId) {
+                alert('Vui lòng chọn nhà cung cấp trước');
+                return;
+            }
+
+            const tbody = document.getElementById('productTableBody');
+            const newRow = document.createElement('tr');
+            newRow.className = 'product-row';
+            newRow.dataset.index = productIndex;
+
+            newRow.innerHTML = `
+                <td>
+                    <span class="sku-display"></span>
+                </td>
+                <td>
+                    <select name="Details[${productIndex}].ProductId" class="form-select product-select" required onchange="updateProduct(this, ${productIndex})">
+                        <option value="">-- Chọn sản phẩm --</option>
+                    </select>
+                </td>
+                <td>
+                    <input type="number" name="Details[${productIndex}].Quantity" class="form-control quantity-input"
+                           min="1" value="1" required onchange="calculateTotal(${productIndex})">
+                </td>
+                <td>
+                    <input type="number" name="Details[${productIndex}].UnitPrice" class="form-control price-input"
+                           min="0" step="1000" required onchange="calculateTotal(${productIndex})">
+                </td>
+                <td>
+                    <input type="text" class="form-control total-display" readonly value="0">
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removeRow(this)">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </td>
+            `;
+
+            tbody.appendChild(newRow);
+
+            // Load products vào select mới
+            const newSelect = newRow.querySelector('.product-select');
+            productsData.forEach(product => {
+                const option = document.createElement('option');
+                option.value = product.productId;
+                option.text = `${product.productName} (${product.categoryName})`;
+                option.dataset.sku = 'SKU-' + String(product.productId).padStart(5, '0');
+                option.dataset.costPrice = product.costPrice;
+                newSelect.appendChild(option);
+            });
+
+            productIndex++;
+            updateTotals();
+        }
+
+        function removeRow(button) {
+            button.closest('.product-row').remove();
+            updateTotals();
+        }
+
+        function updateTotals() {
+            const rows = document.querySelectorAll('.product-row');
+            let totalSKU = 0;
+            let totalQty = 0;
+
+            rows.forEach(row => {
+                const productSelect = row.querySelector('.product-select');
+                const quantity = parseFloat(row.querySelector('.quantity-input').value) || 0;
+
+                if (productSelect.value) {
+                    totalSKU++;
+                    totalQty += quantity;
+                }
+            });
+
+            document.getElementById('totalSKU').textContent = totalSKU;
+            document.getElementById('totalQuantity').textContent = totalQty;
+            document.getElementById('totalReceived').textContent = totalQty;
+        }
+
+        function clearProductSelects() {
+            const selects = document.querySelectorAll('.product-select');
+            selects.forEach(select => {
+                select.innerHTML = '<option value="">-- Chọn sản phẩm --</option>';
+            });
+            productsData = [];
+        }
+
+        // Form validation
+        document.getElementById('createPurchaseOrderForm').addEventListener('submit', function(e) {
+            const supplierId = document.getElementById('supplierSelect').value;
+
+            if (!supplierId) {
+                e.preventDefault();
+                alert('Vui lòng chọn nhà cung cấp');
+                return false;
+            }
+
+            const rows = document.querySelectorAll('.product-row');
+            let hasProduct = false;
+
+            rows.forEach(row => {
+                const productId = row.querySelector('.product-select').value;
+                if (productId) {
+                    hasProduct = true;
+                }
+            });
+
+            if (!hasProduct) {
+                e.preventDefault();
+                alert('Vui lòng thêm ít nhất 1 sản phẩm');
+                return false;
+            }
+        });
+    </script>
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/PurchaseOrder/PurchaseOrder.css" />
+}
