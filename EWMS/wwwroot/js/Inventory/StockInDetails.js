@@ -1,12 +1,12 @@
 ﻿/* =========================================================
-   GOODS RECEIPT - MAIN LOGIC
+   GOODS RECEIPT - MAIN LOGIC (WITH DEBUG)
 ========================================================= */
 
 let productsData = [];
 let locationsCache = {};
-let receiptItems = []; // Lưu trữ tất cả các dòng nhập kho
+let receiptItems = [];
 let locationUsage = {};
-// Format helpers
+
 function formatNumber(value) {
     return new Intl.NumberFormat('vi-VN').format(value);
 }
@@ -19,20 +19,20 @@ async function loadPurchaseOrderInfo() {
         const response = await fetch(`/StockIn/GetPurchaseOrderInfo?purchaseOrderId=${purchaseOrderId}`);
         const data = await response.json();
 
+        console.log('📋 PO Info:', data); // ✅ DEBUG
+
         if (data.error) {
             console.error('Error:', data.error);
             return;
         }
 
-        // Update UI with PO info
         document.getElementById('po-number').textContent = `PO-${String(data.purchaseOrderId).padStart(4, '0')}`;
         document.getElementById('supplier-name').textContent = data.supplierName;
-        document.getElementById('supplier-code').textContent = `NCC-${data.purchaseOrderId}`;
+        document.getElementById('supplier-code').textContent = `NCC-${data.supplierId}`;
         document.getElementById('supplier-phone').textContent = data.supplierPhone || 'N/A';
 
-        // Check if already received
         if (data.hasStockIn) {
-            alert('Đơn hàng này đã được nhập kho!');
+            alert('Đơn hàng này đã được nhập kho đủ!');
             document.getElementById('btn-confirm').disabled = true;
         }
     } catch (error) {
@@ -45,12 +45,26 @@ async function loadProducts() {
         const response = await fetch(`/StockIn/GetPurchaseOrderProducts?purchaseOrderId=${purchaseOrderId}`);
         const data = await response.json();
 
+        console.log('📦 Products Data from API:', data); // ✅ DEBUG
+
         if (data.error) {
             console.error('Error:', data.error);
             return;
         }
 
         productsData = data;
+
+        // ✅ DEBUG - Kiểm tra từng sản phẩm
+        console.log('🔍 Checking each product:');
+        productsData.forEach(p => {
+            console.log(`  ${p.productName}:`, {
+                orderedQty: p.orderedQty,
+                receivedQty: p.receivedQty,
+                remainingQty: p.remainingQty,
+                willShow: p.remainingQty > 0 ? '✅ SHOW' : '❌ HIDE'
+            });
+        });
+
         renderProductsTable();
         updateSummary();
     } catch (error) {
@@ -62,10 +76,25 @@ async function loadProducts() {
    RENDER PRODUCTS TABLE
 ========================================================= */
 function renderProductsTable() {
+    console.log('🎨 Starting renderProductsTable()...'); // ✅ DEBUG
+
     const tbody = document.getElementById('products-tbody');
     tbody.innerHTML = '';
 
+    let shownCount = 0;
+    let hiddenCount = 0;
+
     productsData.forEach((product, index) => {
+        // ⚠️ BỎ QUA SẢN PHẨM ĐÃ NHẬN ĐỦ
+        if (product.remainingQty <= 0) {
+            console.log(`  ⏭️ Skipping ${product.productName} (remainingQty = ${product.remainingQty})`); // ✅ DEBUG
+            hiddenCount++;
+            return;
+        }
+
+        console.log(`  ✅ Showing ${product.productName} (remainingQty = ${product.remainingQty})`); // ✅ DEBUG
+        shownCount++;
+
         const rowId = `product-${product.productId}-${index}`;
 
         const row = document.createElement('tr');
@@ -87,9 +116,9 @@ function renderProductsTable() {
                        id="qty-${rowId}"
                        data-product-id="${product.productId}"
                        data-row-id="${rowId}"
-                       value="${product.orderedQty}"
+                       value="${product.remainingQty}"
                        min="0"
-                       max="${product.orderedQty}"
+                       max="${product.remainingQty}"
                        onchange="handleQuantityChange(this)">
             </td>
             <td>
@@ -110,22 +139,37 @@ function renderProductsTable() {
         `;
 
         tbody.appendChild(row);
-
-        // Load locations for this product
         loadLocationsForProduct(product.productId, rowId);
 
-        // Initialize receipt item
         receiptItems.push({
             rowId: rowId,
             productId: product.productId,
             productName: product.productName,
             orderedQty: product.orderedQty,
-            receivedQty: product.orderedQty,
+            receivedQty: product.remainingQty,
             locationId: null,
             unitPrice: product.unitPrice,
             splitRows: []
         });
     });
+
+    console.log(`📊 Render summary: ${shownCount} shown, ${hiddenCount} hidden`); // ✅ DEBUG
+
+    // ✅ KIỂM TRA NẾU KHÔNG CÒN SẢN PHẨM NÀO
+    if (receiptItems.length === 0) {
+        console.log('🎉 All products received!'); // ✅ DEBUG
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-4">
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> 
+                        <strong>Đơn hàng này đã được nhập kho đầy đủ!</strong>
+                    </div>
+                </td>
+            </tr>
+        `;
+        document.getElementById('btn-confirm').disabled = true;
+    }
 }
 
 /* =========================================================
@@ -158,24 +202,16 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) {
 
     locations.forEach(loc => {
         const available = loc.maxCapacity - loc.currentStock;
-
-        // ❌ rack đầy
         if (available <= 0) return;
-
-        // ❌ loại rack cha khi split
         if (excludedLocationId && loc.locationId === excludedLocationId) return;
 
         const option = document.createElement('option');
         option.value = loc.locationId;
-        option.textContent =
-            `${loc.locationCode} - ${loc.locationName} (${loc.currentStock}/${loc.maxCapacity})`;
-
+        option.textContent = `${loc.locationCode} - ${loc.locationName} (${loc.currentStock}/${loc.maxCapacity})`;
         option.dataset.available = available;
         select.appendChild(option);
     });
 }
-
-
 
 /* =========================================================
    HANDLE QUANTITY CHANGE
@@ -185,7 +221,6 @@ function handleQuantityChange(input) {
     const productId = parseInt(input.dataset.productId);
     const newQty = parseInt(input.value) || 0;
 
-    // Find and update receipt item
     const item = receiptItems.find(i => i.rowId === rowId);
     if (item) {
         item.receivedQty = newQty;
@@ -216,8 +251,6 @@ function handleLocationChange(select) {
     }
 }
 
-
-
 /* =========================================================
    CHECK LOCATION CAPACITY
 ========================================================= */
@@ -237,7 +270,6 @@ async function checkCapacity(rowId, quantity) {
     const available = data.maxCapacity - data.currentStock;
     const locationText = select.options[select.selectedIndex].text;
 
-    // ===== ĐỦ CHỖ =====
     if (quantity <= available) {
         infoDiv.innerHTML = `
             <div class="alert alert-success p-2 mb-0">
@@ -248,28 +280,18 @@ async function checkCapacity(rowId, quantity) {
         return;
     }
 
-    // ===== KHÔNG ĐỦ → HIỆN SPLIT =====
     const remain = quantity - available;
-
     infoDiv.innerHTML = `
         <div class="alert alert-warning p-2 mb-2">
             ${locationText}<br>
             <b>Chỉ chứa được ${available}</b>
         </div>
-
         <button class="btn btn-sm btn-warning"
-            onclick="splitToNewLocation(
-                '${rowId}',
-                ${parseInt(select.dataset.productId)},
-                ${quantity},
-                ${available}
-            )">
+            onclick="splitToNewLocation('${rowId}', ${parseInt(select.dataset.productId)}, ${quantity}, ${available})">
             ➕ Thêm rack khác cho ${remain}
         </button>
     `;
 }
-
-
 
 function clearLocationInfo(rowId) {
     const infoDiv = document.getElementById(`location-info-${rowId}`);
@@ -288,21 +310,16 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
 
     if (!parentRow || !parentItem || !product) return;
 
-    // ===== FIX DÒNG CHA =====
     const parentQtyInput = document.getElementById(`qty-${parentRowId}`);
     parentQtyInput.value = firstCapacity;
     parentQtyInput.max = firstCapacity;
     parentItem.receivedQty = firstCapacity;
 
-    const parentLocationId =
-        parseInt(document.getElementById(`location-${parentRowId}`).value);
-
+    const parentLocationId = parseInt(document.getElementById(`location-${parentRowId}`).value);
     const remainingQty = totalQty - firstCapacity;
     if (remainingQty <= 0) return;
 
-    // ===== TẠO DÒNG SPLIT =====
     const newRowId = `split-${Date.now()}`;
-
     const newRow = document.createElement('tr');
     newRow.id = newRowId;
     newRow.className = 'split-row bg-light';
@@ -312,21 +329,14 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
         <td>${product.productName}</td>
         <td><span class="badge bg-warning">${remainingQty}</span></td>
         <td>
-            <input type="number"
-                   id="qty-${newRowId}"
-                   class="form-control"
-                   value="${remainingQty}"
-                   min="1"
-                   max="${remainingQty}"
-                   data-row-id="${newRowId}"
-                   data-product-id="${productId}"
+            <input type="number" id="qty-${newRowId}" class="form-control"
+                   value="${remainingQty}" min="1" max="${remainingQty}"
+                   data-row-id="${newRowId}" data-product-id="${productId}"
                    onchange="handleQuantityChange(this)">
         </td>
         <td>
-            <select id="location-${newRowId}"
-                    class="form-select"
-                    data-row-id="${newRowId}"
-                    data-product-id="${productId}"
+            <select id="location-${newRowId}" class="form-select"
+                    data-row-id="${newRowId}" data-product-id="${productId}"
                     onchange="handleLocationChange(this)">
                 <option value="">-- Chọn rack khác --</option>
             </select>
@@ -349,38 +359,23 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
         parentRowId
     });
 
-    // 🔥 LOAD LOCATION → LOẠI RACK CHA
-    populateLocationSelect(
-        newRowId,
-        locationsCache[productId],
-        parentLocationId
-    );
-
+    populateLocationSelect(newRowId, locationsCache[productId], parentLocationId);
     updateSummary();
 }
 
-
 function removeSplitRow(rowId, parentRowId, qty) {
-    // Remove row from DOM
     const row = document.getElementById(rowId);
-    if (row) {
-        row.remove();
-    }
+    if (row) row.remove();
 
-    // Remove from receipt items
     const index = receiptItems.findIndex(i => i.rowId === rowId);
-    if (index > -1) {
-        receiptItems.splice(index, 1);
-    }
+    if (index > -1) receiptItems.splice(index, 1);
 
-    // Update parent row
     const parentItem = receiptItems.find(i => i.rowId === parentRowId);
     if (parentItem) {
         const parentQtyInput = document.getElementById(`qty-${parentRowId}`);
         const currentMax = parseInt(parentQtyInput.max);
         parentQtyInput.max = currentMax + qty;
 
-        // Remove from split rows
         if (parentItem.splitRows) {
             parentItem.splitRows = parentItem.splitRows.filter(id => id !== rowId);
         }
@@ -430,7 +425,6 @@ function selectLocationFromModal(rowId, locationId) {
     const select = document.getElementById(`location-${rowId}`);
     select.value = locationId;
     handleLocationChange(select);
-
     bootstrap.Modal.getInstance(document.getElementById('locationModal')).hide();
 }
 
@@ -438,10 +432,12 @@ function selectLocationFromModal(rowId, locationId) {
    UPDATE SUMMARY
 ========================================================= */
 function updateSummary() {
-    const totalSku = productsData.length;
-    const totalOrdered = productsData.reduce((sum, p) => sum + p.orderedQty, 0);
+    const totalSku = productsData.filter(p => p.remainingQty > 0).length;
+    const totalOrdered = productsData.reduce((sum, p) => sum + p.remainingQty, 0);
     const totalReceived = receiptItems.reduce((sum, item) => sum + item.receivedQty, 0);
     const difference = totalOrdered - totalReceived;
+
+    console.log('📊 Summary:', { totalSku, totalOrdered, totalReceived, difference }); // ✅ DEBUG
 
     document.getElementById('total-sku').textContent = formatNumber(totalSku);
     document.getElementById('total-ordered').textContent = formatNumber(totalOrdered);
@@ -464,7 +460,6 @@ function updateSummary() {
    CONFIRM STOCK IN
 ========================================================= */
 async function confirmStockIn() {
-    // Validate
     const errors = [];
 
     for (const item of receiptItems) {
@@ -482,7 +477,6 @@ async function confirmStockIn() {
         return;
     }
 
-    // Prepare data
     const requestData = {
         purchaseOrderId: purchaseOrderId,
         warehouseId: warehouseId,
@@ -496,12 +490,12 @@ async function confirmStockIn() {
             }))
     };
 
+    console.log('💾 Submitting:', requestData); // ✅ DEBUG
+
     try {
         const response = await fetch('/StockIn/ConfirmStockIn', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestData)
         });
 
@@ -526,25 +520,26 @@ function refreshAllLocationSelects(productId) {
     receiptItems.forEach(item => {
         if (item.productId === productId) {
             populateLocationSelect(item.rowId, locations);
-
-            // giữ lại lựa chọn cũ nếu còn hợp lệ
             if (item.locationId) {
                 const select = document.getElementById(`location-${item.rowId}`);
-                if (select) {
-                    select.value = item.locationId;
-                }
+                if (select) select.value = item.locationId;
             }
         }
     });
 }
 
-
 /* =========================================================
    INIT
 ========================================================= */
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('Goods Receipt initialized for PO:', purchaseOrderId);
+    console.log('🚀 Goods Receipt initialized');
+    console.log('   PO ID:', purchaseOrderId);
+    console.log('   Warehouse ID:', warehouseId);
+    console.log('   User ID:', userId);
 
     await loadPurchaseOrderInfo();
     await loadProducts();
+
+    console.log('✅ Initialization complete');
+    console.log('📋 Final receiptItems:', receiptItems);
 });
