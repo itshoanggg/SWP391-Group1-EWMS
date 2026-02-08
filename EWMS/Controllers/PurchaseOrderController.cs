@@ -5,6 +5,7 @@ using EWMS.Models;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
 
 namespace EWMS.Controllers
 {
@@ -18,15 +19,12 @@ namespace EWMS.Controllers
         }
 
         // GET: PurchaseOrder/Index
-        public async Task<IActionResult> Index(string status = "")
+        public async Task<IActionResult> Index(string status = "InTransit")
         {
             var userId = GetCurrentUserId();
             if (userId == 0)
-            {
                 return RedirectToAction("Login", "Account");
-            }
 
-            // Lấy WarehouseID của user
             var warehouseId = await _context.UserWarehouses
                 .Where(uw => uw.UserId == userId)
                 .Select(uw => uw.WarehouseId)
@@ -38,32 +36,33 @@ namespace EWMS.Controllers
                 return RedirectToAction("Index", "Home");
             }
 
-            // Query đơn mua hàng
+            await AutoUpdateDeliveredStatus(warehouseId);
+
             var query = _context.PurchaseOrders
                 .Include(po => po.Supplier)
                 .Include(po => po.CreatedByNavigation)
                 .Include(po => po.PurchaseOrderDetails)
-                .Where(po => po.WarehouseId == warehouseId);
-
-            // Filter theo status
-            if (!string.IsNullOrEmpty(status))
-            {
-                query = query.Where(po => po.Status == status);
-            }
+                .Where(po =>
+                    po.WarehouseId == warehouseId &&
+                    po.Status == "InTransit"      // ✅ CHỈ LẤY InTransit
+                );
 
             var purchaseOrders = await query
                 .OrderByDescending(po => po.CreatedAt)
                 .ToListAsync();
 
-            ViewBag.CurrentStatus = status;
-            ViewBag.WarehouseId = warehouseId;
-
             return View(purchaseOrders);
         }
+
 
         // GET: PurchaseOrder/Details/5
         public async Task<IActionResult> Details(int id)
         {
+            var warehouseId = await _context.UserWarehouses
+                .Where(uw => uw.UserId == GetCurrentUserId())
+                .Select(uw => uw.WarehouseId)
+                .FirstOrDefaultAsync();
+
             var purchaseOrder = await _context.PurchaseOrders
                 .Include(po => po.Supplier)
                 .Include(po => po.Warehouse)
@@ -71,7 +70,10 @@ namespace EWMS.Controllers
                 .Include(po => po.PurchaseOrderDetails)
                     .ThenInclude(pod => pod.Product)
                         .ThenInclude(p => p.Category)
-                .FirstOrDefaultAsync(po => po.PurchaseOrderId == id);
+                .Include(po => po.StockInReceipts)
+                    .ThenInclude(si => si.StockInDetails)
+                .FirstOrDefaultAsync(po => po.PurchaseOrderId == id
+                    && po.WarehouseId == warehouseId);
 
             if (purchaseOrder == null)
             {
@@ -79,7 +81,6 @@ namespace EWMS.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Tính tổng
             ViewBag.TotalQuantity = purchaseOrder.PurchaseOrderDetails.Sum(d => d.Quantity);
             ViewBag.TotalAmount = purchaseOrder.PurchaseOrderDetails.Sum(d => d.TotalPrice ?? 0);
 
@@ -95,7 +96,6 @@ namespace EWMS.Controllers
                 return RedirectToAction("Login", "Account");
             }
 
-            // Lấy WarehouseID của user
             var warehouseId = await _context.UserWarehouses
                 .Where(uw => uw.UserId == userId)
                 .Select(uw => uw.WarehouseId)
@@ -107,7 +107,6 @@ namespace EWMS.Controllers
                 return RedirectToAction("Index", "Home");
             }
 
-            // Load danh sách nhà cung cấp
             ViewBag.Suppliers = new SelectList(
                 await _context.Suppliers.OrderBy(s => s.SupplierName).ToListAsync(),
                 "SupplierId",
@@ -148,20 +147,20 @@ namespace EWMS.Controllers
 
             try
             {
-                // Tạo Purchase Order
+                // ✅ Tạo PO với status = "InTransit"
                 var purchaseOrder = new PurchaseOrder
                 {
                     SupplierId = model.SupplierId,
                     WarehouseId = warehouseId,
                     CreatedBy = userId,
-                    Status = "Pending",
-                    CreatedAt = DateTime.Now
+                    Status = "InTransit", // ✅ Đang vận chuyển
+                    CreatedAt = DateTime.Now,
+                    ExpectedReceivingDate = model.ExpectedReceivingDate
                 };
 
                 _context.PurchaseOrders.Add(purchaseOrder);
                 await _context.SaveChangesAsync();
 
-                // Tạo Purchase Order Details
                 foreach (var detail in model.Details)
                 {
                     if (detail.ProductId > 0 && detail.Quantity > 0 && detail.UnitPrice > 0)
@@ -180,7 +179,7 @@ namespace EWMS.Controllers
 
                 await _context.SaveChangesAsync();
 
-                TempData["Success"] = $"Tạo đơn mua hàng {purchaseOrder.PurchaseOrderId} thành công!";
+                TempData["Success"] = $"Tạo đơn mua hàng PO-{purchaseOrder.PurchaseOrderId:D4} thành công!";
                 return RedirectToAction(nameof(Details), new { id = purchaseOrder.PurchaseOrderId });
             }
             catch (Exception ex)
@@ -199,28 +198,46 @@ namespace EWMS.Controllers
             }
         }
 
-        // POST: PurchaseOrder/UpdateStatus
+        // POST: PurchaseOrder/MarkAsDelivered - Đánh dấu hàng đã về kho
         [HttpPost]
-        public async Task<IActionResult> UpdateStatus(int id, string status)
+        public async Task<IActionResult> MarkAsDelivered(int id)
         {
-            var purchaseOrder = await _context.PurchaseOrders.FindAsync(id);
-
-            if (purchaseOrder == null)
+            try
             {
-                return Json(new { success = false, message = "Không tìm thấy đơn hàng" });
+                var warehouseId = await _context.UserWarehouses
+                    .Where(uw => uw.UserId == GetCurrentUserId())
+                    .Select(uw => uw.WarehouseId)
+                    .FirstOrDefaultAsync();
+
+                var purchaseOrder = await _context.PurchaseOrders
+                    .FirstOrDefaultAsync(po => po.PurchaseOrderId == id
+                        && po.WarehouseId == warehouseId);
+
+                if (purchaseOrder == null)
+                {
+                    return Json(new { success = false, message = "Không tìm thấy đơn hàng" });
+                }
+
+                if (purchaseOrder.Status != "InTransit")
+                {
+                    return Json(new { success = false, message = "Chỉ có thể cập nhật đơn hàng đang vận chuyển" });
+                }
+
+                purchaseOrder.Status = "Delivered";
+                await _context.SaveChangesAsync();
+
+                return Json(new { success = true, message = "Đã cập nhật: Hàng đã về kho" });
             }
-
-            purchaseOrder.Status = status;
-            await _context.SaveChangesAsync();
-
-            return Json(new { success = true, message = "Cập nhật trạng thái thành công" });
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Lỗi: {ex.Message}" });
+            }
         }
 
         // API: Get Products by Supplier
         [HttpGet]
         public async Task<IActionResult> GetProductsBySupplier(int supplierId)
         {
-            // Lấy tất cả sản phẩm (hoặc có thể filter theo supplier nếu có relationship)
             var products = await _context.Products
                 .Include(p => p.Category)
                 .Where(p => p.CategoryId != null)
@@ -241,19 +258,25 @@ namespace EWMS.Controllers
         [HttpPost]
         public async Task<IActionResult> Delete(int id)
         {
+            var warehouseId = await _context.UserWarehouses
+                .Where(uw => uw.UserId == GetCurrentUserId())
+                .Select(uw => uw.WarehouseId)
+                .FirstOrDefaultAsync();
+
             var purchaseOrder = await _context.PurchaseOrders
                 .Include(po => po.PurchaseOrderDetails)
-                .FirstOrDefaultAsync(po => po.PurchaseOrderId == id);
+                .FirstOrDefaultAsync(po => po.PurchaseOrderId == id
+                    && po.WarehouseId == warehouseId);
 
             if (purchaseOrder == null)
             {
                 return Json(new { success = false, message = "Không tìm thấy đơn hàng" });
             }
 
-            // Chỉ cho phép xóa đơn có status = "Pending"
-            if (purchaseOrder.Status != "Pending")
+            // Chỉ cho phép xóa đơn InTransit
+            if (purchaseOrder.Status != "InTransit")
             {
-                return Json(new { success = false, message = "Chỉ có thể xóa đơn hàng ở trạng thái Pending" });
+                return Json(new { success = false, message = "Chỉ có thể xóa đơn hàng đang vận chuyển" });
             }
 
             try
@@ -269,17 +292,47 @@ namespace EWMS.Controllers
             }
         }
 
-        // Helper method
         private int GetCurrentUserId()
         {
-            return 4;
+            return 4; // TODO: Replace with actual auth
+        }
+
+
+        // ✅ Tự động cập nhật trạng thái hàng đã về kho
+        private async Task AutoUpdateDeliveredStatus(int warehouseId)
+        {
+            var today = DateTime.Today;
+
+            var ordersToUpdate = await _context.PurchaseOrders
+                .Where(po =>
+                    po.WarehouseId == warehouseId &&
+                    po.Status == "InTransit" &&
+                    po.ExpectedReceivingDate.HasValue &&
+                    po.ExpectedReceivingDate.Value.Date <= today)
+                .ToListAsync();
+
+            if (ordersToUpdate.Any())
+            {
+                foreach (var po in ordersToUpdate)
+                {
+                    po.Status = "Delivered";
+                }
+
+                await _context.SaveChangesAsync();
+            }
         }
     }
 
-    // ViewModel for Create
+
+    // ViewModels
     public class PurchaseOrderCreateViewModel
     {
         public int SupplierId { get; set; }
+
+        [Required(ErrorMessage = "Vui lòng chọn ngày nhận hàng dự kiến")]
+        [Display(Name = "Ngày nhận hàng dự kiến")]
+        public DateTime? ExpectedReceivingDate { get; set; }
+
         public List<PurchaseOrderDetailViewModel> Details { get; set; } = new List<PurchaseOrderDetailViewModel>();
     }
 
