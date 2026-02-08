@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using EWMS.Models;
 using System;
@@ -17,13 +18,259 @@ namespace EWMS.Controllers
             _context = context;
         }
 
-        // GET: StockIn/Index - Danh sách Purchase Orders
+        // GET: StockIn/Index - Hiển thị danh sách PO để nhập kho
         public async Task<IActionResult> Index()
         {
-            var userId = 5;
-            //var userId = GetCurrentUserId();
+            var userId = GetCurrentUserId();
             if (userId == 0)
+            {
                 return RedirectToAction("Login", "Account");
+            }
+
+            var warehouseId = await _context.UserWarehouses
+                .Where(uw => uw.UserId == userId)
+                .Select(uw => uw.WarehouseId)
+                .FirstOrDefaultAsync();
+
+            if (warehouseId == 0)
+            {
+                TempData["Error"] = "Bạn chưa được phân công vào kho nào.";
+                return RedirectToAction("Index", "Home");
+            }
+
+            // ✅ TỰ ĐỘNG CẬP NHẬT HÀNG ĐÃ VỀ
+            await AutoUpdateDeliveredStatus(warehouseId);
+
+            ViewBag.WarehouseId = warehouseId;
+
+            return View();
+        }
+
+        // API: Get Purchase Orders (cho Index page)
+        [HttpGet]
+        public async Task<IActionResult> GetPurchaseOrders(int warehouseId, string status = "", string search = "")
+        {
+            try
+            {
+                var userWarehouseId = await _context.UserWarehouses
+                    .Where(uw => uw.UserId == GetCurrentUserId())
+                    .Select(uw => uw.WarehouseId)
+                    .FirstOrDefaultAsync();
+
+                if (userWarehouseId != warehouseId)
+                {
+                    return Json(new { error = "Bạn không có quyền truy cập kho này" });
+                }
+
+                // ✅ TỰ ĐỘNG CẬP NHẬT TRẠNG THÁI HÀNG ĐÃ VỀ
+                await AutoUpdateDeliveredStatus(warehouseId);
+
+                var query = _context.PurchaseOrders
+                    .Include(po => po.Supplier)
+                    .Include(po => po.CreatedByNavigation)
+                    .Include(po => po.PurchaseOrderDetails)
+                    .Include(po => po.StockInReceipts)
+                        .ThenInclude(si => si.StockInDetails)
+                    .Where(po => po.WarehouseId == warehouseId);
+
+                // Filter by status
+                if (!string.IsNullOrEmpty(status))
+                {
+                    query = query.Where(po => po.Status == status);
+                }
+
+                // Filter by search
+                if (!string.IsNullOrEmpty(search))
+                {
+                    query = query.Where(po =>
+                        po.PurchaseOrderId.ToString().Contains(search) ||
+                        po.Supplier.SupplierName.Contains(search)
+                    );
+                }
+
+                var purchaseOrders = await query
+                    .OrderByDescending(po => po.CreatedAt)
+                    .ToListAsync();
+
+                var result = purchaseOrders.Select(po =>
+                {
+                    var totalItems = po.PurchaseOrderDetails.Sum(d => d.Quantity);
+                    var receivedItems = po.StockInReceipts
+                        .SelectMany(si => si.StockInDetails)
+                        .Sum(sid => sid.Quantity);
+                    var remainingItems = totalItems - receivedItems;
+
+                    return new
+                    {
+                        purchaseOrderId = po.PurchaseOrderId,
+                        supplierName = po.Supplier.SupplierName,
+                        expectedReceivingDate = po.ExpectedReceivingDate,
+                        totalItems = totalItems,
+                        receivedItems = receivedItems,
+                        remainingItems = remainingItems,
+                        totalAmount = po.PurchaseOrderDetails.Sum(d => d.TotalPrice ?? 0),
+                        createdBy = po.CreatedByNavigation.FullName ?? po.CreatedByNavigation.Username,
+                        status = po.Status,
+                        createdAt = po.CreatedAt
+                    };
+                }).ToList();
+
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in GetPurchaseOrders: {ex.Message}");
+                return Json(new { error = $"Lỗi server: {ex.Message}" });
+            }
+        }
+
+        // GET: StockIn/Details/poId - Xem chi tiết PO để nhập kho
+        public async Task<IActionResult> Details(int id)
+        {
+            var userId = GetCurrentUserId();
+            var warehouseId = await _context.UserWarehouses
+                .Where(uw => uw.UserId == userId)
+                .Select(uw => uw.WarehouseId)
+                .FirstOrDefaultAsync();
+
+            var purchaseOrder = await _context.PurchaseOrders
+                .Include(po => po.Supplier)
+                .Include(po => po.Warehouse)
+                .Include(po => po.CreatedByNavigation)
+                .Include(po => po.PurchaseOrderDetails)
+                    .ThenInclude(pod => pod.Product)
+                        .ThenInclude(p => p.Category)
+                .Include(po => po.StockInReceipts)
+                    .ThenInclude(si => si.StockInDetails)
+                .FirstOrDefaultAsync(po => po.PurchaseOrderId == id
+                    && po.WarehouseId == warehouseId);
+
+            if (purchaseOrder == null)
+            {
+                TempData["Error"] = "Không tìm thấy đơn mua hàng.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Kiểm tra status - chỉ cho xem Delivered hoặc PartiallyReceived
+            if (purchaseOrder.Status != "Delivered" && purchaseOrder.Status != "PartiallyReceived")
+            {
+                TempData["Error"] = "Chỉ có thể nhập kho cho đơn hàng đã về kho.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            ViewBag.WarehouseId = warehouseId;
+            ViewBag.UserId = userId;
+
+            return View(purchaseOrder);
+        }
+
+        // API: Get Purchase Order Info
+        [HttpGet]
+        public async Task<IActionResult> GetPurchaseOrderInfo(int purchaseOrderId)
+        {
+            try
+            {
+                var warehouseId = await _context.UserWarehouses
+                    .Where(uw => uw.UserId == GetCurrentUserId())
+                    .Select(uw => uw.WarehouseId)
+                    .FirstOrDefaultAsync();
+
+                var purchaseOrder = await _context.PurchaseOrders
+                    .Include(po => po.Supplier)
+                    .Include(po => po.CreatedByNavigation)
+                    .Include(po => po.StockInReceipts)
+                    .FirstOrDefaultAsync(po => po.PurchaseOrderId == purchaseOrderId
+                        && po.WarehouseId == warehouseId);
+
+                if (purchaseOrder == null)
+                {
+                    return Json(new { error = "Không tìm thấy đơn hàng" });
+                }
+                var isFullyReceived = purchaseOrder.Status == "Received";
+
+                var result = new
+                {
+                    purchaseOrderId = purchaseOrder.PurchaseOrderId,
+                    supplierName = purchaseOrder.Supplier.SupplierName,
+                    supplierId = purchaseOrder.Supplier.SupplierId,
+                    supplierPhone = purchaseOrder.Supplier.Phone,
+                    createdBy = purchaseOrder.CreatedByNavigation?.FullName ?? purchaseOrder.CreatedByNavigation?.Username,
+                    createdAt = purchaseOrder.CreatedAt,
+                    hasStockIn = isFullyReceived
+                };
+
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPurchaseOrderProducts(int purchaseOrderId)
+        {
+            var warehouseId = await _context.UserWarehouses
+                .Where(uw => uw.UserId == GetCurrentUserId())
+                .Select(uw => uw.WarehouseId)
+                .FirstOrDefaultAsync();
+
+            var purchaseOrder = await _context.PurchaseOrders
+                .Include(po => po.PurchaseOrderDetails)
+                    .ThenInclude(pod => pod.Product)
+                        .ThenInclude(p => p.Category)
+                .FirstOrDefaultAsync(po =>
+                    po.PurchaseOrderId == purchaseOrderId &&
+                    po.WarehouseId == warehouseId);
+
+            if (purchaseOrder == null)
+                return Json(new { error = "Không tìm thấy đơn hàng" });
+
+            // ✅ Tổng số đã nhập theo ProductId
+            var receivedMap = await _context.StockInReceipts
+                .Where(sir => sir.PurchaseOrderId == purchaseOrderId)
+                .SelectMany(sir => sir.StockInDetails)
+                .GroupBy(sid => sid.ProductId)
+                .Select(g => new
+                {
+                    ProductId = g.Key,
+                    ReceivedQty = g.Sum(x => x.Quantity)
+                })
+                .ToDictionaryAsync(x => x.ProductId, x => x.ReceivedQty);
+
+            var products = purchaseOrder.PurchaseOrderDetails.Select(pod =>
+            {
+                var receivedQty = receivedMap.ContainsKey(pod.ProductId)
+                    ? receivedMap[pod.ProductId]
+                    : 0;
+
+                var remainingQty = pod.Quantity - receivedQty;
+
+                return new
+                {
+                    productId = pod.ProductId,
+                    sku = $"SKU-{pod.ProductId:D5}",
+                    productName = pod.Product.ProductName,
+                    categoryName = pod.Product.Category?.CategoryName ?? "N/A",
+                    orderedQty = pod.Quantity,
+                    receivedQty = receivedQty,
+                    remainingQty = remainingQty < 0 ? 0 : remainingQty,
+                    unitPrice = pod.UnitPrice
+                };
+            }).ToList();
+
+            return Json(products);
+        }
+
+
+        // GET: StockIn/Create?poId=5
+        public async Task<IActionResult> Create(int? poId)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == 0)
+            {
+                return RedirectToAction("Login", "Account");
+            }
 
             var warehouseId = await _context.UserWarehouses
                 .Where(uw => uw.UserId == userId)
@@ -38,257 +285,313 @@ namespace EWMS.Controllers
 
             ViewBag.WarehouseId = warehouseId;
             ViewBag.UserId = userId;
-            return View();
-        }
 
-        // GET: StockIn/GoodsReceipt/{id} - Chi tiết nhập kho
-        public async Task<IActionResult> Details(int id)
-        {
-            var userId = 5;
-            if (userId == 0)
-                return RedirectToAction("Login", "Account");
-
-            var purchaseOrder = await _context.PurchaseOrders
-                .Include(po => po.Supplier)
-                .Include(po => po.Warehouse)
-                .Include(po => po.CreatedByNavigation)
-                .FirstOrDefaultAsync(po => po.PurchaseOrderId == id);
-
-            if (purchaseOrder == null)
+            if (poId.HasValue)
             {
-                TempData["Error"] = "Không tìm thấy đơn hàng.";
-                return RedirectToAction("Index");
-            }
+                var purchaseOrder = await _context.PurchaseOrders
+                    .Include(po => po.Supplier)
+                    .Include(po => po.PurchaseOrderDetails)
+                        .ThenInclude(pod => pod.Product)
+                            .ThenInclude(p => p.Category)
+                    .FirstOrDefaultAsync(po => po.PurchaseOrderId == poId.Value
+                        && po.WarehouseId == warehouseId);
 
-            // Kiểm tra quyền truy cập
-            var hasAccess = await _context.UserWarehouses
-                .AnyAsync(uw => uw.UserId == userId && uw.WarehouseId == purchaseOrder.WarehouseId);
-
-            if (!hasAccess)
-            {
-                TempData["Error"] = "Bạn không có quyền xem đơn hàng này.";
-                return RedirectToAction("Index");
-            }
-
-            ViewBag.PurchaseOrderId = id;
-            ViewBag.UserId = userId;
-            ViewBag.WarehouseId = purchaseOrder.WarehouseId;
-
-            return View(purchaseOrder);
-        }
-
-        // API: Get Purchase Orders
-        [HttpGet]
-        public async Task<IActionResult> GetPurchaseOrders(
-    int warehouseId,
-    string status = "",
-    string search = ""
-)
-        {
-            try
-            {
-                var query =
-                    from po in _context.PurchaseOrders
-                        .Include(p => p.Supplier)
-                        .Include(p => p.CreatedByNavigation)
-                    join pod in _context.PurchaseOrderDetails
-                        on po.PurchaseOrderId equals pod.PurchaseOrderId into podGroup
-                    where po.WarehouseId == warehouseId
-                    select new
-                    {
-                        po,
-                        podGroup
-                    };
-
-                // Filter theo status
-                if (!string.IsNullOrEmpty(status) && status != "All")
+                if (purchaseOrder == null)
                 {
-                    query = query.Where(x => x.po.Status == status);
+                    TempData["Error"] = "Không tìm thấy đơn mua hàng.";
+                    return RedirectToAction(nameof(Index));
                 }
 
-                // Search
-                if (!string.IsNullOrEmpty(search))
+                // Chỉ cho nhập kho nếu Delivered hoặc PartiallyReceived
+                if (purchaseOrder.Status != "Delivered" && purchaseOrder.Status != "PartiallyReceived")
                 {
-                    query = query.Where(x =>
-                        x.po.PurchaseOrderId.ToString() == search ||
-                        x.po.Supplier.SupplierName.Contains(search)
-                    );
+                    TempData["Error"] = "Chỉ có thể nhập kho cho đơn hàng đã về kho.";
+                    return RedirectToAction(nameof(Index));
                 }
 
-                var result = await query
-                .OrderByDescending(x => x.po.PurchaseOrderId)
-                .Select(x => new
+                var receivedQuantities = await GetReceivedQuantities(poId.Value);
+
+                var model = new StockInCreateViewModel
                 {
-                    purchaseOrderId = x.po.PurchaseOrderId,
-                    supplierName = x.po.Supplier.SupplierName,
-                    status = x.po.Status,
-
-                    // Tổng số lượng item
-                    totalItems = x.podGroup
-                        .Sum(d => (int?)d.Quantity) ?? 0,
-
-                    // Tổng tiền: SUM LineTotal (TotalPrice)
-                    totalAmount = x.podGroup
-                        .Sum(d => (decimal?)d.TotalPrice) ?? 0,
-
-                    createdBy = x.po.CreatedByNavigation.FullName
-                                ?? x.po.CreatedByNavigation.Username
-                })
-                .ToListAsync();
-                return Json(result);
-            }
-            catch (Exception ex)
-            {
-                return Json(new
-                {
-                    error = "Load Purchase Orders failed",
-                    detail = ex.Message
-                });
-            }
-        }
-
-
-        // API: Get Purchase Order Info
-        [HttpGet]
-        public async Task<IActionResult> GetPurchaseOrderInfo(int purchaseOrderId)
-        {
-            try
-            {
-                var po = await _context.PurchaseOrders
-                    .Include(p => p.Supplier)
-                    .Include(p => p.Warehouse)
-                    .Include(p => p.CreatedByNavigation)
-                    .FirstOrDefaultAsync(p => p.PurchaseOrderId == purchaseOrderId);
-
-                if (po == null)
-                    return Json(new { error = "Không tìm thấy đơn hàng" });
-
-                // Kiểm tra đã nhập kho chưa
-                var stockIn = await _context.StockInReceipts
-                    .FirstOrDefaultAsync(si => si.PurchaseOrderId == purchaseOrderId);
-
-                return Json(new
-                {
-                    purchaseOrderId = po.PurchaseOrderId,
-                    supplierName = po.Supplier.SupplierName,
-                    supplierContact = po.Supplier.ContactPerson,
-                    supplierPhone = po.Supplier.Phone,
-                    supplierAddress = po.Supplier.Address,
-                    warehouseName = po.Warehouse.WarehouseName,
-                    status = po.Status,
-                    createdBy = po.CreatedByNavigation.FullName ?? po.CreatedByNavigation.Username,
-                    hasStockIn = stockIn != null,
-                    stockInId = stockIn?.StockInId
-                });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { error = ex.Message });
-            }
-        }
-
-        // API: Get Purchase Order Products
-        [HttpGet]
-        public async Task<IActionResult> GetPurchaseOrderProducts(int purchaseOrderId)
-        {
-            try
-            {
-                var products = await _context.PurchaseOrderDetails
-                    .Include(pod => pod.Product)
-                    .ThenInclude(p => p.Category)
-                    .Where(pod => pod.PurchaseOrderId == purchaseOrderId)
-                    .Select(pod => new
+                    PurchaseOrderId = purchaseOrder.PurchaseOrderId,
+                    SupplierId = purchaseOrder.SupplierId,
+                    SupplierName = purchaseOrder.Supplier.SupplierName,
+                    PurchaseOrderCode = "PO-" + purchaseOrder.PurchaseOrderId.ToString("D4"),
+                    ExpectedReceivingDate = purchaseOrder.ExpectedReceivingDate,
+                    Details = purchaseOrder.PurchaseOrderDetails.Select(pod => new StockInDetailViewModel
                     {
-                        productId = pod.ProductId,
-                        sku = "SKU-" + pod.ProductId.ToString().PadLeft(5, '0'),
-                        productName = pod.Product.ProductName,
-                        categoryName = pod.Product.Category.CategoryName,
-                        unit = pod.Product.Unit,
-                        orderedQty = pod.Quantity,
-                        unitPrice = pod.UnitPrice
-                    })
-                    .ToListAsync();
+                        ProductId = pod.ProductId,
+                        ProductName = pod.Product.ProductName,
+                        CategoryName = pod.Product.Category?.CategoryName ?? "N/A",
+                        OrderedQuantity = pod.Quantity,
+                        ReceivedQuantity = receivedQuantities.ContainsKey(pod.ProductId)
+                            ? receivedQuantities[pod.ProductId]
+                            : 0,
+                        RemainingQuantity = pod.Quantity - (receivedQuantities.ContainsKey(pod.ProductId)
+                            ? receivedQuantities[pod.ProductId]
+                            : 0),
+                        UnitPrice = pod.UnitPrice,
+                        CurrentReceiving = 0,
+                        LocationId = 0
+                    }).ToList()
+                };
 
-                return Json(products);
+                ViewBag.Locations = new SelectList(
+                    await _context.Locations
+                        .Where(l => l.WarehouseId == warehouseId)
+                        .OrderBy(l => l.LocationCode)
+                        .ToListAsync(),
+                    "LocationId",
+                    "LocationCode"
+                );
+
+                return View(model);
             }
-            catch (Exception ex)
-            {
-                return Json(new { error = ex.Message });
-            }
+
+            TempData["Error"] = "Vui lòng chọn đơn mua hàng để nhập kho.";
+            return RedirectToAction(nameof(Index));
         }
 
-        // API: Get Available Locations
-        [HttpGet]
-        public async Task<IActionResult> GetAvailableLocations(int warehouseId)
+        // POST: StockIn/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(StockInCreateViewModel model)
         {
-            var locations = await _context.Locations
-                .Where(l => l.WarehouseId == warehouseId)
-                .Select(l => new
-                {
-                    l.LocationId,
-                    l.LocationCode,
-                    l.LocationName,
-                    l.Rack,
-                    maxCapacity = l.Capacity, // ví dụ 200
-                    currentStock = _context.Inventories
-                        .Where(i => i.LocationId == l.LocationId)
-                        .Sum(i => (int?)i.Quantity) ?? 0
-                })
-                .ToListAsync();
-
-            return Json(locations);
-        }
-
-
-        [HttpGet]
-        public async Task<IActionResult> CheckLocationCapacity(int locationId)
-        {
-            var maxCapacity = await _context.Locations
-                .Where(l => l.LocationId == locationId)
-                .Select(l => l.Capacity)
+            var userId = GetCurrentUserId();
+            var warehouseId = await _context.UserWarehouses
+                .Where(uw => uw.UserId == userId)
+                .Select(uw => uw.WarehouseId)
                 .FirstOrDefaultAsync();
 
-            var currentStock = await _context.Inventories
-                .Where(i => i.LocationId == locationId)
-                .SumAsync(i => (int?)i.Quantity) ?? 0;
-
-            return Json(new
+            if (!ModelState.IsValid || model.Details == null || !model.Details.Any(d => d.CurrentReceiving > 0))
             {
-                maxCapacity,
-                currentStock,
-                availableCapacity = maxCapacity - currentStock
-            });
-        }
+                TempData["Error"] = "Vui lòng nhập số lượng nhận hàng hợp lệ.";
 
+                ViewBag.Locations = new SelectList(
+                    await _context.Locations.Where(l => l.WarehouseId == warehouseId).ToListAsync(),
+                    "LocationId",
+                    "LocationCode"
+                );
 
+                return View(model);
+            }
 
-
-
-
-        // API: Confirm Stock In (Xác nhận nhập kho)
-        [HttpPost]
-        public async Task<IActionResult> ConfirmStockIn([FromBody] StockInRequest request)
-        {
-            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                var userId = 5;
-
-                // Tạo Stock In Receipt
                 var stockInReceipt = new StockInReceipt
                 {
-                    PurchaseOrderId = request.PurchaseOrderId,
-                    WarehouseId = request.WarehouseId,
+                    WarehouseId = warehouseId,
                     ReceivedBy = userId,
                     ReceivedDate = DateTime.Now,
                     Reason = "Purchase",
-                    TotalAmount = request.Items.Sum(i => i.Quantity * i.UnitPrice)
+                    PurchaseOrderId = model.PurchaseOrderId,
+                    CreatedAt = DateTime.Now
                 };
 
                 _context.StockInReceipts.Add(stockInReceipt);
                 await _context.SaveChangesAsync();
 
-                // Tạo Stock In Details
+                decimal totalAmount = 0;
+
+                foreach (var detail in model.Details.Where(d => d.CurrentReceiving > 0))
+                {
+                    if (detail.CurrentReceiving > detail.RemainingQuantity)
+                    {
+                        throw new Exception($"Số lượng nhập ({detail.CurrentReceiving}) vượt quá số còn lại ({detail.RemainingQuantity}) của sản phẩm {detail.ProductName}");
+                    }
+
+                    var stockInDetail = new StockInDetail
+                    {
+                        StockInId = stockInReceipt.StockInId,
+                        ProductId = detail.ProductId,
+                        LocationId = detail.LocationId,
+                        Quantity = detail.CurrentReceiving,
+                        UnitPrice = detail.UnitPrice
+                    };
+
+                    _context.StockInDetails.Add(stockInDetail);
+                    totalAmount += detail.CurrentReceiving * detail.UnitPrice;
+
+                    var inventory = await _context.Inventories
+                        .FirstOrDefaultAsync(i => i.ProductId == detail.ProductId
+                            && i.LocationId == detail.LocationId);
+
+                    if (inventory != null)
+                    {
+                        inventory.Quantity = (inventory.Quantity ?? 0) + detail.CurrentReceiving;
+                        inventory.LastUpdated = DateTime.Now;
+                    }
+                    else
+                    {
+                        inventory = new Inventory
+                        {
+                            ProductId = detail.ProductId,
+                            LocationId = detail.LocationId,
+                            Quantity = detail.CurrentReceiving,
+                            LastUpdated = DateTime.Now
+                        };
+                        _context.Inventories.Add(inventory);
+                    }
+                }
+
+                stockInReceipt.TotalAmount = totalAmount;
+
+                // Update PO status
+                var receivedQuantities = await GetReceivedQuantities(model.PurchaseOrderId);
+                var purchaseOrder = await _context.PurchaseOrders
+                    .Include(po => po.PurchaseOrderDetails)
+                    .FirstOrDefaultAsync(po => po.PurchaseOrderId == model.PurchaseOrderId);
+
+                if (purchaseOrder != null)
+                {
+                    bool fullyReceived = true;
+                    foreach (var pod in purchaseOrder.PurchaseOrderDetails)
+                    {
+                        var totalReceived = receivedQuantities.ContainsKey(pod.ProductId)
+                            ? receivedQuantities[pod.ProductId]
+                            : 0;
+
+                        var currentReceiving = model.Details
+                            .Where(d => d.ProductId == pod.ProductId)
+                            .Sum(d => d.CurrentReceiving);
+
+                        totalReceived += currentReceiving;
+
+                        if (totalReceived < pod.Quantity)
+                        {
+                            fullyReceived = false;
+                            break;
+                        }
+                    }
+
+                    purchaseOrder.Status = fullyReceived ? "Received" : "PartiallyReceived";
+                }
+
+                await _context.SaveChangesAsync();
+
+                TempData["Success"] = $"Nhập kho thành công! Mã phiếu: SI-{stockInReceipt.StockInId:D4}";
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Có lỗi xảy ra: {ex.Message}";
+
+                ViewBag.Locations = new SelectList(
+                    await _context.Locations.Where(l => l.WarehouseId == warehouseId).ToListAsync(),
+                    "LocationId",
+                    "LocationCode"
+                );
+
+                return View(model);
+            }
+        }
+
+        // API: Get Available Locations
+        [HttpGet]
+        public async Task<IActionResult> GetAvailableLocations(int warehouseId, int productId)
+        {
+            try
+            {
+                var userWarehouseId = await _context.UserWarehouses
+                    .Where(uw => uw.UserId == GetCurrentUserId())
+                    .Select(uw => uw.WarehouseId)
+                    .FirstOrDefaultAsync();
+
+                if (userWarehouseId != warehouseId)
+                {
+                    return Json(new { error = "Không có quyền truy cập" });
+                }
+
+                var locations = await _context.Locations
+                    .Where(l => l.WarehouseId == warehouseId)
+                    .Select(l => new
+                    {
+                        locationId = l.LocationId,
+                        locationCode = l.LocationCode,
+                        locationName = l.LocationName,
+                        rack = l.Rack ?? "N/A",
+                        maxCapacity = l.Capacity,
+                        currentStock = _context.Inventories
+                            .Where(i => i.LocationId == l.LocationId)
+                            .Sum(i => i.Quantity) ?? 0
+                    })
+                    .ToListAsync();
+
+                return Json(locations);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        // API: Check Location Capacity
+        [HttpGet]
+        public async Task<IActionResult> CheckLocationCapacity(int locationId)
+        {
+            try
+            {
+                var location = await _context.Locations
+                    .FirstOrDefaultAsync(l => l.LocationId == locationId);
+
+                if (location == null)
+                {
+                    return Json(new { error = "Không tìm thấy vị trí" });
+                }
+
+                var currentStock = await _context.Inventories
+                    .Where(i => i.LocationId == locationId)
+                    .SumAsync(i => i.Quantity) ?? 0;
+
+                return Json(new
+                {
+                    locationId = location.LocationId,
+                    locationCode = location.LocationCode,
+                    maxCapacity = location.Capacity,
+                    currentStock = currentStock
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        // API: Confirm Stock In
+        [HttpPost]
+        public async Task<IActionResult> ConfirmStockIn([FromBody] ConfirmStockInRequest request)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                var warehouseId = await _context.UserWarehouses
+                    .Where(uw => uw.UserId == userId)
+                    .Select(uw => uw.WarehouseId)
+                    .FirstOrDefaultAsync();
+
+                if (request.WarehouseId != warehouseId)
+                {
+                    return Json(new { success = false, error = "Không có quyền truy cập" });
+                }
+
+                // Create StockInReceipt
+                var stockInReceipt = new StockInReceipt
+                {
+                    WarehouseId = warehouseId,
+                    ReceivedBy = userId,
+                    ReceivedDate = DateTime.Now,
+                    Reason = "Purchase",
+                    PurchaseOrderId = request.PurchaseOrderId,
+                    CreatedAt = DateTime.Now,
+                    TotalAmount = 0
+                };
+
+                _context.StockInReceipts.Add(stockInReceipt);
+                await _context.SaveChangesAsync();
+
+                decimal totalAmount = 0;
+
+                // Create StockInDetails and update Inventory
                 foreach (var item in request.Items)
                 {
                     var stockInDetail = new StockInDetail
@@ -301,15 +604,16 @@ namespace EWMS.Controllers
                     };
 
                     _context.StockInDetails.Add(stockInDetail);
+                    totalAmount += item.Quantity * item.UnitPrice;
 
-                    // Cập nhật Inventory
+                    // Update Inventory
                     var inventory = await _context.Inventories
-                        .FirstOrDefaultAsync(inv => inv.LocationId == item.LocationId
-                            && inv.ProductId == item.ProductId);
+                        .FirstOrDefaultAsync(i => i.ProductId == item.ProductId && i.LocationId == item.LocationId);
 
                     if (inventory != null)
                     {
-                        inventory.Quantity += item.Quantity;
+                        inventory.Quantity = (inventory.Quantity ?? 0) + item.Quantity;
+                        inventory.LastUpdated = DateTime.Now;
                     }
                     else
                     {
@@ -317,103 +621,139 @@ namespace EWMS.Controllers
                         {
                             ProductId = item.ProductId,
                             LocationId = item.LocationId,
-                            Quantity = item.Quantity
+                            Quantity = item.Quantity,
+                            LastUpdated = DateTime.Now
                         };
                         _context.Inventories.Add(inventory);
                     }
                 }
 
-                await _context.SaveChangesAsync();
+                stockInReceipt.TotalAmount = totalAmount;
 
-                // Cập nhật Status của Purchase Order
+                // Update Purchase Order Status
                 var purchaseOrder = await _context.PurchaseOrders
-                    .FindAsync(request.PurchaseOrderId);
+                    .Include(po => po.PurchaseOrderDetails)
+                    .FirstOrDefaultAsync(po => po.PurchaseOrderId == request.PurchaseOrderId);
 
                 if (purchaseOrder != null)
                 {
-                    purchaseOrder.Status = "Received";
-                    await _context.SaveChangesAsync();
+                    var receivedQuantities = await GetReceivedQuantities(request.PurchaseOrderId);
+                    bool fullyReceived = true;
+
+                    foreach (var pod in purchaseOrder.PurchaseOrderDetails)
+                    {
+                        var totalReceived = receivedQuantities.ContainsKey(pod.ProductId)
+                            ? receivedQuantities[pod.ProductId]
+                            : 0;
+
+                        var currentReceiving = request.Items
+                            .Where(i => i.ProductId == pod.ProductId)
+                            .Sum(i => i.Quantity);
+
+                        totalReceived += currentReceiving;
+
+                        if (totalReceived < pod.Quantity)
+                        {
+                            fullyReceived = false;
+                            break;
+                        }
+                    }
+
+                    purchaseOrder.Status = fullyReceived ? "Received" : "PartiallyReceived";
                 }
 
-                // Log activity
-                var activityLog = new ActivityLog
-                {
-                    UserId = userId,
-                    Action = "Received",
-                    TableName = "StockInReceipts",
-                    RecordId = stockInReceipt.StockInId,
-                    Description = $"Nhập kho PO-{request.PurchaseOrderId}"
-                };
-                _context.ActivityLogs.Add(activityLog);
                 await _context.SaveChangesAsync();
-
-                await transaction.CommitAsync();
 
                 return Json(new
                 {
                     success = true,
-                    stockInId = stockInReceipt.StockInId,
-                    message = "Nhập kho thành công!"
+                    message = $"Nhập kho thành công! Mã phiếu: SI-{stockInReceipt.StockInId:D4}"
                 });
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
                 return Json(new { success = false, error = ex.Message });
             }
         }
 
-        // API: Get Statistics
-        [HttpGet]
-        public async Task<IActionResult> GetStatistics(int warehouseId)
+        private async Task<Dictionary<int, int>> GetReceivedQuantities(int purchaseOrderId)
         {
-            try
-            {
-                var totalOrders = await _context.PurchaseOrders
-                    .Where(po => po.WarehouseId == warehouseId)
-                    .CountAsync();
-
-                var pendingOrders = await _context.PurchaseOrders
-                    .Where(po => po.WarehouseId == warehouseId && po.Status == "Pending")
-                    .CountAsync();
-
-                var approvedOrders = await _context.PurchaseOrders
-                    .Where(po => po.WarehouseId == warehouseId && po.Status == "Approved")
-                    .CountAsync();
-
-                var receivedOrders = await _context.PurchaseOrders
-                    .Where(po => po.WarehouseId == warehouseId && po.Status == "Received")
-                    .CountAsync();
-
-                return Json(new
+            var receivedQuantities = await _context.StockInReceipts
+                .Where(si => si.PurchaseOrderId == purchaseOrderId)
+                .SelectMany(si => si.StockInDetails)
+                .GroupBy(sid => sid.ProductId)
+                .Select(g => new
                 {
-                    totalOrders,
-                    pendingOrders,
-                    approvedOrders,
-                    receivedOrders
-                });
-            }
-            catch (Exception ex)
+                    ProductId = g.Key,
+                    TotalReceived = g.Sum(sid => sid.Quantity)
+                })
+                .ToDictionaryAsync(x => x.ProductId, x => x.TotalReceived);
+
+            return receivedQuantities;
+        }
+
+        // ✅ Tự động cập nhật trạng thái hàng đã về kho
+        private async Task AutoUpdateDeliveredStatus(int warehouseId)
+        {
+            var today = DateTime.Today;
+
+            var ordersToUpdate = await _context.PurchaseOrders
+                .Where(po =>
+                    po.WarehouseId == warehouseId &&
+                    po.Status == "InTransit" &&
+                    po.ExpectedReceivingDate.HasValue &&
+                    po.ExpectedReceivingDate.Value.Date <= today)
+                .ToListAsync();
+
+            if (ordersToUpdate.Any())
             {
-                return Json(new { error = ex.Message });
+                foreach (var po in ordersToUpdate)
+                {
+                    po.Status = "Delivered";
+                }
+
+                await _context.SaveChangesAsync();
             }
         }
 
         private int GetCurrentUserId()
         {
-            return 7; // TODO: Replace with actual authentication
+            return 4;
         }
     }
 
-    // Request Models
-    public class StockInRequest
+    // ViewModels
+    public class StockInCreateViewModel
+    {
+        public int PurchaseOrderId { get; set; }
+        public int SupplierId { get; set; }
+        public string SupplierName { get; set; }
+        public string PurchaseOrderCode { get; set; }
+        public DateTime? ExpectedReceivingDate { get; set; }
+        public List<StockInDetailViewModel> Details { get; set; } = new List<StockInDetailViewModel>();
+    }
+
+    public class StockInDetailViewModel
+    {
+        public int ProductId { get; set; }
+        public string ProductName { get; set; }
+        public string CategoryName { get; set; }
+        public int OrderedQuantity { get; set; }
+        public int ReceivedQuantity { get; set; }
+        public int RemainingQuantity { get; set; }
+        public int CurrentReceiving { get; set; }
+        public decimal UnitPrice { get; set; }
+        public int LocationId { get; set; }
+    }
+
+    public class ConfirmStockInRequest
     {
         public int PurchaseOrderId { get; set; }
         public int WarehouseId { get; set; }
-        public List<StockInItem> Items { get; set; }
+        public List<ConfirmStockInItem> Items { get; set; }
     }
 
-    public class StockInItem
+    public class ConfirmStockInItem
     {
         public int ProductId { get; set; }
         public int LocationId { get; set; }
