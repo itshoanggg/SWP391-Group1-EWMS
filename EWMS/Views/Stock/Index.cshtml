@@ -1,0 +1,113 @@
+﻿@{
+    ViewData["Title"] = "Quản Lý Tồn Kho";
+    var warehouseId = ViewBag.WarehouseId;
+    var defaultRack = ViewBag.DefaultRack ?? "A";
+}
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-boxes"></i> Quản Lý Tồn Kho</h2>
+            <small class="text-muted">
+                Rack <strong id="header-rack">@defaultRack</strong> ›
+                Vị trí <strong id="header-location">--</strong>
+            </small>
+        </div>
+        <button class="btn btn-primary" onclick="refreshAll()">
+            <i class="bi bi-arrow-clockwise"></i> Làm mới
+        </button>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card summary-card" style="--gradient-start: #667eea; --gradient-end: #764ba2;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0 opacity-75">Tổng Vị Trí</h6>
+                            <h3 class="mb-0 mt-2" id="total-locations">0</h3>
+                        </div>
+                        <i class="bi bi-geo-alt-fill" style="font-size: 3rem; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card summary-card" style="--gradient-start: #f093fb; --gradient-end: #f5576c;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0 opacity-75">Tổng Sản Phẩm</h6>
+                            <h3 class="mb-0 mt-2" id="total-products">0</h3>
+                        </div>
+                        <i class="bi bi-box-seam-fill" style="font-size: 3rem; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card summary-card" style="--gradient-start: #4facfe; --gradient-end: #00f2fe;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0 opacity-75">Tồn Kho</h6>
+                            <h3 class="mb-0 mt-2" id="total-stock">0</h3>
+                            <small class="opacity-75">/ <span id="total-capacity">0</span> SL</small>
+                        </div>
+                        <i class="bi bi-boxes" style="font-size: 3rem; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card summary-card" style="--gradient-start: #fa709a; --gradient-end: #fee140;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0 opacity-75">Tỷ Lệ Sử Dụng</h6>
+                            <h3 class="mb-0 mt-2" id="utilization-rate">0%</h3>
+                        </div>
+                        <i class="bi bi-pie-chart-fill" style="font-size: 3rem; opacity: 0.3;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Products Section - Rack/Location chọn từ nav bên trái -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-box-seam"></i> Sản Phẩm Tồn Kho –
+                <span id="current-location-title">Chọn vị trí từ menu bên trái</span>
+            </h5>
+            <span class="badge bg-secondary" id="product-count-badge"></span>
+        </div>
+        <div class="card-body">
+            <div id="products-container">
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-arrow-left-circle" style="font-size: 3rem;"></i>
+                    <p class="mt-3">Chọn Rack và Vị Trí từ menu bên trái</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Gán biến global TRƯỚC khi load Stock.js
+        window.warehouseId = @warehouseId;
+        window.selectedRack = '@defaultRack';
+
+        if (!window.warehouseId || window.warehouseId === 0) {
+            alert('Lỗi: Không xác định được kho!');
+            console.error('WarehouseId is undefined or 0');
+        }
+
+        console.log('Stock page initialized:', { warehouseId: window.warehouseId, selectedRack: window.selectedRack });
+    </script>
+    <script src="~/js/Stock/Stock.js"></script>
+}
