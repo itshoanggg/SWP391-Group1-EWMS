@@ -34,7 +34,7 @@ namespace EWMS.Controllers
 
             if (user == null)
             {
-                ViewBag.Error = "Invalid email or password";
+                ModelState.AddModelError("", "Invalid email or password");
                 return View(model);
             }
 
@@ -52,9 +52,11 @@ namespace EWMS.Controllers
                 claims,
                 CookieAuthenticationDefaults.AuthenticationScheme);
 
+            var principal = new ClaimsPrincipal(identity);
+
             await HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
-                new ClaimsPrincipal(identity));
+                principal);
 
             return RedirectToAction("Index", "SalesOrder");
         }
@@ -64,7 +66,7 @@ namespace EWMS.Controllers
             await HttpContext.SignOutAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme);
 
-            return RedirectToAction("Index", "Public");
+            return RedirectToAction("Login");
         }
     }
 }

@@ -19,12 +19,12 @@ namespace EWMS.Services
             var user = await _context.Users
                 .Include(u => u.Role)
                 .Include(u => u.UserWarehouses)
-                .FirstOrDefaultAsync(u => u.Email == email && u.IsActive == true);
+                .FirstOrDefaultAsync(u =>
+                    u.Email == email && u.IsActive == true);
 
             if (user == null)
                 return null;
 
-            
             if (user.PasswordHash != password)
                 return null;
 
