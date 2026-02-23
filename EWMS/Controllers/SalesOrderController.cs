@@ -1,10 +1,13 @@
 ﻿using EWMS.DTOs;
 using EWMS.Services;
 using EWMS.ViewModels;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace EWMS.Controllers
 {
+    [Authorize(Roles = "Staff")]
     public class SalesOrderController : Controller
     {
         private readonly ISalesOrderService _salesOrderService;
@@ -21,13 +24,20 @@ namespace EWMS.Controllers
             _logger = logger;
         }
 
+        private int GetCurrentUserId()
+        {
+            return int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        }
+
+        private int GetCurrentWarehouseId()
+        {
+            return int.Parse(User.FindFirst("WarehouseId")!.Value);
+        }
+
         // GET: SalesOrder
         public async Task<IActionResult> Index()
         {
-            // TODO: Get warehouse ID from current logged-in user
-            // For now, hardcode warehouse ID = 1 (Hanoi Warehouse)
-            int warehouseId = 1;
-
+            int warehouseId = GetCurrentWarehouseId();
             var viewModel = await _salesOrderService.GetSalesOrdersByWarehouseAsync(warehouseId);
             return View(viewModel);
         }
@@ -37,9 +47,7 @@ namespace EWMS.Controllers
         {
             var order = await _salesOrderService.GetSalesOrderByIdAsync(id);
             if (order == null)
-            {
                 return NotFound();
-            }
 
             return View(order);
         }
@@ -48,11 +56,10 @@ namespace EWMS.Controllers
         public async Task<IActionResult> Create()
         {
             var products = await _salesOrderService.GetProductsForSelectionAsync();
-            ViewBag.Products = products;
 
-            // TODO: Get warehouse ID from current logged-in user
-            ViewBag.WarehouseId = 1;
-            ViewBag.WarehouseName = "Hanoi Warehouse";
+            ViewBag.Products = products;
+            ViewBag.WarehouseId = GetCurrentWarehouseId();
+            ViewBag.WarehouseName = User.FindFirst("WarehouseName")?.Value;
 
             return View();
         }
@@ -62,95 +69,53 @@ namespace EWMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(CreateSalesOrderViewModel model)
         {
-            // DEBUG LOGGING
-            _logger.LogInformation("=== CREATE SALES ORDER DEBUG ===");
-            _logger.LogInformation($"CustomerName: {model.CustomerName}");
-            _logger.LogInformation($"WarehouseId: {model.WarehouseId}");
-            _logger.LogInformation($"ExpectedDeliveryDate: {model.ExpectedDeliveryDate}");
-            _logger.LogInformation($"Details Count: {model.Details?.Count ?? 0}");
-
-            if (model.Details != null && model.Details.Any())
-            {
-                foreach (var detail in model.Details)
-                {
-                    _logger.LogInformation($"  Product {detail.ProductId}: Qty={detail.Quantity}, Price={detail.UnitPrice}");
-                }
-            }
-            else
-            {
-                _logger.LogWarning("Details is null or empty!");
-            }
-
-            // Check ModelState
             if (!ModelState.IsValid)
             {
-                _logger.LogWarning("ModelState is invalid:");
-                foreach (var error in ModelState)
-                {
-                    if (error.Value.Errors.Any())
-                    {
-                        _logger.LogWarning($"  Key: {error.Key}");
-                        foreach (var err in error.Value.Errors)
-                        {
-                            _logger.LogWarning($"    - {err.ErrorMessage}");
-                        }
-                    }
-                }
-
-                // Return view with errors
                 var products = await _salesOrderService.GetProductsForSelectionAsync();
                 ViewBag.Products = products;
-                ViewBag.WarehouseId = model.WarehouseId;
-                ViewBag.WarehouseName = "Hanoi Warehouse";
-                TempData["ErrorMessage"] = "Vui lòng kiểm tra lại thông tin đơn hàng!";
+                ViewBag.WarehouseId = GetCurrentWarehouseId();
+                ViewBag.WarehouseName = User.FindFirst("WarehouseName")?.Value;
                 return View(model);
             }
 
-            // Additional validation
             if (model.Details == null || !model.Details.Any())
             {
-                _logger.LogError("No product details provided");
                 TempData["ErrorMessage"] = "Vui lòng thêm ít nhất một sản phẩm!";
                 var products = await _salesOrderService.GetProductsForSelectionAsync();
                 ViewBag.Products = products;
-                ViewBag.WarehouseId = model.WarehouseId;
-                ViewBag.WarehouseName = "Hanoi Warehouse";
+                ViewBag.WarehouseId = GetCurrentWarehouseId();
+                ViewBag.WarehouseName = User.FindFirst("WarehouseName")?.Value;
                 return View(model);
             }
 
-            // TODO: Get current user ID from authentication
-            int currentUserId = 3; // Sales Staff 1
+            int currentUserId = GetCurrentUserId();
+            model.WarehouseId = GetCurrentWarehouseId();
 
             try
             {
-                _logger.LogInformation("Attempting to create sales order...");
                 var result = await _salesOrderService.CreateSalesOrderAsync(model, currentUserId);
 
                 if (result.Success)
                 {
-                    _logger.LogInformation($"Sales order created successfully. OrderId: {result.OrderId}");
                     TempData["SuccessMessage"] = result.Message;
                     return RedirectToAction(nameof(Index));
                 }
-                else
-                {
-                    _logger.LogWarning($"Failed to create sales order: {result.Message}");
-                    TempData["ErrorMessage"] = result.Message;
-                    var products = await _salesOrderService.GetProductsForSelectionAsync();
-                    ViewBag.Products = products;
-                    ViewBag.WarehouseId = model.WarehouseId;
-                    ViewBag.WarehouseName = "Hanoi Warehouse";
-                    return View(model);
-                }
+
+                TempData["ErrorMessage"] = result.Message;
+                var products = await _salesOrderService.GetProductsForSelectionAsync();
+                ViewBag.Products = products;
+                ViewBag.WarehouseId = GetCurrentWarehouseId();
+                ViewBag.WarehouseName = User.FindFirst("WarehouseName")?.Value;
+                return View(model);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Exception occurred while creating sales order");
-                TempData["ErrorMessage"] = $"Lỗi hệ thống: {ex.Message}";
+                _logger.LogError(ex, "Error creating sales order");
+                TempData["ErrorMessage"] = "Lỗi hệ thống!";
                 var products = await _salesOrderService.GetProductsForSelectionAsync();
                 ViewBag.Products = products;
-                ViewBag.WarehouseId = model.WarehouseId;
-                ViewBag.WarehouseName = "Hanoi Warehouse";
+                ViewBag.WarehouseId = GetCurrentWarehouseId();
+                ViewBag.WarehouseName = User.FindFirst("WarehouseName")?.Value;
                 return View(model);
             }
         }
@@ -161,9 +126,7 @@ namespace EWMS.Controllers
         {
             try
             {
-                _logger.LogInformation($"Checking inventory for {request.Products.Count} products");
                 var result = await _inventoryCheckService.CheckInventoryAvailabilityAsync(request);
-                _logger.LogInformation($"Inventory check result: IsValid={result.IsValid}");
                 return Json(result);
             }
             catch (Exception ex)
@@ -172,13 +135,12 @@ namespace EWMS.Controllers
                 return Json(new InventoryCheckResult
                 {
                     IsValid = false,
-                    Message = $"Lỗi khi kiểm tra tồn kho: {ex.Message}",
+                    Message = "Lỗi kiểm tra tồn kho",
                     CheckDetails = new List<InventoryCheckDto>()
                 });
             }
         }
 
-        // GET: API endpoint to get products
         [HttpGet]
         public async Task<IActionResult> GetProducts()
         {

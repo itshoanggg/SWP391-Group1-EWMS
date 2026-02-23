@@ -1,6 +1,7 @@
 using EWMS.Models;
 using EWMS.Repositories;
 using EWMS.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 
 namespace EWMS
@@ -11,10 +12,21 @@ namespace EWMS
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            // Add services to the container
             builder.Services.AddControllersWithViews();
 
-            // Add DbContext
+            // 1. Register Authentication & Authorization Services
+            builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+                .AddCookie(options =>
+                {
+                    options.LoginPath = "/Account/Login";
+                    options.LogoutPath = "/Account/Logout";
+                    options.AccessDeniedPath = "/Account/AccessDenied";
+                });
+
+            builder.Services.AddAuthorization();
+
+            // Database Context
             builder.Services.AddDbContext<EWMSDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DBContext")));
 
@@ -26,17 +38,13 @@ namespace EWMS
             // Register Services
             builder.Services.AddScoped<IInventoryCheckService, InventoryCheckService>();
             builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
-
-
+            builder.Services.AddScoped<IUserService, UserService>();
             var app = builder.Build();
 
-
-
-            // Configure the HTTP request pipeline.
+            // Configure the HTTP request pipeline
             if (!app.Environment.IsDevelopment())
             {
                 app.UseExceptionHandler("/Home/Error");
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
 
@@ -45,11 +53,13 @@ namespace EWMS
 
             app.UseRouting();
 
+            // 2. Middleware Order: Authentication must come BEFORE Authorization
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.MapControllerRoute(
                 name: "default",
-                pattern: "{controller=Home}/{action=Index}/{id?}");
+                pattern: "{controller=Public}/{action=Index}/{id?}");
 
             app.Run();
         }
