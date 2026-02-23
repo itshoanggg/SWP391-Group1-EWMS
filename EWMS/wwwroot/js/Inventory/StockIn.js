@@ -18,16 +18,17 @@ function formatNumber(value) {
 function formatDate(dateString) {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN');
+    return date.toLocaleDateString('en-GB');
 }
 
 // Get status badge HTML
 function getStatusBadge(status) {
     const statusMap = {
-        'InTransit': { class: 'bg-info', icon: 'fa-shipping-fast', text: 'Đang vận chuyển' },
-        'Delivered': { class: 'bg-success', icon: 'fa-check-circle', text: 'Đã về kho' },
-        'PartiallyReceived': { class: 'bg-primary', icon: 'fa-boxes', text: 'Nhận một phần' },
-        'Received': { class: 'bg-dark', icon: 'fa-check-double', text: 'Đã nhận đủ' }
+        'InTransit': { class: 'bg-info', icon: 'fa-shipping-fast', text: 'In Transit' },
+        'Delivered': { class: 'bg-success', icon: 'fa-check-circle', text: 'Delivered' },
+        'PartiallyReceived': { class: 'bg-primary', icon: 'fa-boxes', text: 'Partially Received' },
+        'Received': { class: 'bg-dark', icon: 'fa-check-double', text: 'Fully Received' },
+        'Cancelled': { class: 'bg-danger', icon: 'fa-ban', text: 'Cancelled' }
     };
 
     const statusInfo = statusMap[status] || { class: 'bg-secondary', icon: 'fa-question', text: status };
@@ -51,7 +52,7 @@ async function loadPurchaseOrders() {
         <tr>
             <td colspan="8" class="text-center">
                 <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Đang tải...</span>
+                    <span class="visually-hidden">Loading...</span>
                 </div>
             </td>
         </tr>
@@ -89,7 +90,7 @@ async function loadPurchaseOrders() {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="8" class="text-center text-danger">
-                        <i class="fas fa-exclamation-triangle"></i> Dữ liệu không hợp lệ
+                        <i class="fas fa-exclamation-triangle"></i> Invalid data format
                     </td>
                 </tr>
             `;
@@ -101,7 +102,7 @@ async function loadPurchaseOrders() {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="8" class="text-center text-muted">
-                        <i class="fas fa-inbox"></i> Không có đơn hàng nào
+                        <i class="fas fa-inbox"></i> No purchase orders found
                     </td>
                 </tr>
             `;
@@ -115,13 +116,16 @@ async function loadPurchaseOrders() {
 
             // Check if clickable (Delivered or PartiallyReceived)
             const isClickable = order.status === 'Delivered' || order.status === 'PartiallyReceived';
+            const isCancelled = order.status === 'Cancelled';
 
             if (isClickable) {
                 row.className = 'clickable';
                 row.onclick = () => viewDetails(order.purchaseOrderId);
             } else {
                 row.className = 'disabled';
-                row.title = 'Chỉ có thể nhập kho khi trạng thái là "Đã về kho" hoặc "Nhận một phần"';
+                row.title = isCancelled
+                    ? 'This order has been cancelled'
+                    : 'Stock-in is only available for orders with status "Delivered" or "Partially Received"';
             }
 
             // Format expected date
@@ -141,19 +145,25 @@ async function loadPurchaseOrders() {
                     : '<span class="text-muted">0</span>'}
                 </td>
                 <td class="text-end">
-                    ${order.remainingItems > 0
-                    ? `<span class="badge bg-warning text-dark">${formatNumber(order.remainingItems)}</span>`
-                    : '<span class="badge bg-success">Đủ</span>'}
+                    ${isCancelled
+                    ? '<span class="badge bg-danger">Cancelled</span>'
+                    : order.remainingItems > 0
+                        ? `<span class="badge bg-warning text-dark">${formatNumber(order.remainingItems)}</span>`
+                        : '<span class="badge bg-success">Complete</span>'}
                 </td>
                 <td>${getStatusBadge(order.status)}</td>
                 <td>
                     ${isClickable
                     ? `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); viewDetails(${order.purchaseOrderId})">
-                            <i class="fas fa-box-open"></i> Nhập kho
-                       </button>`
-                    : `<button class="btn btn-sm btn-secondary" disabled>
-                            <i class="fas fa-lock"></i> Chưa sẵn sàng
-                       </button>`
+                                <i class="fas fa-box-open"></i> Stock In
+                           </button>`
+                    : isCancelled
+                        ? `<button class="btn btn-sm btn-danger" disabled>
+                                    <i class="fas fa-ban"></i> Cancelled
+                               </button>`
+                        : `<button class="btn btn-sm btn-secondary" disabled>
+                                    <i class="fas fa-lock"></i> Not Ready
+                               </button>`
                 }
                 </td>
             `;
@@ -169,8 +179,8 @@ async function loadPurchaseOrders() {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="8" class="text-center text-danger">
-                        <i class="fas fa-exclamation-triangle"></i> Lỗi tải dữ liệu: ${error.message}
-                        <br><small>Vui lòng mở Console (F12) để xem chi tiết</small>
+                        <i class="fas fa-exclamation-triangle"></i> Failed to load data: ${error.message}
+                        <br><small>Please open the Console (F12) for more details</small>
                     </td>
                 </tr>
             `;
@@ -195,7 +205,7 @@ function handleSearch() {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     if (!warehouseId) {
-        alert('Lỗi: Không tìm thấy WarehouseId!');
+        alert('Error: WarehouseId not found!');
         console.error('warehouseId is undefined');
         return;
     }
