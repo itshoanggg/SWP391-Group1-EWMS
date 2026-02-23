@@ -1,6 +1,9 @@
 ﻿using EWMS.Models;
 
-public interface IUserService
+namespace EWMS.Services
 {
-    Task<User?> ValidateUserAsync(string username, string password);
+    public interface IUserService
+    {
+        Task<User?> ValidateUserAsync(string email, string password);
+    }
 }

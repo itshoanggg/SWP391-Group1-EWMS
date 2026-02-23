@@ -21,7 +21,8 @@ namespace EWMS
                 {
                     options.LoginPath = "/Account/Login";
                     options.LogoutPath = "/Account/Logout";
-                    options.AccessDeniedPath = "/Account/AccessDenied";
+                    // C?p nh?t: Khi không có quy?n (ví d? Staff vào trang Manager), chuy?n v? trang Login ho?c trang báo l?i
+                    options.AccessDeniedPath = "/Account/Login";
                 });
 
             builder.Services.AddAuthorization();
@@ -38,7 +39,8 @@ namespace EWMS
             // Register Services
             builder.Services.AddScoped<IInventoryCheckService, InventoryCheckService>();
             builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
-            builder.Services.AddScoped<IUserService, UserService>();
+            builder.Services.AddScoped<IUserService, UserService>(); 
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline
@@ -53,7 +55,7 @@ namespace EWMS
 
             app.UseRouting();
 
-            // 2. Middleware Order: Authentication must come BEFORE Authorization
+            // 2. Middleware Order: R?t quan tr?ng - Authentication ph?i TR??C Authorization
             app.UseAuthentication();
             app.UseAuthorization();
 

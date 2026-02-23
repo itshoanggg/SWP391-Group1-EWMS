@@ -1,29 +1,34 @@
 ﻿using EWMS.Models;
 using Microsoft.EntityFrameworkCore;
 
-public class UserService : IUserService
+namespace EWMS.Services
 {
-    private readonly EWMSDbContext _context;
-
-    public UserService(EWMSDbContext context)
+    // Bạn phải thêm ": IUserService" ở đây để báo cho hệ thống 
+    // rằng UserService thực thi các hàm của IUserService.
+    public class UserService : IUserService
     {
-        _context = context;
-    }
+        private readonly EWMSDbContext _context;
 
-    public async Task<User?> ValidateUserAsync(string username, string password)
-    {
-        var user = await _context.Users
-            .Include(u => u.Role)
-            .Include(u => u.UserWarehouses)
-            .FirstOrDefaultAsync(u => u.Username == username && u.IsActive == true);
+        public UserService(EWMSDbContext context)
+        {
+            _context = context;
+        }
 
-        if (user == null)
-            return null;
+        public async Task<User?> ValidateUserAsync(string email, string password)
+        {
+            var user = await _context.Users
+                .Include(u => u.Role)
+                .Include(u => u.UserWarehouses)
+                .FirstOrDefaultAsync(u => u.Email == email && u.IsActive == true);
 
-        // ⚠️ TẠM SO SÁNH PLAIN TEXT (nếu bạn chưa hash)
-        if (user.PasswordHash != password)
-            return null;
+            if (user == null)
+                return null;
 
-        return user;
+            
+            if (user.PasswordHash != password)
+                return null;
+
+            return user;
+        }
     }
 }
