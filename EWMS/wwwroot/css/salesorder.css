@@ -31,6 +31,7 @@
     background: white;
     border-radius: 12px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 24px;
     margin-bottom: 24px;
 }
 
@@ -52,6 +53,12 @@
     padding: 24px;
 }
 
+
+.table tbody td {
+    padding: 14px 12px;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border);
+}
 /* Buttons */
 .btn {
     padding: 10px 20px;
@@ -132,6 +139,11 @@ table th {
 .badge-completed {
     background: #dbeafe;
     color: #1e40af;
+}
+
+.badge-partial {
+    background: #f3e8ff; 
+    color: #6b21a8; 
 }
 
 .badge-rejected {
