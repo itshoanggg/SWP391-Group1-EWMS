@@ -1,46 +1,75 @@
 ﻿/* =========================================================
-   PURCHASE ORDER MODULE - CUSTOM STYLES
+   PURCHASE ORDER MODULE — ENTERPRISE THEME
 ========================================================= */
+
+/* =========================================================
+   GLOBAL COLOR SYSTEM
+========================================================= */
+:root {
+    --accent: #2c3e50;
+    --accent-hover: #34495e;
+    --accent-light: #3f5873;
+    --success: #10b981;
+    --success-dark: #059669;
+    --warning: #f59e0b;
+    --warning-dark: #d97706;
+    --danger: #ef4444;
+    --danger-dark: #dc2626;
+    --border: #e3e8ee;
+    --bg-soft: #eef2f7;
+    --bg-page: #f4f7fb;
+    --text-main: #2d3436;
+    --text-muted: #6c757d;
+}
+
+/* =========================================================
+   PAGE
+========================================================= */
+body {
+    background: var(--bg-page);
+    color: var(--text-main);
+}
 
 /* =========================================================
    GRADIENT BACKGROUNDS
 ========================================================= */
-.bg-gradient-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.bg-gradient-primary,
+.bg-gradient-purple {
+    background: linear-gradient(180deg, var(--accent), var(--accent-hover));
 }
 
 .bg-gradient-danger {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-}
-
-.bg-gradient-purple {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(180deg, var(--danger), var(--danger-dark));
 }
 
 .bg-gradient-success {
-    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    background: linear-gradient(180deg, var(--success), var(--success-dark));
 }
 
 /* =========================================================
    CARDS
 ========================================================= */
 .card {
-    border: none;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     margin-bottom: 1.5rem;
     border-radius: 10px;
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: .25s ease;
+    animation: fadeIn .4s ease-out;
 }
 
     .card:hover {
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        transform: translateY(-2px);
     }
 
 .card-header {
     font-weight: 600;
     padding: 1rem 1.5rem;
     border-bottom: none;
+    background: linear-gradient(180deg, var(--accent), var(--accent-hover));
+    color: white;
 }
 
 .card-body {
@@ -50,78 +79,54 @@
 /* =========================================================
    TABLES
 ========================================================= */
-.table {
-    margin-bottom: 0;
+.table th {
+    background: var(--bg-soft);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: .75rem;
+    letter-spacing: .5px;
+    border-bottom: 2px solid var(--accent);
+    padding: 1rem;
+    color: var(--accent);
 }
 
-    .table th {
-        background-color: #f8f9fa;
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 0.85rem;
-        letter-spacing: 0.5px;
-        border-bottom: 2px solid #dee2e6;
-        padding: 1rem;
-    }
-
-    .table td {
-        padding: 0.75rem 1rem;
-        vertical-align: middle;
-    }
-
-    .table tbody tr {
-        transition: all 0.2s ease;
-    }
+.table td {
+    padding: .75rem 1rem;
+    vertical-align: middle;
+}
 
 .table-hover tbody tr:hover {
-    background-color: #f8f9fa;
-    transform: scale(1.005);
+    background: var(--bg-soft);
 }
 
 .table-bordered {
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--border);
 }
 
     .table-bordered th,
     .table-bordered td {
-        border: 1px solid #dee2e6;
+        border: 1px solid var(--border);
     }
 
 .table tfoot tr {
-    background-color: #f8f9fa;
+    background: #f8f9fa;
     font-weight: 600;
 }
 
 /* =========================================================
-   PRODUCT TABLE (Create Form)
+   PRODUCT TABLE
 ========================================================= */
 .product-row:hover {
-    background-color: #f8f9fa;
-}
-
-.product-row td {
-    vertical-align: middle;
+    background: var(--bg-soft);
 }
 
 .sku-display {
     font-weight: 600;
-    color: #007bff;
-    font-size: 0.9rem;
+    color: var(--accent);
 }
 
-#productTable input[type="number"],
-#productTable select,
-#productTable input[type="text"] {
-    font-size: 0.95rem;
-}
-
-#productTable .quantity-input,
-#productTable .price-input {
-    text-align: right;
-}
-
-#productTable .total-display {
-    background-color: #e9ecef;
+.total-display {
+    background: #e9ecef;
     font-weight: 600;
     text-align: right;
 }
@@ -130,72 +135,67 @@
    BADGES
 ========================================================= */
 .badge {
-    padding: 0.5rem 0.8rem;
+    padding: .45rem .75rem;
     font-weight: 500;
-    font-size: 0.85rem;
     border-radius: 5px;
 }
 
-    .badge.bg-warning {
-        background-color: #ffc107 !important;
-    }
-
+    .badge.bg-primary,
     .badge.bg-info {
-        background-color: #17a2b8 !important;
+        background: var(--accent) !important;
     }
 
     .badge.bg-success {
-        background-color: #28a745 !important;
+        background: var(--success) !important;
+    }
+
+    .badge.bg-warning {
+        background: var(--warning) !important;
+        color: white !important;
     }
 
     .badge.bg-danger {
-        background-color: #dc3545 !important;
+        background: var(--danger) !important;
     }
 
     .badge.bg-secondary {
-        background-color: #6c757d !important;
-    }
-
-    .badge.bg-primary {
-        background-color: #007bff !important;
+        background: #6b7280 !important;
     }
 
 /* =========================================================
    BUTTONS
 ========================================================= */
 .btn {
-    border-radius: 5px;
+    border-radius: 6px;
     font-weight: 500;
-    padding: 0.5rem 1.2rem;
-    transition: all 0.3s ease;
+    padding: .5rem 1.2rem;
+    transition: .2s;
 }
-
-    .btn i {
-        margin-right: 0.5rem;
-    }
 
     .btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 6px 14px rgba(0,0,0,.15);
     }
 
 .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(180deg, var(--accent), var(--accent-hover));
     border: none;
 }
 
-    .btn-primary:hover {
-        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-    }
-
-.btn-sm {
-    padding: 0.25rem 0.8rem;
-    font-size: 0.875rem;
+.btn-success {
+    background: linear-gradient(180deg, var(--success), var(--success-dark));
+    border: none;
 }
 
-.btn-lg {
-    padding: 0.75rem 1.5rem;
-    font-size: 1.1rem;
+.btn-warning {
+    background: linear-gradient(180deg, var(--warning), var(--warning-dark));
+    border: none;
+    color: white;
+}
+
+.btn-danger {
+    background: linear-gradient(180deg, var(--danger), var(--danger-dark));
+    border: none;
 }
 
 /* =========================================================
@@ -203,117 +203,70 @@
 ========================================================= */
 .form-label {
     font-weight: 500;
-    margin-bottom: 0.5rem;
-    color: #495057;
+    margin-bottom: .4rem;
 }
 
 .form-control,
 .form-select {
-    border-radius: 5px;
+    border-radius: 6px;
     border: 1px solid #ced4da;
-    padding: 0.6rem 1rem;
-    transition: all 0.3s ease;
+    padding: .55rem .9rem;
+    transition: .2s;
 }
 
     .form-control:focus,
     .form-select:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        border-color: var(--accent);
+        box-shadow: 0 0 0 .2rem rgba(44,62,80,.15);
     }
-
-    .form-control:disabled,
-    .form-control:read-only {
-        background-color: #e9ecef;
-        cursor: not-allowed;
-    }
-
-.text-danger {
-    color: #dc3545 !important;
-}
 
 /* =========================================================
    ALERTS
 ========================================================= */
-.alert {
-    border-radius: 8px;
-    border: none;
-    padding: 1rem 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
-    .alert i {
-        margin-right: 0.5rem;
-    }
-
 .alert-success {
-    background-color: #d4edda;
-    color: #155724;
+    background: #d1fae5;
+    color: #065f46;
 }
 
 .alert-danger {
-    background-color: #f8d7da;
-    color: #721c24;
+    background: #fee2e2;
+    color: #991b1b;
 }
 
 .alert-warning {
-    background-color: #fff3cd;
-    color: #856404;
+    background: #fef3c7;
 }
 
 .alert-info {
-    background-color: #d1ecf1;
-    color: #0c5460;
+    background: #e8edf3;
+    color: var(--accent);
 }
 
 /* =========================================================
    FILTER SECTION
 ========================================================= */
 .filter-section {
-    background-color: #f8f9fa;
+    background: white;
     padding: 1.5rem;
     border-radius: 8px;
     margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
 }
 
 /* =========================================================
-   STATUS INFO
+   DETAILS PAGE
 ========================================================= */
-.status-info {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-/* =========================================================
-   DETAILS PAGE SPECIFIC
-========================================================= */
-.detail-row {
-    margin-bottom: 1rem;
-}
-
 .detail-label {
-    color: #6c757d;
-    font-size: 0.875rem;
-    margin-bottom: 0.25rem;
+    color: var(--text-muted);
+    font-size: .85rem;
 }
 
 .detail-value {
     font-weight: 600;
-    font-size: 1rem;
-    color: #212529;
 }
 
 /* =========================================================
-   SUPPLIER INFO
-========================================================= */
-#supplierInfo {
-    border-top: 1px solid #dee2e6;
-    padding-top: 1rem;
-    margin-top: 1rem;
-}
-
-/* =========================================================
-   FOOTER TOTALS
+   TOTALS
 ========================================================= */
 .total-row {
     font-size: 1.1rem;
@@ -322,7 +275,19 @@
 
 .total-amount {
     font-size: 1.3rem;
-    color: #dc3545;
+    color: var(--danger);
+}
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--accent), var(--accent-hover));
+    border-radius: 10px;
 }
 
 /* =========================================================
@@ -333,105 +298,28 @@
         padding: 1rem;
     }
 
-    .table th,
-    .table td {
-        padding: 0.5rem;
-        font-size: 0.85rem;
+    .table th, .table td {
+        padding: .5rem;
+        font-size: .85rem;
     }
 
     .btn {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.875rem;
+        padding: .4rem .8rem;
+        font-size: .85rem;
     }
-
-    h2 {
-        font-size: 1.5rem;
-    }
-
-    .badge {
-        font-size: 0.75rem;
-        padding: 0.4rem 0.6rem;
-    }
-}
-
-@media (max-width: 576px) {
-    .table-responsive {
-        font-size: 0.8rem;
-    }
-
-    .d-flex.justify-content-between {
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .btn-group {
-        width: 100%;
-    }
-
-        .btn-group .btn {
-            flex: 1;
-        }
 }
 
 /* =========================================================
-   ANIMATIONS
+   ANIMATION
 ========================================================= */
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(15px);
     }
 
     to {
         opacity: 1;
         transform: translateY(0);
-    }
-}
-
-.card {
-    animation: fadeIn 0.5s ease-out;
-}
-
-/* =========================================================
-   SCROLLBAR CUSTOMIZATION
-========================================================= */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 10px;
-}
-
-    ::-webkit-scrollbar-thumb:hover {
-        background: #764ba2;
-    }
-
-/* =========================================================
-   PRINT STYLES
-========================================================= */
-@media print {
-    .btn,
-    .btn-group,
-    .alert {
-        display: none;
-    }
-
-    .card {
-        box-shadow: none;
-        border: 1px solid #dee2e6;
-        page-break-inside: avoid;
-    }
-
-    .card-header {
-        background-color: #f8f9fa !important;
-        color: #000 !important;
     }
 }

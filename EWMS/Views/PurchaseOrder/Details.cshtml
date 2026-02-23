@@ -1,11 +1,11 @@
 ﻿@model EWMS.Models.PurchaseOrder
 
 @{
-    ViewData["Title"] = "Chi Tiết Đơn Mua Hàng";
+    ViewData["Title"] = "Purchase Order Details";
     var totalQty = ViewBag.TotalQuantity;
     var totalAmount = ViewBag.TotalAmount;
 
-    // Tính trạng thái hàng về
+    // Determine arrival status
     bool isArrived = false;
     string arrivalStatus = "";
     string arrivalClass = "";
@@ -18,19 +18,19 @@
         if (daysRemaining < 0)
         {
             isArrived = true;
-            arrivalStatus = "Đã quá hạn " + Math.Abs(daysRemaining) + " ngày";
+            arrivalStatus = "Overdue by " + Math.Abs(daysRemaining) + " day(s)";
             arrivalClass = "text-danger";
         }
         else if (daysRemaining == 0)
         {
             isArrived = true;
-            arrivalStatus = "Hàng về hôm nay";
+            arrivalStatus = "Arriving today";
             arrivalClass = "text-success";
         }
         else
         {
             isArrived = false;
-            arrivalStatus = "Còn " + daysRemaining + " ngày";
+            arrivalStatus = daysRemaining + " day(s) remaining";
             arrivalClass = "text-warning";
         }
     }
@@ -40,49 +40,49 @@
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-file-alt"></i> Chi Tiết Đơn Mua Hàng</h2>
+        <h2><i class="fas fa-file-alt"></i> Purchase Order Details</h2>
         <a asp-action="Index" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> Quay lại
+            <i class="fas fa-arrow-left"></i> Back
         </a>
     </div>
 
-    <!-- Cảnh báo trạng thái hàng về -->
+    <!-- Arrival status alert -->
     @if (Model.ExpectedReceivingDate.HasValue)
     {
         <div class="alert alert-@(isArrived ? "success" : "warning") alert-dismissible fade show" role="alert">
             <i class="fas fa-@(isArrived ? "check-circle" : "clock")"></i>
-            <strong>Trạng thái hàng về:</strong>
+            <strong>Arrival Status:</strong>
             @if (isArrived && Model.Status != "Received" && Model.Status != "PartiallyReceived")
             {
-                <span class="@arrivalClass">Hàng đã đến kho (dự kiến: @Model.ExpectedReceivingDate.Value.ToString("dd/MM/yyyy"))</span>
+                <span class="@arrivalClass">Goods have arrived at warehouse (expected: @Model.ExpectedReceivingDate.Value.ToString("dd/MM/yyyy"))</span>
             }
             else if (!isArrived)
             {
-                <span class="@arrivalClass">Chưa đến ngày dự kiến (@Model.ExpectedReceivingDate.Value.ToString("dd/MM/yyyy")) - @arrivalStatus</span>
+                <span class="@arrivalClass">Not yet due (@Model.ExpectedReceivingDate.Value.ToString("dd/MM/yyyy")) - @arrivalStatus</span>
             }
             else
             {
-                <span class="text-info">Hàng đã được nhập kho</span>
+                <span class="text-info">Goods have been stocked in</span>
             }
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
 
     <div class="row">
-        <!-- Thông tin PO -->
+        <!-- PO Information -->
         <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-header bg-gradient-primary text-white">
-                    <h5 class="mb-0">Thông tin PO</h5>
+                    <h5 class="mb-0">PO Information</h5>
                 </div>
                 <div class="card-body">
                     <div class="row mb-3">
                         <div class="col-6">
-                            <label class="text-muted">Số đơn hàng:</label>
+                            <label class="text-muted">Order Number:</label>
                             <p class="fw-bold">PO-@Model.PurchaseOrderId.ToString("D4")</p>
                         </div>
                         <div class="col-6">
-                            <label class="text-muted">Ngày đặt:</label>
+                            <label class="text-muted">Order Date:</label>
                             <p class="fw-bold">@Model.CreatedAt?.ToString("dd/MM/yyyy")</p>
                         </div>
                     </div>
@@ -90,23 +90,23 @@
                     @if (Model.ExpectedReceivingDate.HasValue)
                     {
                         <div class="mb-3">
-                            <label class="text-muted">Ngày nhận hàng dự kiến:</label>
+                            <label class="text-muted">Expected Receiving Date:</label>
                             <p class="fw-bold">
                                 @Model.ExpectedReceivingDate.Value.ToString("dd/MM/yyyy")
                                 <span class="badge @(isArrived ? "bg-success" : "bg-warning")">
-                                    @(isArrived ? "Hàng đã về" : $"Còn {daysRemaining} ngày")
+                                    @(isArrived ? "Arrived" : $"{daysRemaining} day(s) left")
                                 </span>
                             </p>
                         </div>
                     }
 
                     <div class="mb-3">
-                        <label class="text-muted">Người phụ trách:</label>
+                        <label class="text-muted">Person in Charge:</label>
                         <p class="fw-bold">@(Model.CreatedByNavigation?.FullName ?? "N/A")</p>
                     </div>
 
                     <div class="mb-3">
-                        <label class="text-muted">Trạng thái:</label>
+                        <label class="text-muted">Status:</label>
                         <p>
                             @{
                                 var statusBadge = Model.Status switch
@@ -120,11 +120,11 @@
                                 };
                                 var statusText = Model.Status switch
                                 {
-                                    "Pending" => "Chờ duyệt",
-                                    "Approved" => "Đã duyệt",
-                                    "PartiallyReceived" => "Nhận một phần",
-                                    "Received" => "Đã nhận đủ",
-                                    "Cancelled" => "Đã hủy",
+                                    "Pending" => "Pending Approval",
+                                    "Approved" => "Approved",
+                                    "PartiallyReceived" => "Partially Received",
+                                    "Received" => "Fully Received",
+                                    "Cancelled" => "Cancelled",
                                     _ => Model.Status
                                 };
                             }
@@ -136,10 +136,10 @@
                     {
                         <div class="mt-4">
                             <button class="btn btn-success btn-sm" onclick="updateStatus('Approved')">
-                                <i class="fas fa-check"></i> Duyệt đơn
+                                <i class="fas fa-check"></i> Approve
                             </button>
                             <button class="btn btn-danger btn-sm" onclick="updateStatus('Cancelled')">
-                                <i class="fas fa-times"></i> Hủy đơn
+                                <i class="fas fa-times"></i> Cancel Order
                             </button>
                         </div>
                     }
@@ -149,11 +149,11 @@
                         <div class="mt-4">
                             <a asp-controller="StockIn" asp-action="Create" asp-route-poId="@Model.PurchaseOrderId"
                                class="btn btn-success btn-lg w-100">
-                                <i class="fas fa-inbox"></i> Nhập kho
+                                <i class="fas fa-inbox"></i> Stock In
                             </a>
                             @if (Model.Status == "PartiallyReceived")
                             {
-                                <small class="text-muted d-block mt-2">Đơn hàng đang nhận từng phần. Click để nhập tiếp.</small>
+                                <small class="text-muted d-block mt-2">Order is being partially received. Click to continue receiving.</small>
                             }
                         </div>
                     }
@@ -161,34 +161,34 @@
                     {
                         <div class="mt-4">
                             <button class="btn btn-secondary btn-lg w-100" disabled>
-                                <i class="fas fa-clock"></i> Chưa đến ngày nhận hàng
+                                <i class="fas fa-clock"></i> Not Yet Due for Receiving
                             </button>
-                            <small class="text-muted d-block mt-2">Ngày nhận dự kiến: @Model.ExpectedReceivingDate.Value.ToString("dd/MM/yyyy")</small>
+                            <small class="text-muted d-block mt-2">Expected receiving date: @Model.ExpectedReceivingDate.Value.ToString("dd/MM/yyyy")</small>
                         </div>
                     }
                 </div>
             </div>
         </div>
 
-        <!-- Nhà cung cấp -->
+        <!-- Supplier -->
         <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-header bg-gradient-danger text-white">
-                    <h5 class="mb-0">Nhà cung cấp</h5>
+                    <h5 class="mb-0">Supplier</h5>
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <label class="text-muted">Tên:</label>
+                        <label class="text-muted">Name:</label>
                         <p class="fw-bold">@Model.Supplier.SupplierName</p>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-6">
-                            <label class="text-muted">Mã NCC:</label>
+                            <label class="text-muted">Supplier Code:</label>
                             <p class="fw-bold">NCC-@Model.Supplier.SupplierId</p>
                         </div>
                         <div class="col-6">
-                            <label class="text-muted">SĐT:</label>
+                            <label class="text-muted">Phone:</label>
                             <p class="fw-bold">@(Model.Supplier.Phone ?? "N/A")</p>
                         </div>
                     </div>
@@ -199,7 +199,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="text-muted">Địa chỉ:</label>
+                        <label class="text-muted">Address:</label>
                         <p class="fw-bold">@(Model.Supplier.Address ?? "N/A")</p>
                     </div>
                 </div>
@@ -207,10 +207,10 @@
         </div>
     </div>
 
-    <!-- Danh sách sản phẩm -->
+    <!-- Product List -->
     <div class="card">
         <div class="card-header bg-gradient-purple text-white">
-            <h5 class="mb-0">Danh sách sản phẩm</h5>
+            <h5 class="mb-0">Product List</h5>
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -218,18 +218,18 @@
                     <thead class="table-light">
                         <tr>
                             <th width="8%">SKU</th>
-                            <th width="30%">TÊN SẢN PHẨM</th>
-                            <th width="12%">SL ĐẶT</th>
-                            <th width="12%">SL ĐÃ NHẬN</th>
-                            <th width="12%">SL CÒN LẠI</th>
-                            <th width="15%">GIÁ NHẬP</th>
-                            <th width="18%">THÀNH TIỀN</th>
+                            <th width="30%">PRODUCT NAME</th>
+                            <th width="12%">ORDER QTY</th>
+                            <th width="12%">RECEIVED QTY</th>
+                            <th width="12%">REMAINING QTY</th>
+                            <th width="15%">UNIT PRICE</th>
+                            <th width="18%">TOTAL</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var detail in Model.PurchaseOrderDetails)
                         {
-                            // Tính số lượng đã nhận
+                            // Calculate received quantity
                             var receivedQty = Model.StockInReceipts
                             .SelectMany(si => si.StockInDetails)
                             .Where(sid => sid.ProductId == detail.ProductId)
@@ -264,7 +264,7 @@
                                     }
                                     else
                                     {
-                                        <span class="badge bg-success">Đủ</span>
+                                        <span class="badge bg-success">Complete</span>
                                     }
                                 </td>
                                 <td class="text-end">@detail.UnitPrice.ToString("N0") đ</td>
@@ -274,18 +274,27 @@
                     </tbody>
                     <tfoot class="table-light">
                         <tr>
-                            <td colspan="2"><strong>Tổng mã SKU:</strong></td>
+                            <td colspan="2"><strong>Total SKUs:</strong></td>
                             <td class="text-center"><strong>@Model.PurchaseOrderDetails.Count</strong></td>
-                            <td colspan="3"><strong>Tổng SL Đặt:</strong></td>
+                            <td colspan="3"><strong>Total Ordered Qty:</strong></td>
                             <td colspan="2"><strong>@totalQty</strong></td>
                         </tr>
                         <tr>
                             <td colspan="2"></td>
-                            <td colspan="3"><strong>Tổng tiền:</strong></td>
+                            <td colspan="3"><strong>Grand Total:</strong></td>
                             <td colspan="3"><strong class="text-danger fs-5">@totalAmount.ToString("N0") đ</strong></td>
                         </tr>
                     </tfoot>
                 </table>
+                @if (Model.Status == "InTransit")
+                {
+                    <div class="mt-3">
+                        <button class="btn btn-danger"
+                                onclick="cancelPurchaseOrder(@Model.PurchaseOrderId)">
+                            <i class="fas fa-times"></i> Cancel Order
+                        </button>
+                    </div>
+                }
             </div>
         </div>
     </div>

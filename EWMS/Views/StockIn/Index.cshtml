@@ -1,11 +1,11 @@
 ﻿@{
-    ViewData["Title"] = "Quản Lý Nhập Kho";
+    ViewData["Title"] = "Stock-In Management";
     var warehouseId = ViewBag.WarehouseId;
 }
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-warehouse"></i> Quản Lý Nhập Kho</h2>
+        <h2><i class="fas fa-warehouse"></i> Stock-In Management</h2>
     </div>
 
     @if (TempData["Success"] != null)
@@ -27,7 +27,7 @@
     <!-- Info Alert -->
     <div class="alert alert-info alert-dismissible fade show" role="alert">
         <i class="fas fa-info-circle"></i>
-        <strong>Hướng dẫn:</strong> Chỉ có thể nhập kho cho đơn hàng có trạng thái <span class="badge bg-success">Đã về kho</span> hoặc <span class="badge bg-primary">Nhận một phần</span>
+        <strong>Guide:</strong> Stock-in is only available for orders with status <span class="badge bg-success">Delivered</span> or <span class="badge bg-primary">Partially Received</span>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
@@ -36,23 +36,24 @@
         <div class="card-body">
             <div class="row">
                 <div class="col-md-3">
-                    <label class="form-label">Trạng thái:</label>
+                    <label class="form-label">Status:</label>
                     <select class="form-select" id="filter-status">
-                        <option value="">Tất cả</option>
-                        <option value="InTransit">Đang vận chuyển</option>
-                        <option value="Delivered" >Đã về kho</option>
-                        <option value="PartiallyReceived">Nhận một phần</option>
-                        <option value="Received">Đã nhận đủ</option>
+                        <option value="">All</option>
+                        <option value="InTransit">In Transit</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="PartiallyReceived">Partially Received</option>
+                        <option value="Received">Fully Received</option>
+                        <option value="Cancelled">Cancelled</option>
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Tìm kiếm:</label>
+                    <label class="form-label">Search:</label>
                     <input type="text" class="form-control" id="search-input"
-                           placeholder="Tìm theo mã đơn hoặc nhà cung cấp...">
+                           placeholder="Search by order number or supplier...">
                 </div>
                 <div class="col-md-3 d-flex align-items-end">
                     <button class="btn btn-primary w-100" onclick="loadPurchaseOrders()">
-                        <i class="fas fa-sync-alt"></i> Làm mới
+                        <i class="fas fa-sync-alt"></i> Refresh
                     </button>
                 </div>
             </div>
@@ -62,28 +63,28 @@
     <!-- Purchase Orders Table -->
     <div class="card">
         <div class="card-header">
-            <h5 class="mb-0">Danh Sách Đơn Hàng</h5>
+            <h5 class="mb-0">Purchase Order List</h5>
         </div>
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-hover" id="purchase-orders-table">
                     <thead>
                         <tr>
-                            <th width="10%">MÃ ĐƠN</th>
-                            <th width="20%">NHÀ CUNG CẤP</th>
-                            <th width="12%">NGÀY DỰ KIẾN</th>
-                            <th width="10%" class="text-end">SỐ LƯỢNG</th>
-                            <th width="10%" class="text-end">ĐÃ NHẬN</th>
-                            <th width="10%" class="text-end">CÒN LẠI</th>
-                            <th width="18%">TRẠNG THÁI</th>
-                            <th width="10%">THAO TÁC</th>
+                            <th width="10%">ORDER NO.</th>
+                            <th width="20%">SUPPLIER</th>
+                            <th width="12%">EXPECTED DATE</th>
+                            <th width="10%" class="text-end">ORDERED QTY</th>
+                            <th width="10%" class="text-end">RECEIVED</th>
+                            <th width="10%" class="text-end">REMAINING</th>
+                            <th width="18%">STATUS</th>
+                            <th width="10%">ACTION</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
                             <td colspan="8" class="text-center">
                                 <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Đang tải...</span>
+                                    <span class="visually-hidden">Loading...</span>
                                 </div>
                             </td>
                         </tr>
@@ -99,7 +100,7 @@
 
     if (!warehouseId) {
         console.error('WarehouseId is not defined!');
-        alert('Lỗi: Không xác định được kho. Vui lòng đăng nhập lại.');
+        alert('Error: Warehouse could not be identified. Please log in again.');
     }
 </script>
 <script src="~/js/Inventory/StockIn.js"></script>
@@ -109,18 +110,18 @@
         cursor: pointer;
     }
 
-    .table tbody tr.clickable:hover {
-        background-color: #e3f2fd;
-    }
+        .table tbody tr.clickable:hover {
+            background-color: #e3f2fd;
+        }
 
     .table tbody tr.disabled {
         cursor: not-allowed;
         opacity: 0.6;
     }
 
-    .table tbody tr.disabled:hover {
-        background-color: transparent;
-    }
+        .table tbody tr.disabled:hover {
+            background-color: transparent;
+        }
 
     .badge {
         padding: 0.5rem 0.8rem;
