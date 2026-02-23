@@ -79,7 +79,6 @@ namespace EWMS.Controllers
         // HÀM APPROVE ĐÃ ĐƯỢC TÍCH HỢP VÀ TỐI ƯU
         // ==========================================
         [Authorize(Roles = "Manager")]
-        [Authorize(Roles = "Manager")]
         [HttpPost]
         public async Task<IActionResult> Approve(int id)
         {
@@ -92,9 +91,19 @@ namespace EWMS.Controllers
                     .FirstOrDefaultAsync(t => t.TransferId == id);
 
                 if (transfer == null || transfer.Status != "Pending")
-                    return NotFound();
+                {
+                    TempData["Error"] = "Yêu cầu không tồn tại hoặc không ở trạng thái Pending.";
+                    return RedirectToAction("Index");
+                }
 
-                var userId = int.Parse(User.FindFirst("UserID").Value);
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+                if (userIdClaim == null)
+                {
+                    _logger.LogWarning("Approve Transfer: missing NameIdentifier claim");
+                    return Challenge();
+                }
+
+                var userId = int.Parse(userIdClaim.Value);
 
                 // 1. Cập nhật trạng thái Transfer
                 transfer.Status = "Approved";
