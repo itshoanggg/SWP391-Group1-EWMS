@@ -321,6 +321,30 @@ namespace EWMS.Controllers
                 await _context.SaveChangesAsync();
             }
         }
+
+        [HttpPost]
+        public async Task<IActionResult> Cancel(int id)
+        {
+            var warehouseId = await _context.UserWarehouses
+                .Where(uw => uw.UserId == GetCurrentUserId())
+                .Select(uw => uw.WarehouseId)
+                .FirstOrDefaultAsync();
+
+            var purchaseOrder = await _context.PurchaseOrders
+                .FirstOrDefaultAsync(po => po.PurchaseOrderId == id
+                    && po.WarehouseId == warehouseId);
+
+            if (purchaseOrder == null)
+                return Json(new { success = false, message = "Không tìm thấy đơn hàng" });
+
+            if (purchaseOrder.Status != "InTransit")
+                return Json(new { success = false, message = "Chỉ có thể hủy đơn đang vận chuyển" });
+
+            purchaseOrder.Status = "Cancelled";
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, message = "Đã hủy đơn hàng thành công" });
+        }
     }
 
 

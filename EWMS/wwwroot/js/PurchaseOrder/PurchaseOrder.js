@@ -384,3 +384,29 @@ window.PurchaseOrderModule = {
     formatCurrency,
     formatNumber
 };
+
+async function cancelPurchaseOrder(id) {
+    if (!confirm('Bạn có chắc muốn hủy đơn hàng này?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/PurchaseOrder/Cancel/${id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message);
+        }
+    } catch (error) {
+        alert('Có lỗi xảy ra');
+    }
+}
