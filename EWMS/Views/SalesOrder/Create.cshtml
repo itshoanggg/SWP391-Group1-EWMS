@@ -1,13 +1,13 @@
 ﻿@model EWMS.ViewModels.CreateSalesOrderViewModel
 
 @{
-    ViewData["Title"] = "Tạo Đơn Hàng Mới";
-    var products = ViewBag.Products as List<EWMS.Services.ProductSelectViewModel>;
+    ViewData["Title"] = "Create New Order";
+    var products = ViewBag.Products as List<EWMS.ViewModels.ProductSelectViewModel>;
 }
 
 <div class="page-header">
-    <h1>Tạo Đơn Hàng Mới</h1>
-    <p>Nhập thông tin đơn hàng bán ra</p>
+    <h1>Create New Order</h1>
+    <p>Enter sales order information</p>
 </div>
 
 <div class="card">
@@ -20,14 +20,14 @@
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label asp-for="CustomerName" class="form-label">Tên Khách Hàng *</label>
+                        <label asp-for="CustomerName" class="form-label">Customer Name *</label>
                         <input asp-for="CustomerName" class="form-control" required />
                         <span asp-validation-for="CustomerName" class="text-danger"></span>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label asp-for="CustomerPhone" class="form-label">Số Điện Thoại</label>
+                        <label asp-for="CustomerPhone" class="form-label">Phone Number</label>
                         <input asp-for="CustomerPhone" class="form-control" />
                         <span asp-validation-for="CustomerPhone" class="text-danger"></span>
                     </div>
@@ -35,7 +35,7 @@
             </div>
 
             <div class="form-group">
-                <label asp-for="CustomerAddress" class="form-label">Địa Chỉ Khách Hàng</label>
+                <label asp-for="CustomerAddress" class="form-label">Customer Address</label>
                 <input asp-for="CustomerAddress" class="form-control" />
                 <span asp-validation-for="CustomerAddress" class="text-danger"></span>
             </div>
@@ -43,13 +43,13 @@
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label class="form-label">Kho Hàng</label>
+                        <label class="form-label">Warehouse</label>
                         <input type="text" class="form-control" value="@ViewBag.WarehouseName" disabled />
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label asp-for="ExpectedDeliveryDate" class="form-label">Ngày Xuất Hàng Dự Kiến *</label>
+                        <label asp-for="ExpectedDeliveryDate" class="form-label">Expected Delivery Date *</label>
                         <input asp-for="ExpectedDeliveryDate" type="date" class="form-control" required
                                min="@DateTime.Today.ToString("yyyy-MM-dd")"
                                onchange="scheduleInventoryCheck()" />
@@ -59,35 +59,42 @@
             </div>
 
             <div class="form-group">
-                <label asp-for="Notes" class="form-label">Ghi Chú</label>
+                <label asp-for="Notes" class="form-label">Notes</label>
                 <textarea asp-for="Notes" class="form-control" rows="3"></textarea>
                 <span asp-validation-for="Notes" class="text-danger"></span>
             </div>
 
             <div class="detail-section">
-                <h4>Chi Tiết Sản Phẩm</h4>
+                <h4>Product Details</h4>
+                <div class="row fw-semibold text-muted mb-2" style="padding: 0 6px;">
+                    <div class="col-md-5">Product</div>
+                    <div class="col-md-2">Quantity</div>
+                    <div class="col-md-2">Unit Price</div>
+                    <div class="col-md-2">Total</div>
+                    <div class="col-md-1"></div>
+                </div>
                 <div id="productLines">
                     <!-- Product lines will be added here by JavaScript -->
                 </div>
                 <button type="button" class="btn btn-secondary btn-sm mt-2" onclick="addProductLine()">
-                    + Thêm Sản Phẩm
+                    + Add Product
                 </button>
             </div>
 
             <div id="inventoryCheckSection" class="inventory-check" style="display: none;">
-                <h5>Kiểm Tra Tồn Kho</h5>
+                <h5>Inventory Check</h5>
                 <div id="inventoryCheckResults"></div>
             </div>
 
             <div class="form-actions mt-4">
                 <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
-                    <span id="btnText">Tạo Đơn Hàng</span>
+                    <span id="btnText">Create Order</span>
                     <span id="btnSpinner" style="display: none;">
                         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                        Đang xử lý...
+                        Processing...
                     </span>
                 </button>
-                <a asp-action="Index" class="btn btn-secondary">Hủy</a>
+                <a asp-action="Index" class="btn btn-secondary">Cancel</a>
             </div>
         </form>
     </div>
@@ -117,18 +124,18 @@
             lineDiv.innerHTML = `
                 <div class="col-md-5">
                     <select name="Details[${productLineCounter}].ProductId" class="form-control product-select" onchange="updatePrice(${productLineCounter}); scheduleInventoryCheck();" required>
-                        <option value="">-- Chọn sản phẩm --</option>
+                        <option value="">-- Select product --</option>
                         ${products.map(p => `<option value="${p.productId}" data-price="${p.sellingPrice}" data-unit="${p.unit}">${p.productName}</option>`).join('')}
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <input type="number" name="Details[${productLineCounter}].Quantity" class="form-control quantity-input" placeholder="Số lượng" min="1" value="1" onchange="updateTotal(${productLineCounter}); scheduleInventoryCheck();" required />
+                    <input type="number" name="Details[${productLineCounter}].Quantity" class="form-control quantity-input" placeholder="Quantity" min="1" value="1" onchange="updateTotal(${productLineCounter}); scheduleInventoryCheck();" required />
                 </div>
                 <div class="col-md-2">
-                    <input type="number" step="0.01" name="Details[${productLineCounter}].UnitPrice" class="form-control price-input" placeholder="Đơn giá" onchange="updateTotal(${productLineCounter})" required />
+                    <input type="number" step="0.01" name="Details[${productLineCounter}].UnitPrice" class="form-control price-input" placeholder="Unit Price" onchange="updateTotal(${productLineCounter})" required />
                 </div>
                 <div class="col-md-2">
-                    <input type="text" class="form-control total-input" placeholder="Thành tiền" readonly />
+                    <input type="text" class="form-control total-input" placeholder="Total" readonly />
                 </div>
                 <div class="col-md-1">
                     <button type="button" class="btn btn-danger btn-sm" onclick="removeProductLine(${productLineCounter})">×</button>
@@ -174,7 +181,6 @@
             totalInput.value = formatCurrency(price * quantity);
         }
 
-        // Schedule inventory check with debounce (wait 500ms after user stops typing)
         function scheduleInventoryCheck() {
             if (inventoryCheckTimeout) {
                 clearTimeout(inventoryCheckTimeout);
@@ -236,19 +242,18 @@
                 lastCheckResult = result;
                 displayInventoryCheck(result.checkDetails);
 
-                // Enable/disable submit button based on inventory check
                 const submitBtn = document.getElementById('submitBtn');
                 submitBtn.disabled = !result.isValid;
 
                 if (!result.isValid) {
                     showAlert(result.message, 'warning');
                 } else {
-                    showAlert('✓ Đủ hàng để xuất kho. Bạn có thể tạo đơn hàng.', 'success');
+                    showAlert('Sufficient stock available. You can create the order.', 'success');
                 }
             } catch (error) {
                 console.error('Error checking inventory:', error);
                 document.getElementById('submitBtn').disabled = true;
-                showAlert('Lỗi khi kiểm tra tồn kho. Vui lòng thử lại!', 'danger');
+                showAlert('Error checking inventory. Please try again!', 'danger');
             }
         }
 
@@ -261,16 +266,16 @@
                     <div>
                         <strong>${r.productName}</strong><br>
                         <small style="color: #6c757d;">
-                            Tồn hiện tại: <strong>${r.currentStock}</strong> |
-                            Dự kiến nhập: <strong>${r.expectedIncoming}</strong> |
-                            Chờ xuất: <strong>${r.pendingOutgoing}</strong>
+                            Current Stock: <strong>${r.currentStock}</strong> |
+                            Expected Incoming: <strong>${r.expectedIncoming}</strong> |
+                            Pending Outgoing: <strong>${r.pendingOutgoing}</strong>
                         </small>
                     </div>
                     <div style="text-align: right;">
                         <div style="font-weight: 600; color: ${r.isAvailable ? '#28a745' : '#dc3545'}; font-size: 1.1em;">
                             ${r.isAvailable ? '✓' : '✗'} ${r.availableStock} / ${r.requestedQuantity}
                         </div>
-                        <small style="color: #6c757d;">có sẵn / yêu cầu</small>
+                        <small style="color: #6c757d;">available / requested</small>
                     </div>
                 </div>
             `).join('');
@@ -301,7 +306,6 @@
             alertDiv.innerHTML = '';
         }
 
-        // Re-index form inputs before submit to ensure continuous indexing
         function reindexFormInputs() {
             const productLines = document.querySelectorAll('.product-line');
             productLines.forEach((line, index) => {
@@ -316,20 +320,16 @@
             });
         }
 
-        // Handle form submission
         document.getElementById('createOrderForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
-            // Re-index to fix any gaps in array indexing
             reindexFormInputs();
 
-            // Final validation before submit
             if (!lastCheckResult || !lastCheckResult.isValid) {
-                showAlert('Không đủ hàng trong kho! Vui lòng kiểm tra lại.', 'danger');
+                showAlert('Insufficient stock! Please check again.', 'danger');
                 return false;
             }
 
-            // Disable submit button and show loading
             const submitBtn = document.getElementById('submitBtn');
             const btnText = document.getElementById('btnText');
             const btnSpinner = document.getElementById('btnSpinner');
@@ -338,13 +338,41 @@
             btnText.style.display = 'none';
             btnSpinner.style.display = 'inline-block';
 
-            // Submit the form
             this.submit();
         });
 
-        // Initialize with one product line
         document.addEventListener('DOMContentLoaded', function() {
             addProductLine();
+
+            const phoneInput = document.querySelector('input[name="CustomerPhone"]');
+            const nameInput = document.querySelector('input[name="CustomerName"]');
+            const addrInput = document.querySelector('input[name="CustomerAddress"]');
+            let phoneLookupTimer = null;
+
+            function lookupByPhone() {
+                const phone = (phoneInput.value || '').trim();
+                if (!phone || phone.length < 6) return;
+                fetch(`@Url.Action("GetCustomerByPhone", "SalesOrder")?phone=${encodeURIComponent(phone)}`)
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d && d.found) {
+                            if (d.name && (!nameInput.value || nameInput.value.trim().length === 0)) {
+                                nameInput.value = d.name;
+                            }
+                            if (d.address && (!addrInput.value || addrInput.value.trim().length === 0)) {
+                                addrInput.value = d.address;
+                            }
+                        }
+                    })
+                    .catch(err => console.error('Lookup phone error', err));
+            }
+
+            ['input','blur','change'].forEach(evt => {
+                phoneInput.addEventListener(evt, function() {
+                    if (phoneLookupTimer) clearTimeout(phoneLookupTimer);
+                    phoneLookupTimer = setTimeout(lookupByPhone, 400);
+                });
+            });
         });
     </script>
 }
