@@ -30,11 +30,10 @@ namespace EWMS.Services
                 if (product == null)
                 {
                     result.IsValid = false;
-                    result.Message = $"Không tìm thấy sản phẩm với ID {productRequest.ProductId}";
+                    result.Message = $"Product not found with ID {productRequest.ProductId}";
                     continue;
                 }
 
-                // Lấy số liệu tồn kho
                 var currentStock = await _inventoryRepository.GetCurrentStockAsync(
                     productRequest.ProductId,
                     request.WarehouseId);
@@ -48,7 +47,6 @@ namespace EWMS.Services
                     productRequest.ProductId,
                     request.WarehouseId);
 
-                // Công thức: Tồn hiện tại + Dự kiến nhập - Chờ xuất
                 var availableStock = currentStock + expectedIncoming - pendingOutgoing;
                 var isAvailable = availableStock >= productRequest.Quantity;
 
@@ -72,11 +70,11 @@ namespace EWMS.Services
 
             if (!result.IsValid && string.IsNullOrEmpty(result.Message))
             {
-                result.Message = "Không đủ hàng trong kho! Vui lòng kiểm tra lại số lượng.";
+                result.Message = "Insufficient stock! Please check the quantity.";
             }
             else if (result.IsValid)
             {
-                result.Message = "Đủ hàng để xuất kho.";
+                result.Message = "Enough goods to export.";
             }
 
             return result;
