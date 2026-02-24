@@ -14,7 +14,6 @@ namespace EWMS.Repositories
 
         public async Task<int> GetCurrentStockAsync(int productId, int warehouseId)
         {
-            // Tổng số lượng tồn kho hiện tại của sản phẩm trong tất cả vị trí của kho
             var totalStock = await _context.Inventories
                 .Include(i => i.Location)
                 .Where(i => i.ProductId == productId && i.Location.WarehouseId == warehouseId)
@@ -25,8 +24,6 @@ namespace EWMS.Repositories
 
         public async Task<int> GetExpectedIncomingAsync(int productId, int warehouseId, DateTime beforeDate)
         {
-            // Tổng số lượng dự kiến nhập từ:
-            // 1. Purchase Orders đã approved, chưa nhận hàng, ngày dự kiến nhận < ngày xuất
             var expectedFromPurchase = await _context.PurchaseOrderDetails
                 .Include(pod => pod.PurchaseOrder)
                 .Where(pod => pod.ProductId == productId
@@ -36,7 +33,6 @@ namespace EWMS.Repositories
                     && !_context.StockInReceipts.Any(sir => sir.PurchaseOrderId == pod.PurchaseOrderId))
                 .SumAsync(pod => pod.Quantity);
 
-            // 2. Transfer Requests đã approved, chưa nhận hàng, đến kho này
             var expectedFromTransfer = await _context.TransferDetails
                 .Include(td => td.Transfer)
                 .Where(td => td.ProductId == productId
@@ -51,8 +47,6 @@ namespace EWMS.Repositories
 
         public async Task<int> GetPendingOutgoingAsync(int productId, int warehouseId)
         {
-            // Tổng số lượng hàng chờ xuất kho từ:
-            // 1. Sales Orders đã được tạo nhưng chưa xuất kho
             var pendingFromSales = await _context.SalesOrderDetails
                 .Include(sod => sod.SalesOrder)
                 .Where(sod => sod.ProductId == productId
@@ -61,7 +55,6 @@ namespace EWMS.Repositories
                     && !_context.StockOutReceipts.Any(sor => sor.SalesOrderId == sod.SalesOrderId))
                 .SumAsync(sod => sod.Quantity);
 
-            // 2. Transfer Requests đã approved, chưa xuất kho, từ kho này
             var pendingFromTransfer = await _context.TransferDetails
                 .Include(td => td.Transfer)
                 .Where(td => td.ProductId == productId
