@@ -1,0 +1,329 @@
+@model EWMS.ViewModels.StockOutOrderListViewModel
+@{
+    ViewData["Title"] = "Stock Out Management";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/stockoutreceipt.css" asp-append-version="true" />
+}
+
+<div class="page-header">
+    <h1>Stock Out Management</h1>
+    <p>Process orders and create stock out receipts</p>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Pending Sales Orders Card -->
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <h3 class="mb-0">Pending Orders List</h3>
+        <form asp-action="Index" method="get" class="w-100 mt-2">
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <input type="text" name="customer" value="@Model.FilterCustomer" class="form-control" placeholder="Customer name or phone" />
+                </div>
+                <div class="col-md-2">
+                    <select name="status" class="form-select">
+                        <option value="" selected="@(string.IsNullOrEmpty(Model.FilterStatus) ? "selected" : null)">All Status</option>
+                        <option value="Pending" selected="@(Model.FilterStatus == "Pending" ? "selected" : null)">Pending</option>
+                        <option value="Partial" selected="@(Model.FilterStatus == "Partial" ? "selected" : null)">Partial</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-outline-primary">Filter</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="table-container">
+        <table class="table" id="ordersTable">
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Customer</th>
+                    <th>Created Date</th>
+                    <th>Expected Delivery</th>
+                    <th>Total Amount</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Orders != null && Model.Orders.Any())
+                {
+                    @foreach (var order in Model.Orders)
+                    {
+                        <tr data-status="@order.Status" data-created="@order.CreatedAt.ToString("yyyy-MM-dd")">
+                            <td><strong>@order.OrderNumber</strong></td>
+                            <td>@order.CustomerName</td>
+                            <td>@order.CreatedAt.ToString("dd/MM/yyyy")</td>
+                            <td>@order.ExpectedDeliveryDate.ToString("dd/MM/yyyy")</td>
+                            <td><strong>@order.TotalAmount.ToString("N0") đ</strong></td>
+                            <td>
+                                @if (order.Status == "Pending")
+                                {
+                                    <span class="badge badge-pending">Pending</span>
+                                }
+                                else if (order.Status == "Partial")
+                                {
+                                    <span class="badge badge-partial">Partial</span>
+                                }
+                                else if (order.Status == "Completed")
+                                {
+                                    <span class="badge badge-completed">Completed</span>
+                                }
+                            </td>
+                            <td>
+                                <button class="btn btn-primary btn-sm" onclick="viewOrderDetail(@order.SalesOrderId)">
+                                    <i class="bi bi-eye"></i> View Details
+                                </button>
+                                @if (order.HasStockOutReceipt && order.StockOutReceiptId.HasValue)
+                                {
+                                    <a href="@Url.Action("Details", new { id = order.StockOutReceiptId })" 
+                                       class="btn btn-success btn-sm">
+                                        <i class="bi bi-file-earmark-check"></i> View Receipt
+                                    </a>
+                                }
+                                else
+                                {
+                                    <a href="@Url.Action("Create", new { orderId = order.SalesOrderId })" 
+                                       class="btn btn-warning btn-sm">
+                                        <i class="bi bi-plus-circle"></i> Create Receipt
+                                    </a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox" style="font-size: 48px; opacity: 0.3;"></i>
+                            <p class="mt-2 mb-0">No pending orders</p>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (Model.TotalPages > 1)
+        {
+            <nav aria-label="Page navigation" class="mt-3">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item @(Model.Page <= 1 ? "disabled" : null)">
+                        <a class="page-link" asp-action="Index" asp-route-customer="@Model.FilterCustomer" asp-route-status="@Model.FilterStatus" asp-route-page="@(Model.Page - 1)">Previous</a>
+                    </li>
+                    @for (int i = 1; i <= Model.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == Model.Page ? "active" : null)">
+                            <a class="page-link" asp-action="Index" asp-route-customer="@Model.FilterCustomer" asp-route-status="@Model.FilterStatus" asp-route-page="@i">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : null)">
+                        <a class="page-link" asp-action="Index" asp-route-customer="@Model.FilterCustomer" asp-route-status="@Model.FilterStatus" asp-route-page="@(Model.Page + 1)">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        }
+    </div>
+</div>
+
+<!-- View Order Detail Modal -->
+<div class="modal fade" id="orderDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Order Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="orderDetailContent">
+                <!-- Content will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="createReceiptBtn" onclick="goToCreateReceipt()">
+                    Create Stock Out Receipt
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let currentOrderId = null;
+
+        function applyFilters() {
+            const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
+            const dateFrom = document.getElementById('dateFromFilter').value;
+            const dateTo = document.getElementById('dateToFilter').value;
+
+            const rows = document.querySelectorAll('#ordersTable tbody tr[data-status]');
+            
+            rows.forEach(row => {
+                let show = true;
+                const status = row.getAttribute('data-status').toLowerCase();
+                const created = row.getAttribute('data-created');
+
+                if (statusFilter && !status.includes(statusFilter)) {
+                    show = false;
+                }
+
+                if (dateFrom && created < dateFrom) {
+                    show = false;
+                }
+
+                if (dateTo && created > dateTo) {
+                    show = false;
+                }
+
+                row.style.display = show ? '' : 'none';
+            });
+        }
+
+        function resetFilters() {
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('dateFromFilter').value = '';
+            document.getElementById('dateToFilter').value = '';
+            applyFilters();
+        }
+
+        async function viewOrderDetail(orderId) {
+            currentOrderId = orderId;
+            
+            try {
+                const response = await fetch(`/StockOutReceipt/GetSalesOrderDetails?orderId=${orderId}`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    alert(result.message);
+                    return;
+                }
+
+                const order = result.order;
+                const content = document.getElementById('orderDetailContent');
+                
+                content.innerHTML = `
+                    <div class="detail-section">
+                        <h4>Order Information</h4>
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <div class="detail-label">Order ID:</div>
+                                <div class="detail-value"><strong>${order.orderNumber}</strong></div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Status:</div>
+                                <div class="detail-value">
+                                    <span class="badge badge-${order.status.toLowerCase()}">${order.status}</span>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Created Date:</div>
+                                <div class="detail-value">${new Date(order.createdAt).toLocaleDateString('en-US')}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Expected Delivery:</div>
+                                <div class="detail-value">${new Date(order.expectedDeliveryDate).toLocaleDateString('en-US')}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h4>Customer Information</h4>
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <div class="detail-label">Customer Name:</div>
+                                <div class="detail-value">${order.customerName}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Phone Number:</div>
+                                <div class="detail-value">${order.customerPhone || 'N/A'}</div>
+                            </div>
+                            <div class="detail-item" style="grid-column: 1 / -1;">
+                                <div class="detail-label">Address:</div>
+                                <div class="detail-value">${order.customerAddress || 'N/A'}</div>
+                            </div>
+                            ${order.notes ? `
+                            <div class="detail-item" style="grid-column: 1 / -1;">
+                                <div class="detail-label">Notes:</div>
+                                <div class="detail-value">${order.notes}</div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h4>Product Details</h4>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th class="text-end">Quantity</th>
+                                    <th class="text-end">Unit Price</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${order.details.map(d => `
+                                    <tr>
+                                        <td>${d.productName}</td>
+                                        <td class="text-end">${d.quantity}</td>
+                                        <td class="text-end">${d.unitPrice.toLocaleString('vi-VN')} đ</td>
+                                        <td class="text-end">${d.totalPrice.toLocaleString('vi-VN')} đ</td>
+                                    </tr>
+                                `).join('')}
+                                <tr class="table-active fw-bold">
+                                    <td colspan="3" class="text-end">Grand Total:</td>
+                                    <td class="text-end text-primary">${order.totalAmount.toLocaleString('vi-VN')} đ</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+                // Show/hide create receipt button
+                const createBtn = document.getElementById('createReceiptBtn');
+                if (order.hasStockOutReceipt || order.status === 'Completed') {
+                    createBtn.style.display = 'none';
+                } else {
+                    createBtn.style.display = 'inline-block';
+                }
+
+                const modal = new bootstrap.Modal(document.getElementById('orderDetailModal'));
+                modal.show();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error loading order details!');
+            }
+        }
+
+        function goToCreateReceipt() {
+            if (currentOrderId) {
+                window.location.href = `/StockOutReceipt/Create?orderId=${currentOrderId}`;
+            }
+        }
+
+        document.getElementById('statusFilter').addEventListener('change', applyFilters);
+        document.getElementById('dateFromFilter').addEventListener('change', applyFilters);
+        document.getElementById('dateToFilter').addEventListener('change', applyFilters);
+    </script>
+}
