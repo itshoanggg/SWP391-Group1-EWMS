@@ -1,4 +1,6 @@
 using EWMS.Models;
+using EWMS.Repositories;
+using EWMS.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace EWMS
@@ -12,10 +14,22 @@ namespace EWMS
             // Add services to the container.
             builder.Services.AddControllersWithViews();
 
-            builder.Services.AddDbContext<EWMSContext>(options =>
-                options.UseSqlServer(
-                    builder.Configuration.GetConnectionString("DBContext")
-                ));
+            // Add DbContext
+            builder.Services.AddDbContext<EWMSDbContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DBContext")));
+
+            // Register Repositories
+            builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
+            builder.Services.AddScoped<ISalesOrderRepository, SalesOrderRepository>();
+            builder.Services.AddScoped<IProductRepository, ProductRepository>();
+            builder.Services.AddScoped<IStockOutReceiptRepository, StockOutReceiptRepository>();
+            builder.Services.AddScoped<ILocationRepository, LocationRepository>();
+
+            // Register Services
+            builder.Services.AddScoped<IInventoryCheckService, InventoryCheckService>();
+            builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
+            builder.Services.AddScoped<IStockOutReceiptService, StockOutReceiptService>();
+
 
             var app = builder.Build();
 
@@ -25,7 +39,6 @@ namespace EWMS
             if (!app.Environment.IsDevelopment())
             {
                 app.UseExceptionHandler("/Home/Error");
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
 

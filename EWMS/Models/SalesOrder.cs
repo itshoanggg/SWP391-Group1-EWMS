@@ -16,7 +16,7 @@ public partial class SalesOrder
     public int WarehouseId { get; set; }
 
     [StringLength(150)]
-    public string? CustomerName { get; set; }
+    public string CustomerName { get; set; } = null!;
 
     [StringLength(20)]
     public string? CustomerPhone { get; set; }
@@ -27,16 +27,19 @@ public partial class SalesOrder
     public int CreatedBy { get; set; }
 
     [StringLength(30)]
-    public string? Status { get; set; }
+    public string Status { get; set; } = null!;
+
+    [Column(TypeName = "datetime")]
+    public DateTime ExpectedDeliveryDate { get; set; }
 
     [Column(TypeName = "decimal(18, 2)")]
-    public decimal? TotalAmount { get; set; }
+    public decimal TotalAmount { get; set; }
 
     [StringLength(500)]
     public string? Notes { get; set; }
 
     [Column(TypeName = "datetime")]
-    public DateTime? CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 
     [ForeignKey("CreatedBy")]
     [InverseProperty("SalesOrders")]
