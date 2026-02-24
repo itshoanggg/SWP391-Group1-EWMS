@@ -29,32 +29,59 @@ namespace EWMS.Services
             {
                 WarehouseId = warehouseId,
                 WarehouseName = orders.FirstOrDefault()?.Warehouse.WarehouseName ?? "Unknown",
-                Orders = orders.Select(o => new SalesOrderViewModel
-                {
-                    SalesOrderId = o.SalesOrderId,
-                    OrderNumber = $"SO{o.SalesOrderId:D4}",
-                    CustomerName = o.CustomerName,
-                    CustomerPhone = o.CustomerPhone,
-                    CustomerAddress = o.CustomerAddress,
-                    ExpectedDeliveryDate = o.ExpectedDeliveryDate,
-                    TotalAmount = o.TotalAmount,
-                    Status = o.Status,
-                    CreatedAt = o.CreatedAt,
-                    WarehouseName = o.Warehouse.WarehouseName,
-                    Details = o.SalesOrderDetails.Select(d => new SalesOrderDetailViewModel
-                    {
-                        ProductId = d.ProductId,
-                        ProductName = d.Product.ProductName,
-                        Quantity = d.Quantity,
-                        UnitPrice = d.UnitPrice,
-                        TotalPrice = d.TotalPrice ?? 0,
-                        Unit = d.Product.Unit ?? ""
-                    }).ToList()
-                }).ToList()
+                Orders = orders.Select(MapToViewModel).ToList(),
+                Page = 1,
+                PageSize = orders.Count,
+                TotalCount = orders.Count,
+                TotalPages = 1
             };
 
             return viewModel;
         }
+
+        public async Task<SalesOrderListViewModel> GetSalesOrdersAsync(int warehouseId, string? customer, string? status, int page, int pageSize)
+        {
+            var (orders, totalCount) = await _salesOrderRepository.GetSalesOrdersAsync(warehouseId, customer, null, null, status, page, pageSize);
+            var warehouseName = orders.FirstOrDefault()?.Warehouse.WarehouseName ?? "Unknown";
+
+            var viewModel = new SalesOrderListViewModel
+            {
+                WarehouseId = warehouseId,
+                WarehouseName = warehouseName,
+                Orders = orders.Select(MapToViewModel).ToList(),
+                FilterCustomer = customer ?? string.Empty,
+                FilterStatus = status ?? string.Empty,
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = totalCount,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+            };
+
+            return viewModel;
+        }
+
+        private static SalesOrderViewModel MapToViewModel(SalesOrder o) => new SalesOrderViewModel
+        {
+            SalesOrderId = o.SalesOrderId,
+            OrderNumber = $"SO{o.SalesOrderId:D4}",
+            CustomerName = o.CustomerName,
+            CustomerPhone = o.CustomerPhone,
+            CustomerAddress = o.CustomerAddress,
+            ExpectedDeliveryDate = o.ExpectedDeliveryDate,
+            TotalAmount = o.TotalAmount,
+            Status = o.Status,
+            CreatedAt = o.CreatedAt,
+            WarehouseName = o.Warehouse.WarehouseName,
+            Details = o.SalesOrderDetails.Select(d => new SalesOrderDetailViewModel
+            {
+                ProductId = d.ProductId,
+                ProductName = d.Product.ProductName,
+                Quantity = d.Quantity,
+                UnitPrice = d.UnitPrice,
+                TotalPrice = d.TotalPrice ?? 0,
+                Unit = d.Product.Unit ?? ""
+            }).ToList()
+        };
 
         public async Task<SalesOrderViewModel?> GetSalesOrderByIdAsync(int salesOrderId)
         {
@@ -89,7 +116,6 @@ namespace EWMS.Services
             CreateSalesOrderViewModel model,
             int createdByUserId)
         {
-            // Bước 1: Kiểm tra tồn kho
             var inventoryCheckRequest = new InventoryCheckRequest
             {
                 WarehouseId = model.WarehouseId,
@@ -108,7 +134,6 @@ namespace EWMS.Services
                 return (false, checkResult.Message, null);
             }
 
-            // Bước 2: Tạo Sales Order
             var salesOrder = new SalesOrder
             {
                 WarehouseId = model.WarehouseId,
@@ -131,7 +156,7 @@ namespace EWMS.Services
 
             var createdOrder = await _salesOrderRepository.CreateSalesOrderAsync(salesOrder);
 
-            return (true, "Đơn hàng đã được tạo thành công và gửi đến bộ phận kho!", createdOrder.SalesOrderId);
+            return (true, "Order created successfully and sent to inventory department!", createdOrder.SalesOrderId);
         }
 
         public async Task<List<ProductSelectViewModel>> GetProductsForSelectionAsync()
@@ -145,6 +170,17 @@ namespace EWMS.Services
                 SellingPrice = p.SellingPrice ?? 0,
                 Unit = p.Unit ?? "Piece"
             }).ToList();
+        }
+
+        public async Task<bool> CancelSalesOrderAsync(int salesOrderId)
+        {
+            return await _salesOrderRepository.UpdateSalesOrderStatusAsync(salesOrderId, "Canceled");
+        }
+
+        public async Task<(bool Found, string? Name, string? Address)> GetCustomerByPhoneAsync(string phone)
+        {
+            var result = await _salesOrderRepository.GetLatestCustomerByPhoneAsync(phone);
+            return result.HasValue ? (true, result.Value.Name, result.Value.Address) : (false, null, null);
         }
     }
 }
