@@ -4,7 +4,7 @@ namespace EWMS.ViewModels
 {
     public class CreateSalesOrderViewModel
     {
-        [Required(ErrorMessage = "Tên khách hàng là bắt buộc")]
+        [Required(ErrorMessage = "Customer name is required")]
         [StringLength(150)]
         public string CustomerName { get; set; } = string.Empty;
 
@@ -14,7 +14,7 @@ namespace EWMS.ViewModels
         [StringLength(255)]
         public string? CustomerAddress { get; set; }
 
-        [Required(ErrorMessage = "Ngày xuất hàng dự kiến là bắt buộc")]
+        [Required(ErrorMessage = "Estimated shipping date is required")]
         [DataType(DataType.Date)]
         public DateTime ExpectedDeliveryDate { get; set; }
 
@@ -23,8 +23,8 @@ namespace EWMS.ViewModels
 
         public int WarehouseId { get; set; }
 
-        [Required(ErrorMessage = "Vui lòng thêm ít nhất một sản phẩm")]
-        [MinLength(1, ErrorMessage = "Vui lòng thêm ít nhất một sản phẩm")]
+        [Required(ErrorMessage = "Please add at least one product")]
+        [MinLength(1, ErrorMessage = "Please add at least one product")]
         public List<CreateSalesOrderDetailViewModel> Details { get; set; } = new();
     }
 }
