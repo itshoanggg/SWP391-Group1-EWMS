@@ -1,0 +1,187 @@
+﻿@model EWMS.Models.PurchaseOrder
+
+@{
+    ViewData["Title"] = "Stock-In Details";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/Inventory/StockInDetails.css" />
+}
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="header-section">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <a href="@Url.Action("Index", "StockIn")" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left">←</i>
+                </a>
+                <div>
+                    <h2 class="mb-0">Stock-In Details</h2>
+                    <small class="text-muted">Confirm actual goods received for purchase order PO-@Model.PurchaseOrderId</small>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-secondary" onclick="window.print()">
+                    <i class="fas fa-print"></i> Print SKU Labels
+                </button>
+                <button class="btn btn-success" id="btn-confirm" onclick="confirmStockIn()">
+                    <i class="fas fa-check-circle"></i> Confirm Stock-In
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PO Information -->
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="card info-card">
+                <div class="card-header">
+                    <i class="fas fa-file-invoice"></i> PO Information
+                </div>
+                <div class="card-body">
+                    <div class="info-row">
+                        <span class="label">Order Number:</span>
+                        <span class="value" id="po-number">PO-@Model.PurchaseOrderId</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">Order Date:</span>
+                        <span class="value" id="po-date">12/09/2023</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">Person in Charge:</span>
+                        <span class="value" id="po-creator">@(Model.CreatedByNavigation.FullName ?? Model.CreatedByNavigation.Username)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card info-card">
+                <div class="card-header">
+                    <i class="fas fa-truck"></i> Supplier
+                </div>
+                <div class="card-body">
+                    <div class="info-row">
+                        <span class="label">Name:</span>
+                        <span class="value" id="supplier-name">@Model.Supplier.SupplierName</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">Supplier Code:</span>
+                        <span class="value" id="supplier-code">NCC-@Model.Supplier.SupplierId</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">Phone:</span>
+                        <span class="value" id="supplier-phone">@Model.Supplier.Phone</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Products Table -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-boxes"></i> Product List
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="products-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 10%">SKU</th>
+                            <th style="width: 25%">PRODUCT NAME</th>
+                            <th style="width: 10%">ORDER QTY</th>
+                            <th style="width: 10%">ACTUAL RECEIVED</th>
+                            <th style="width: 20%">STORAGE LOCATION</th>
+                            <th style="width: 15%">ACTION</th>
+                        </tr>
+                    </thead>
+                    <tbody id="products-tbody">
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="summary-item">
+                        <span>Total SKUs:</span>
+                        <strong id="total-sku">0</strong>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="summary-item">
+                        <span>Total Ordered Qty:</span>
+                        <strong id="total-ordered">0</strong>
+                    </div>
+                    <div class="summary-item">
+                        <span>Total Actual Received:</span>
+                        <strong id="total-received" class="text-primary">0</strong>
+                    </div>
+                    <div class="summary-item">
+                        <span>Status:</span>
+                        <strong id="receipt-status" class="text-warning">Missing 5 items</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Location Selection Modal -->
+<div class="modal fade" id="locationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Select Storage Location</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    Product: <strong id="modal-product-name"></strong><br />
+                    Quantity to store: <strong id="modal-quantity"></strong>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Location Code</th>
+                                <th>Location Name</th>
+                                <th>Shelf</th>
+                                <th>Current Stock</th>
+                                <th>Select</th>
+                            </tr>
+                        </thead>
+                        <tbody id="locations-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+
+        const purchaseOrderId = @Model.PurchaseOrderId;
+        const warehouseId = @ViewBag.WarehouseId;
+        const userId = @ViewBag.UserId;
+
+        console.log('🔍 Variables check:', {
+            purchaseOrderId: purchaseOrderId,
+            warehouseId: warehouseId,
+            userId: userId
+        });
+    </script>
+    <script src="~/js/Inventory/StockInDetails.js"></script>
+}

@@ -1,0 +1,318 @@
+﻿/* =========================================================
+   GLOBAL THEME VARIABLES
+========================================================= */
+:root {
+    --accent: #2c3e50;
+    --accent-hover: #34495e;
+    --accent-light: #3f5873;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --border: #e3e8ee;
+    --text-main: #2d3436;
+    --text-muted: #6c757d;
+    --bg-page: #f4f7fb;
+    --bg-hover: #eef2f7;
+}
+
+/* =========================================================
+   PAGE BACKGROUND
+========================================================= */
+body {
+    background: var(--bg-page);
+    color: var(--text-main);
+}
+
+/* =========================================================
+   HEADER SECTION
+========================================================= */
+.header-section {
+    background: linear-gradient(180deg, var(--accent), var(--accent-hover));
+    color: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 15px rgba(44, 62, 80, 0.35);
+}
+
+    .header-section h2 {
+        font-weight: 600;
+    }
+
+    .header-section .btn-outline-secondary {
+        background: white;
+        color: var(--accent);
+        border: 2px solid white;
+    }
+
+        .header-section .btn-outline-secondary:hover {
+            background: rgba(255,255,255,0.9);
+        }
+
+/* =========================================================
+   INFO CARDS
+========================================================= */
+.info-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: white;
+    transition: 0.25s ease;
+}
+
+    .info-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    }
+
+    .info-card .card-header {
+        background: linear-gradient(180deg, var(--accent), var(--accent-hover));
+        color: white;
+        font-weight: 600;
+        border: none;
+    }
+
+    .info-card .card-body {
+        padding: 1.25rem;
+    }
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: .45rem 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+    .info-row:last-child {
+        border-bottom: none;
+    }
+
+    .info-row .label {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .info-row .value {
+        font-weight: 600;
+    }
+
+/* =========================================================
+   PRODUCTS TABLE
+========================================================= */
+.table {
+    margin-bottom: 0;
+    background: white;
+}
+
+    .table thead th {
+        background: linear-gradient(180deg, var(--accent), var(--accent-hover));
+        color: white;
+        font-size: .75rem;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        border: none;
+        padding: 1rem;
+        position: sticky;
+        top: 0;
+        z-index: 5;
+    }
+
+    .table td {
+        vertical-align: middle;
+        padding: 1rem;
+    }
+
+    .table tbody tr {
+        transition: .15s ease;
+    }
+
+        .table tbody tr:hover {
+            background: var(--bg-hover);
+        }
+
+        .table tbody tr.split-row {
+            background: #eaf1f8;
+            border-left: 4px solid var(--accent);
+        }
+
+/* =========================================================
+   SKU BADGE
+========================================================= */
+.sku-badge {
+    background: linear-gradient(180deg, var(--accent), var(--accent-hover));
+    color: white;
+    padding: 0.45rem 0.75rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: .85rem;
+}
+
+/* =========================================================
+   PRODUCT NAME
+========================================================= */
+.product-name {
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+/* =========================================================
+   INPUTS
+========================================================= */
+.qty-input {
+    width: 90px;
+    text-align: center;
+    font-weight: 600;
+    border: 2px solid #dee2e6;
+    transition: .2s;
+}
+
+    .qty-input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 0.2rem rgba(44,62,80,.2);
+    }
+
+.location-select {
+    border: 2px solid #dee2e6;
+}
+
+    .location-select:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 0.2rem rgba(44,62,80,.2);
+    }
+
+/* =========================================================
+   LOCATION INFO ALERT
+========================================================= */
+.location-info .alert {
+    font-size: .85rem;
+    margin-top: .5rem;
+}
+
+.alert-warning {
+    background: #fef3c7;
+    border-color: var(--warning);
+}
+
+.alert-success {
+    background: #d1fae5;
+    border-color: var(--success);
+}
+
+/* =========================================================
+   SUMMARY FOOTER
+========================================================= */
+.card-footer {
+    background: linear-gradient(180deg, #f8f9fa, #e9ecef);
+    border-top: 2px solid #dee2e6;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: .4rem 0;
+}
+
+    .summary-item strong {
+        font-size: 1.1rem;
+    }
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+.btn {
+    border-radius: 6px;
+    padding: .45rem 1.1rem;
+    font-weight: 500;
+    transition: .2s;
+}
+
+.btn-primary {
+    background: linear-gradient(180deg, var(--accent), var(--accent-hover));
+    border: none;
+}
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 14px rgba(44,62,80,.35);
+    }
+
+.btn-success {
+    background: linear-gradient(180deg, #10b981, #059669);
+    border: none;
+}
+
+.btn-warning {
+    background: linear-gradient(180deg, #f59e0b, #d97706);
+    border: none;
+    color: white;
+}
+
+.btn-danger {
+    background: linear-gradient(180deg, #ef4444, #dc2626);
+    border: none;
+}
+
+/* =========================================================
+   MODAL
+========================================================= */
+.modal-header {
+    background: linear-gradient(180deg, var(--accent), var(--accent-hover));
+    color: white;
+}
+
+/* =========================================================
+   BADGES
+========================================================= */
+.badge {
+    border-radius: 5px;
+    font-weight: 500;
+}
+
+/* =========================================================
+   ANIMATION
+========================================================= */
+.card {
+    animation: fadeIn .4s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--accent), var(--accent-hover));
+    border-radius: 10px;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+@media (max-width: 768px) {
+
+    .header-section {
+        padding: 1rem;
+    }
+
+    .table {
+        font-size: .85rem;
+    }
+
+    .qty-input {
+        width: 65px;
+    }
+}

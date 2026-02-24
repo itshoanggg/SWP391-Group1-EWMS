@@ -25,6 +25,7 @@ public partial class Location
     [StringLength(20)]
     public string? Rack { get; set; }
 
+    [Column("Capacity")]
     public int Capacity { get; set; }
 
     [InverseProperty("Location")]

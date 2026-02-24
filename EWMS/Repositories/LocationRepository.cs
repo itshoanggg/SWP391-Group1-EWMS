@@ -1,18 +1,46 @@
 using EWMS.DTOs;
 using EWMS.Models;
+using EWMS.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace EWMS.Repositories
 {
-    public class LocationRepository : ILocationRepository
+    public class LocationRepository : GenericRepository<Location>,
+        EWMS.Repositories.Interfaces.ILocationRepository,
+        EWMS.Repositories.ILocationRepository
     {
-        private readonly EWMSDbContext _context;
-
-        public LocationRepository(EWMSDbContext context)
+        public LocationRepository(EWMSDbContext context) : base(context)
         {
-            _context = context;
         }
 
+        // Legacy (Interfaces) methods used by StockService via UnitOfWork
+        public async Task<IEnumerable<Location>> GetByWarehouseIdAsync(int warehouseId)
+        {
+            return await _dbSet
+                .Where(l => l.WarehouseId == warehouseId)
+                .OrderBy(l => l.LocationCode)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Location>> GetByRackAsync(int warehouseId, string rack)
+        {
+            return await _dbSet
+                .Where(l => l.WarehouseId == warehouseId && l.Rack == rack)
+                .OrderBy(l => l.LocationCode)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<string>> GetRacksAsync(int warehouseId)
+        {
+            return await _dbSet
+                .Where(l => l.WarehouseId == warehouseId && l.Rack != null)
+                .Select(l => l.Rack!)
+                .Distinct()
+                .OrderBy(r => r)
+                .ToListAsync();
+        }
+
+        // New (master) methods used by StockOutReceiptService, etc.
         public async Task<List<Location>> GetLocationsByWarehouseAsync(int warehouseId)
         {
             return await _context.Locations
@@ -32,7 +60,7 @@ namespace EWMS.Repositories
         {
             var result = await _context.Inventories
                 .Include(i => i.Location)
-                .Where(i => i.Location.WarehouseId == warehouseId && i.ProductId == productId && i.Quantity > 0)
+                .Where(i => i.Location.WarehouseId == warehouseId && i.ProductId == productId && (i.Quantity ?? 0) > 0)
                 .Select(i => new LocationInventoryDto
                 {
                     LocationId = i.LocationId,

@@ -1,0 +1,197 @@
+﻿
+@section Styles {
+    <link rel="stylesheet" href="~/css/Inventory/InventoryDashboard.css" />
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-chart-line"></i> Inventory Dashboard</h2>
+        <div>
+            <button class="btn btn-primary" onclick="refreshDashboard()">
+                <i class="fas fa-sync-alt"></i> Làm mới
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="row mb-4">
+        <!-- Total Products -->
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="kpi-card kpi-primary">
+                <div class="kpi-icon">
+                    <i class="fas fa-boxes"></i>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-label">Total Products</div>
+                    <div class="kpi-value" id="total-products">0</div>
+                    <div class="kpi-change positive">
+                        <i class="fas fa-arrow-up"></i> 12% from last month
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Stock -->
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="kpi-card kpi-success">
+                <div class="kpi-icon">
+                    <i class="fas fa-cubes"></i>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-label">Total Stock</div>
+                    <div class="kpi-value" id="total-stock">0</div>
+                    <div class="kpi-change positive">
+                        <i class="fas fa-arrow-up"></i> 8% from last month
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Low Stock Items -->
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="kpi-card kpi-warning">
+                <div class="kpi-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-label">Low Stock Items</div>
+                    <div class="kpi-value" id="low-stock-count">0</div>
+                    <div class="kpi-change negative">
+                        <i class="fas fa-arrow-down"></i> Needs attention
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Out of Stock -->
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="kpi-card kpi-danger">
+                <div class="kpi-icon">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-label">Out of Stock</div>
+                    <div class="kpi-value" id="out-of-stock-count">0</div>
+                    <div class="kpi-change negative">
+                        <i class="fas fa-arrow-down"></i> Urgent
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 1 -->
+    <div class="row mb-4">
+        <div class="col-lg-8 mb-3">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-exchange-alt"></i> Nhập - Xuất - Tồn</h5>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary active" onclick="updateStockMovement('week', this)">7 ngày</button>
+                        <button class="btn btn-outline-primary" onclick="updateStockMovement('month', this)">1 tháng</button>
+                        <button class="btn btn-outline-primary" onclick="updateStockMovement('year', this)">1 năm</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="stockMovementChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-3">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-chart-area"></i> Số lượng & Doanh thu</h5>
+                    <select class="form-select form-select-sm w-auto" onchange="updateSalesRevenue(this.value)">
+                        <option value="week">1 tuần</option>
+                        <option value="month" selected>1 tháng</option>
+                        <option value="year">1 năm</option>
+                    </select>
+                </div>
+                <div class="card-body">
+                    <canvas id="salesRevenueChart" height="180"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="row mb-4">
+        <div class="col-lg-8 mb-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Xu hướng doanh thu</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="businessTrendChart" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Tỷ trọng sản phẩm</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="categoryChart" height="150"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Tables -->
+    <div class="row">
+        <div class="col-lg-8 mb-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-history"></i> Hoạt động gần đây</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="activities-table">
+                            <thead>
+                                <tr>
+                                    <th>Loại</th>
+                                    <th>Mô tả</th>
+                                    <th>Người thực hiện</th>
+                                    <th>Thời gian</th>
+                                    <th class="text-end">Giá trị</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" class="text-center">Đang tải...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-3">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Cảnh báo sản phẩm</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group" id="low-stock-list">
+                        <div class="text-center">Đang tải...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // ✅ INJECT WarehouseId từ Controller vào JavaScript
+        window.warehouseId = @ViewBag.WarehouseId;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+    <script src="~/js/Inventory/InventoryDashboard.js"></script>
+}
+
+

@@ -1,0 +1,128 @@
+﻿@model IEnumerable<EWMS.Models.PurchaseOrder>
+
+@{
+    ViewData["Title"] = "Purchase Order List";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-shopping-bag"></i> Purchase Orders</h2>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Create Order
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle"></i> @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle"></i> @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="col-md-6">
+                <label class="form-label">Search:</label>
+                <input type="text" class="form-control" id="searchInput" placeholder="Search by order number or supplier...">
+            </div>
+        </div>
+    </div>
+
+    <!-- Purchase Orders Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Purchase Order List</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="purchaseOrderTable">
+                    <thead>
+                        <tr>
+                            <th>ORDER NO.</th>
+                            <th>SUPPLIER</th>
+                            <th>QUANTITY</th>
+                            <th>TOTAL AMOUNT</th>
+                            <th>CREATED BY</th>
+                            <th>STATUS</th>
+                            <th>ACTION</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Any())
+                        {
+                            @foreach (var po in Model)
+                            {
+                                var totalQty = po.PurchaseOrderDetails.Sum(d => d.Quantity);
+                                var totalAmount = po.PurchaseOrderDetails.Sum(d => d.TotalPrice ?? 0);
+                                var statusBadge = po.Status switch
+                                {
+                                    "Pending" => "badge bg-warning text-dark",
+                                    "Approved" => "badge bg-info",
+                                    "Received" => "badge bg-success",
+                                    "Cancelled" => "badge bg-danger",
+                                    _ => "badge bg-secondary"
+                                };
+                                var statusText = po.Status switch
+                                {
+                                    "Pending" => "Pending Approval",
+                                    "Approved" => "Approved",
+                                    "Received" => "Received",
+                                    "Cancelled" => "Cancelled",
+                                    _ => po.Status
+                                };
+
+                                <tr>
+                                    <td><strong>PO-@po.PurchaseOrderId.ToString("D4")</strong></td>
+                                    <td>@po.Supplier.SupplierName</td>
+                                    <td>@totalQty</td>
+                                    <td>@totalAmount.ToString("N0") đ</td>
+                                    <td>@(po.CreatedByNavigation?.FullName ?? "N/A")</td>
+                                    <td><span class="@statusBadge">@statusText</span></td>
+                                    <td>
+                                        <a asp-action="Details" asp-route-id="@po.PurchaseOrderId"
+                                           class="btn btn-sm btn-info" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        @if (po.Status == "Pending")
+                                        {
+                                            <button onclick="deletePurchaseOrder(@po.PurchaseOrderId)"
+                                                    class="btn btn-sm btn-danger" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">
+                                    No purchase orders found
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script src="~/js/PurchaseOrder/PurchaseOrder.js"></script>
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/PurchaseOrder/PurchaseOrder.css" />
+}

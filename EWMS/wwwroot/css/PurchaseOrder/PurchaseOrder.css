@@ -1,0 +1,325 @@
+﻿/* =========================================================
+   PURCHASE ORDER MODULE — ENTERPRISE THEME
+========================================================= */
+
+/* =========================================================
+   GLOBAL COLOR SYSTEM
+========================================================= */
+:root {
+    --accent: #2c3e50;
+    --accent-hover: #34495e;
+    --accent-light: #3f5873;
+    --success: #10b981;
+    --success-dark: #059669;
+    --warning: #f59e0b;
+    --warning-dark: #d97706;
+    --danger: #ef4444;
+    --danger-dark: #dc2626;
+    --border: #e3e8ee;
+    --bg-soft: #eef2f7;
+    --bg-page: #f4f7fb;
+    --text-main: #2d3436;
+    --text-muted: #6c757d;
+}
+
+/* =========================================================
+   PAGE
+========================================================= */
+body {
+    background: var(--bg-page);
+    color: var(--text-main);
+}
+
+/* =========================================================
+   GRADIENT BACKGROUNDS
+========================================================= */
+.bg-gradient-primary,
+.bg-gradient-purple {
+    background: linear-gradient(180deg, var(--accent), var(--accent-hover));
+}
+
+.bg-gradient-danger {
+    background: linear-gradient(180deg, var(--danger), var(--danger-dark));
+}
+
+.bg-gradient-success {
+    background: linear-gradient(180deg, var(--success), var(--success-dark));
+}
+
+/* =========================================================
+   CARDS
+========================================================= */
+.card {
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    margin-bottom: 1.5rem;
+    border-radius: 10px;
+    overflow: hidden;
+    transition: .25s ease;
+    animation: fadeIn .4s ease-out;
+}
+
+    .card:hover {
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        transform: translateY(-2px);
+    }
+
+.card-header {
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+    border-bottom: none;
+    background: linear-gradient(180deg, var(--accent), var(--accent-hover));
+    color: white;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* =========================================================
+   TABLES
+========================================================= */
+.table th {
+    background: var(--bg-soft);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: .75rem;
+    letter-spacing: .5px;
+    border-bottom: 2px solid var(--accent);
+    padding: 1rem;
+    color: var(--accent);
+}
+
+.table td {
+    padding: .75rem 1rem;
+    vertical-align: middle;
+}
+
+.table-hover tbody tr:hover {
+    background: var(--bg-soft);
+}
+
+.table-bordered {
+    border: 1px solid var(--border);
+}
+
+    .table-bordered th,
+    .table-bordered td {
+        border: 1px solid var(--border);
+    }
+
+.table tfoot tr {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+/* =========================================================
+   PRODUCT TABLE
+========================================================= */
+.product-row:hover {
+    background: var(--bg-soft);
+}
+
+.sku-display {
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.total-display {
+    background: #e9ecef;
+    font-weight: 600;
+    text-align: right;
+}
+
+/* =========================================================
+   BADGES
+========================================================= */
+.badge {
+    padding: .45rem .75rem;
+    font-weight: 500;
+    border-radius: 5px;
+}
+
+    .badge.bg-primary,
+    .badge.bg-info {
+        background: var(--accent) !important;
+    }
+
+    .badge.bg-success {
+        background: var(--success) !important;
+    }
+
+    .badge.bg-warning {
+        background: var(--warning) !important;
+        color: white !important;
+    }
+
+    .badge.bg-danger {
+        background: var(--danger) !important;
+    }
+
+    .badge.bg-secondary {
+        background: #6b7280 !important;
+    }
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    padding: .5rem 1.2rem;
+    transition: .2s;
+}
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 14px rgba(0,0,0,.15);
+    }
+
+.btn-primary {
+    background: linear-gradient(180deg, var(--accent), var(--accent-hover));
+    border: none;
+}
+
+.btn-success {
+    background: linear-gradient(180deg, var(--success), var(--success-dark));
+    border: none;
+}
+
+.btn-warning {
+    background: linear-gradient(180deg, var(--warning), var(--warning-dark));
+    border: none;
+    color: white;
+}
+
+.btn-danger {
+    background: linear-gradient(180deg, var(--danger), var(--danger-dark));
+    border: none;
+}
+
+/* =========================================================
+   FORMS
+========================================================= */
+.form-label {
+    font-weight: 500;
+    margin-bottom: .4rem;
+}
+
+.form-control,
+.form-select {
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    padding: .55rem .9rem;
+    transition: .2s;
+}
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 .2rem rgba(44,62,80,.15);
+    }
+
+/* =========================================================
+   ALERTS
+========================================================= */
+.alert-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.alert-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.alert-warning {
+    background: #fef3c7;
+}
+
+.alert-info {
+    background: #e8edf3;
+    color: var(--accent);
+}
+
+/* =========================================================
+   FILTER SECTION
+========================================================= */
+.filter-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+}
+
+/* =========================================================
+   DETAILS PAGE
+========================================================= */
+.detail-label {
+    color: var(--text-muted);
+    font-size: .85rem;
+}
+
+.detail-value {
+    font-weight: 600;
+}
+
+/* =========================================================
+   TOTALS
+========================================================= */
+.total-row {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.total-amount {
+    font-size: 1.3rem;
+    color: var(--danger);
+}
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--accent), var(--accent-hover));
+    border-radius: 10px;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+@media (max-width: 768px) {
+    .card-body {
+        padding: 1rem;
+    }
+
+    .table th, .table td {
+        padding: .5rem;
+        font-size: .85rem;
+    }
+
+    .btn {
+        padding: .4rem .8rem;
+        font-size: .85rem;
+    }
+}
+
+/* =========================================================
+   ANIMATION
+========================================================= */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

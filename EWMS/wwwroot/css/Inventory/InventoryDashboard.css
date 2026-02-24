@@ -1,0 +1,496 @@
+﻿
+/* =========================================================
+   EWMS DASHBOARD - CUSTOM STYLES
+========================================================= */
+
+/* =========================================================
+   CARD STYLES
+========================================================= */
+.card {
+    border: none;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+    .card:hover {
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        transform: translateY(-2px);
+    }
+
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: 600;
+    border-bottom: none;
+    padding: 1rem 1.5rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* =========================================================
+   KPI CARDS
+========================================================= */
+.kpi-card {
+    display: flex;
+    align-items: center;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    background: white;
+    overflow: hidden;
+    position: relative;
+}
+
+.kpi-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+}
+
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+}
+
+.kpi-card.kpi-primary::before {
+    background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+}
+
+.kpi-card.kpi-success::before {
+    background: linear-gradient(180deg, #56ab2f 0%, #a8e063 100%);
+}
+
+.kpi-card.kpi-warning::before {
+    background: linear-gradient(180deg, #f7971e 0%, #ffd200 100%);
+}
+
+.kpi-card.kpi-danger::before {
+    background: linear-gradient(180deg, #eb3349 0%, #f45c43 100%);
+}
+
+.kpi-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    margin-right: 1.25rem;
+    flex-shrink: 0;
+}
+
+.kpi-primary .kpi-icon {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.kpi-success .kpi-icon {
+    background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+    color: white;
+}
+
+.kpi-warning .kpi-icon {
+    background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+    color: white;
+}
+
+.kpi-danger .kpi-icon {
+    background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+    color: white;
+}
+
+.kpi-content {
+    flex: 1;
+}
+
+.kpi-label {
+    font-size: 0.85rem;
+    color: #6c757d;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+}
+
+.kpi-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 0.25rem;
+}
+
+.kpi-change {
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.kpi-change.positive {
+    color: #28a745;
+}
+
+.kpi-change.positive i {
+    margin-right: 3px;
+}
+
+.kpi-change.negative {
+    color: #dc3545;
+}
+
+.kpi-change.negative i {
+    margin-right: 3px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .kpi-card {
+        padding: 1rem;
+    }
+
+    .kpi-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+        margin-right: 1rem;
+    }
+
+    .kpi-value {
+        font-size: 1.5rem;
+    }
+}
+
+.bg-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.bg-success {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+}
+
+.bg-info {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+}
+
+.bg-warning {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important;
+}
+
+.icon-box {
+    opacity: 0.3;
+    transition: opacity 0.3s ease;
+}
+
+.card:hover .icon-box {
+    opacity: 0.5;
+}
+
+.text-white-50 {
+    opacity: 0.7;
+}
+
+/* =========================================================
+   BUTTON GROUPS
+========================================================= */
+.btn-group {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+    .btn-group .btn {
+        border-radius: 0;
+        transition: all 0.3s ease;
+    }
+
+        .btn-group .btn:first-child {
+            border-top-left-radius: 0.25rem;
+            border-bottom-left-radius: 0.25rem;
+        }
+
+        .btn-group .btn:last-child {
+            border-top-right-radius: 0.25rem;
+            border-bottom-right-radius: 0.25rem;
+        }
+
+        .btn-group .btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: #667eea;
+            color: white;
+        }
+
+.btn-outline-primary:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: #667eea;
+}
+
+/* =========================================================
+   CHARTS
+========================================================= */
+canvas {
+    max-height: 400px;
+}
+
+/* =========================================================
+   TABLES
+========================================================= */
+.table {
+    margin-bottom: 0;
+}
+
+    .table thead th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .table tbody tr {
+        transition: all 0.2s ease;
+    }
+
+.table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: scale(1.01);
+}
+
+/* =========================================================
+   BADGES
+========================================================= */
+.badge {
+    padding: 0.5rem 0.8rem;
+    font-weight: 500;
+    font-size: 0.8rem;
+    border-radius: 5px;
+}
+
+.bg-success {
+    background-color: #28a745 !important;
+}
+
+.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+/* =========================================================
+   LOW STOCK ALERTS
+========================================================= */
+.list-group-item {
+    border-left: 3px solid #dc3545;
+    transition: all 0.3s ease;
+    margin-bottom: 0.5rem;
+    border-radius: 5px;
+}
+
+    .list-group-item:hover {
+        background-color: #fff5f5;
+        transform: translateX(5px);
+        box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
+    }
+
+    .list-group-item h6 {
+        margin-bottom: 0.3rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .list-group-item small {
+        color: #6c757d;
+    }
+
+.badge.rounded-pill {
+    font-size: 0.9rem;
+    padding: 0.4rem 0.8rem;
+    min-width: 40px;
+}
+
+/* =========================================================
+   FORM CONTROLS
+========================================================= */
+.form-select {
+    border-radius: 5px;
+    border: 1px solid #dee2e6;
+    transition: all 0.3s ease;
+}
+
+    .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+.btn {
+    border-radius: 5px;
+    font-weight: 500;
+    padding: 0.5rem 1.2rem;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+.btn i {
+    margin-right: 0.5rem;
+}
+
+/* =========================================================
+   ANIMATIONS
+========================================================= */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* =========================================================
+   RESPONSIVE STYLES
+========================================================= */
+@media (max-width: 768px) {
+    .card-body {
+        padding: 1rem;
+    }
+
+    .btn-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+        .btn-group .btn {
+            border-radius: 0.25rem !important;
+            margin-bottom: 0.25rem;
+        }
+
+    canvas {
+        max-height: 250px;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+    }
+
+    h3 {
+        font-size: 1.2rem;
+    }
+
+    h5 {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .table {
+        font-size: 0.85rem;
+    }
+
+    .card-title {
+        font-size: 0.9rem;
+    }
+
+    .icon-box i {
+        font-size: 1.5rem !important;
+    }
+}
+
+/* =========================================================
+   LOADING SPINNER
+========================================================= */
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+/* =========================================================
+   UTILITY CLASSES
+========================================================= */
+.text-muted {
+    color: #6c757d !important;
+}
+
+.text-primary {
+    color: #667eea !important;
+}
+
+.mb-3 {
+    margin-bottom: 1rem !important;
+}
+
+.mb-4 {
+    margin-bottom: 1.5rem !important;
+}
+
+/* =========================================================
+   SCROLLBAR CUSTOMIZATION
+========================================================= */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+}
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #764ba2;
+    }
+
+/* =========================================================
+   PRINT STYLES
+========================================================= */
+@media print {
+    .btn, .btn-group {
+        display: none;
+    }
+
+    .card {
+        box-shadow: none;
+        border: 1px solid #dee2e6;
+        page-break-inside: avoid;
+    }
+}
