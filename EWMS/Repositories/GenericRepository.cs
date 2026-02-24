@@ -7,12 +7,12 @@ namespace EWMS.Repositories
 {
     public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
-        protected readonly EWMSContext _context;
+        protected readonly EWMSDbContext _context;
         protected readonly DbSet<T> _dbSet;
 
-        public EWMSContext Context => _context;
+        public EWMSDbContext Context => _context;
 
-        public GenericRepository(EWMSContext context)
+        public GenericRepository(EWMSDbContext context)
         {
             _context = context;
             _dbSet = context.Set<T>();

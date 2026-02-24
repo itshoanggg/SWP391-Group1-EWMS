@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EWMS.Models;
 
-public partial class EWMSContext : DbContext
+public partial class EWMSDbContext : DbContext
 {
-    public EWMSContext()
+    public EWMSDbContext()
     {
     }
 
-    public EWMSContext(DbContextOptions<EWMSContext> options)
+    public EWMSDbContext(DbContextOptions<EWMSDbContext> options)
         : base(options)
     {
     }
@@ -56,13 +56,14 @@ public partial class EWMSContext : DbContext
     public virtual DbSet<Warehouse> Warehouses { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseSqlServer("Name=connectionStrings:DBContext");
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("Server=localhost;Database=EWMS;User Id=sa;Password=123;TrustServerCertificate=True");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ActivityLog>(entity =>
         {
-            entity.HasKey(e => e.LogId).HasName("PK__Activity__5E5499A82C4F0A7F");
+            entity.HasKey(e => e.LogId).HasName("PK__Activity__5E5499A88A4A1BD6");
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
 
@@ -73,7 +74,7 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<Inventory>(entity =>
         {
-            entity.HasKey(e => e.InventoryId).HasName("PK__Inventor__F5FDE6D3360C993B");
+            entity.HasKey(e => e.InventoryId).HasName("PK__Inventor__F5FDE6D30AD3E968");
 
             entity.Property(e => e.LastUpdated).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.Quantity).HasDefaultValue(0);
@@ -85,7 +86,9 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<Location>(entity =>
         {
-            entity.HasKey(e => e.LocationId).HasName("PK__Location__E7FEA477613B303E");
+            entity.HasKey(e => e.LocationId).HasName("PK__Location__E7FEA477B3648E27");
+
+            entity.Property(e => e.Capacity).HasDefaultValue(200);
 
             entity.Property(e => e.Capacity)
           .HasDefaultValue(200);
@@ -95,7 +98,7 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<Product>(entity =>
         {
-            entity.HasKey(e => e.ProductId).HasName("PK__Products__B40CC6EDC7A61A4B");
+            entity.HasKey(e => e.ProductId).HasName("PK__Products__B40CC6ED0D0460B1");
 
             entity.Property(e => e.CostPrice).HasDefaultValue(0m);
             entity.Property(e => e.SellingPrice).HasDefaultValue(0m);
@@ -105,12 +108,12 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<ProductCategory>(entity =>
         {
-            entity.HasKey(e => e.CategoryId).HasName("PK__ProductC__19093A2B93B9B1E2");
+            entity.HasKey(e => e.CategoryId).HasName("PK__ProductC__19093A2B5BEBEBCB");
         });
 
         modelBuilder.Entity<PurchaseOrder>(entity =>
         {
-            entity.HasKey(e => e.PurchaseOrderId).HasName("PK__Purchase__036BAC447FBF68B3");
+            entity.HasKey(e => e.PurchaseOrderId).HasName("PK__Purchase__036BAC44907DB00F");
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.Status).HasDefaultValue("Pending");
@@ -132,7 +135,7 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<PurchaseOrderDetail>(entity =>
         {
-            entity.HasKey(e => e.PurchaseOrderDetailId).HasName("PK__Purchase__5026B6F84F5F19A5");
+            entity.HasKey(e => e.PurchaseOrderDetailId).HasName("PK__Purchase__5026B6F8F3DE3DF8");
 
             entity.Property(e => e.TotalPrice).HasComputedColumnSql("([Quantity]*[UnitPrice])", true);
 
@@ -145,16 +148,15 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasKey(e => e.RoleId).HasName("PK__Roles__8AFACE3A148249CC");
+            entity.HasKey(e => e.RoleId).HasName("PK__Roles__8AFACE3A46CFC6C0");
         });
 
         modelBuilder.Entity<SalesOrder>(entity =>
         {
-            entity.HasKey(e => e.SalesOrderId).HasName("PK__SalesOrd__B14003C2F4BA375C");
+            entity.HasKey(e => e.SalesOrderId).HasName("PK__SalesOrd__B14003C20855141B");
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.Status).HasDefaultValue("Pending");
-            entity.Property(e => e.TotalAmount).HasDefaultValue(0m);
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.SalesOrders)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -169,7 +171,7 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<SalesOrderDetail>(entity =>
         {
-            entity.HasKey(e => e.SalesOrderDetailId).HasName("PK__SalesOrd__6B9B51056BE74B36");
+            entity.HasKey(e => e.SalesOrderDetailId).HasName("PK__SalesOrd__6B9B5105283D350A");
 
             entity.Property(e => e.TotalPrice).HasComputedColumnSql("([Quantity]*[UnitPrice])", true);
 
@@ -182,7 +184,7 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<StockInDetail>(entity =>
         {
-            entity.HasKey(e => e.StockInDetailId).HasName("PK__StockInD__EEDA103318348378");
+            entity.HasKey(e => e.StockInDetailId).HasName("PK__StockInD__EEDA10336BCA716C");
 
             entity.Property(e => e.TotalPrice).HasComputedColumnSql("([Quantity]*[UnitPrice])", true);
 
@@ -199,7 +201,7 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<StockInReceipt>(entity =>
         {
-            entity.HasKey(e => e.StockInId).HasName("PK__StockInR__794DA64C84130DCB");
+            entity.HasKey(e => e.StockInId).HasName("PK__StockInR__794DA64C972DD569");
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.ReceivedDate).HasDefaultValueSql("(getdate())");
@@ -220,7 +222,7 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<StockOutDetail>(entity =>
         {
-            entity.HasKey(e => e.StockOutDetailId).HasName("PK__StockOut__EB248EFF9FC5E871");
+            entity.HasKey(e => e.StockOutDetailId).HasName("PK__StockOut__EB248EFFF2BB9B54");
 
             entity.Property(e => e.TotalPrice).HasComputedColumnSql("([Quantity]*[UnitPrice])", true);
 
@@ -237,7 +239,7 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<StockOutReceipt>(entity =>
         {
-            entity.HasKey(e => e.StockOutId).HasName("PK__StockOut__C5308D9A54B5C975");
+            entity.HasKey(e => e.StockOutId).HasName("PK__StockOut__C5308D9ABE69A017");
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.IssuedDate).HasDefaultValueSql("(getdate())");
@@ -258,12 +260,12 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<Supplier>(entity =>
         {
-            entity.HasKey(e => e.SupplierId).HasName("PK__Supplier__4BE6669411A3F6FF");
+            entity.HasKey(e => e.SupplierId).HasName("PK__Supplier__4BE666940123C261");
         });
 
         modelBuilder.Entity<TransferDetail>(entity =>
         {
-            entity.HasKey(e => e.TransferDetailId).HasName("PK__Transfer__F9BF690F254219EF");
+            entity.HasKey(e => e.TransferDetailId).HasName("PK__Transfer__F9BF690FFA8A9B6C");
 
             entity.HasOne(d => d.Product).WithMany(p => p.TransferDetails)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -274,7 +276,7 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<TransferRequest>(entity =>
         {
-            entity.HasKey(e => e.TransferId).HasName("PK__Transfer__954901715439A3D4");
+            entity.HasKey(e => e.TransferId).HasName("PK__Transfer__95490171829B880B");
 
             entity.Property(e => e.RequestedDate).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.Status).HasDefaultValue("Pending");
@@ -297,7 +299,7 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.UserId).HasName("PK__Users__1788CCAC12569D20");
+            entity.HasKey(e => e.UserId).HasName("PK__Users__1788CCACA6872C7E");
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.IsActive).HasDefaultValue(true);
@@ -310,7 +312,7 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<UserWarehouse>(entity =>
         {
-            entity.HasKey(e => e.UserWarehouseId).HasName("PK__UserWare__BEEFA8468367BB9B");
+            entity.HasKey(e => e.UserWarehouseId).HasName("PK__UserWare__BEEFA8461CC98871");
 
             entity.Property(e => e.AssignedDate).HasDefaultValueSql("(getdate())");
 
@@ -321,7 +323,7 @@ public partial class EWMSContext : DbContext
 
         modelBuilder.Entity<Warehouse>(entity =>
         {
-            entity.HasKey(e => e.WarehouseId).HasName("PK__Warehous__2608AFD9B08FC7A7");
+            entity.HasKey(e => e.WarehouseId).HasName("PK__Warehous__2608AFD9B10411D1");
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
         });

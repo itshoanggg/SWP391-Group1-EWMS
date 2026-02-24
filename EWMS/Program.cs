@@ -16,16 +16,24 @@ namespace EWMS
             // Add services to the container.
             builder.Services.AddControllersWithViews();
 
-            // Configure DbContext
-            builder.Services.AddDbContext<EWMSContext>(options =>
+            // Configure DbContext (use EWMSDbContext)
+            builder.Services.AddDbContext<EWMSDbContext>(options =>
                 options.UseSqlServer(
                     builder.Configuration.GetConnectionString("DBContext")
                 ));
 
-            // Register Unit of Work
-            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+            // Register Master Repositories/Services (Sales/StockOut/InventoryCheck)
+            builder.Services.AddScoped<EWMS.Repositories.IInventoryRepository, InventoryRepository>();
+            builder.Services.AddScoped<ISalesOrderRepository, SalesOrderRepository>();
+            builder.Services.AddScoped<EWMS.Repositories.IProductRepository, ProductRepository>();
+            builder.Services.AddScoped<IStockOutReceiptRepository, StockOutReceiptRepository>();
+            builder.Services.AddScoped<EWMS.Repositories.ILocationRepository, LocationRepository>();
+            builder.Services.AddScoped<IInventoryCheckService, InventoryCheckService>();
+            builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
+            builder.Services.AddScoped<IStockOutReceiptService, StockOutReceiptService>();
 
-            // Register Services
+            // Register Unit of Work and legacy-style services that depend on it
+            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
             builder.Services.AddScoped<IStockInService, StockInService>();
             builder.Services.AddScoped<IStockService, StockService>();
@@ -41,7 +49,6 @@ namespace EWMS
             if (!app.Environment.IsDevelopment())
             {
                 app.UseExceptionHandler("/Home/Error");
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
 

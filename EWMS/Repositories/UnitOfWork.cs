@@ -5,7 +5,7 @@ namespace EWMS.Repositories
 {
     public class UnitOfWork : IUnitOfWork
     {
-        private readonly EWMSContext _context;
+        private readonly EWMSDbContext _context;
 
         public IPurchaseOrderRepository PurchaseOrders { get; private set; }
         public IStockInRepository StockIns { get; private set; }
@@ -16,7 +16,7 @@ namespace EWMS.Repositories
         public IUserWarehouseRepository UserWarehouses { get; private set; }
         public ISupplierRepository Suppliers { get; private set; }
 
-        public UnitOfWork(EWMSContext context)
+        public UnitOfWork(EWMSDbContext context)
         {
             _context = context;
 

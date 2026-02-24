@@ -1,0 +1,139 @@
+﻿@model EWMS.ViewModels.SalesOrderListViewModel
+
+@{
+    ViewData["Title"] = "Sales Order Management";
+}
+
+<div class="page-header">
+    <h1>Sales Order Management</h1>
+    <p>Create and manage sales orders - @Model.WarehouseName</p>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <h3 class="mb-0">Order List</h3>
+        <div class="d-flex align-items-center gap-2">
+            <a asp-action="Create" class="btn btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Create New Order
+            </a>
+        </div>
+        <form asp-action="Index" method="get" class="w-100 mt-2">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <input type="text" name="customer" value="@Model.FilterCustomer" class="form-control" placeholder="Customer name or phone" />
+                </div>
+                <div class="col-md-2">
+                    <select name="status" class="form-select">
+                        <option value="" selected="@(string.IsNullOrEmpty(Model.FilterStatus) ? "selected" : null)">All Status</option>
+                        <option value="Pending" selected="@(Model.FilterStatus == "Pending" ? "selected" : null)">Pending</option>
+                        <option value="Completed" selected="@(Model.FilterStatus == "Completed" ? "selected" : null)">Completed</option>
+                        <option value="Canceled" selected="@(Model.FilterStatus == "Canceled" ? "selected" : null)">Canceled</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-outline-primary">Filter</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="table-container">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Customer</th>
+                    <th>Phone</th>
+                    <th>Expected Delivery</th>
+                    <th>Total Amount</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Orders.Any())
+                {
+                    @foreach (var order in Model.Orders)
+                    {
+                        <tr>
+                            <td><strong>@order.OrderNumber</strong></td>
+                            <td>@order.CustomerName</td>
+                            <td>@order.CustomerPhone</td>
+                            <td>@order.ExpectedDeliveryDate.ToString("dd/MM/yyyy")</td>
+                            <td><strong>@order.TotalAmount.ToString("N0") ₫</strong></td>
+                            <td>
+                                @{
+                                    var badgeClass = order.Status switch
+                                    {
+                                        "Pending" => "badge-pending",
+                                        "Partial" => "badge-partial",
+                                        "Completed" => "badge-completed",
+                                        "Canceled" => "badge-rejected",
+                                        _ => "badge-secondary"
+                                    };
+                                }
+                                <span class="badge @badgeClass">@order.Status</span>
+                            </td>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@order.SalesOrderId" class="btn btn-primary btn-sm">
+                                    View Details
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="7" class="text-center">No orders found</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        
+        @if (Model.TotalPages > 1)
+        {
+            <nav aria-label="Page navigation" class="mt-3">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item @(Model.Page <= 1 ? "disabled" : null)">
+                        <a class="page-link" asp-action="Index" asp-route-customer="@Model.FilterCustomer" asp-route-status="@Model.FilterStatus" asp-route-page="@(Model.Page - 1)">Previous</a>
+                    </li>
+                    @for (int i = 1; i <= Model.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == Model.Page ? "active" : null)">
+                            <a class="page-link" asp-action="Index" asp-route-customer="@Model.FilterCustomer" asp-route-status="@Model.FilterStatus" asp-route-page="@i">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : null)">
+                        <a class="page-link" asp-action="Index" asp-route-customer="@Model.FilterCustomer" asp-route-status="@Model.FilterStatus" asp-route-page="@(Model.Page + 1)">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        }
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/salesorder.css" />
+}

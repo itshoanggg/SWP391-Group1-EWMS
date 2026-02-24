@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EWMS.Models;
 
-[Index("RoleName", Name = "UQ__Roles__8A2B6160E15FF524", IsUnique = true)]
+[Index("RoleName", Name = "UQ__Roles__8A2B6160D5861D69", IsUnique = true)]
 public partial class Role
 {
     [Key]
