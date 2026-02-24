@@ -2,6 +2,12 @@
    STOCK IN - INDEX PAGE JAVASCRIPT
 ========================================================= */
 
+// Pagination state
+let currentPage = 1;
+let pageSize = 10;
+let totalItems = 0;
+let allOrders = [];
+
 // Format helpers
 function formatCurrency(value) {
     return new Intl.NumberFormat('vi-VN', {
@@ -106,71 +112,34 @@ async function loadPurchaseOrders() {
                     </td>
                 </tr>
             `;
+            updatePaginationInfo(0, 0, 0);
+            renderPagination(0);
             return;
         }
 
+        // Store all orders and calculate pagination
+        allOrders = data;
+        totalItems = data.length;
+        const totalPages = Math.ceil(totalItems / pageSize);
+        
+        // Reset to page 1 if current page is out of bounds
+        if (currentPage > totalPages) {
+            currentPage = 1;
+        }
+
+        // Get current page data
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const pageData = allOrders.slice(startIndex, endIndex);
+
         // Render data
-        tbody.innerHTML = '';
-        data.forEach(order => {
-            const row = document.createElement('tr');
+        renderTableRows(pageData, tbody);
 
-            // Check if clickable (Delivered or PartiallyReceived)
-            const isClickable = order.status === 'Delivered' || order.status === 'PartiallyReceived';
-            const isCancelled = order.status === 'Cancelled';
+        // Update pagination
+        updatePaginationInfo(startIndex + 1, Math.min(endIndex, totalItems), totalItems);
+        renderPagination(totalPages);
 
-            if (isClickable) {
-                row.className = 'clickable';
-                row.onclick = () => viewDetails(order.purchaseOrderId);
-            } else {
-                row.className = 'disabled';
-                row.title = isCancelled
-                    ? 'This order has been cancelled'
-                    : 'Stock-in is only available for orders with status "Delivered" or "Partially Received"';
-            }
-
-            // Format expected date
-            let expectedDateDisplay = 'N/A';
-            if (order.expectedReceivingDate) {
-                expectedDateDisplay = formatDate(order.expectedReceivingDate);
-            }
-
-            row.innerHTML = `
-                <td><strong>PO-${String(order.purchaseOrderId).padStart(4, '0')}</strong></td>
-                <td>${order.supplierName || 'N/A'}</td>
-                <td>${expectedDateDisplay}</td>
-                <td class="text-end">${formatNumber(order.totalItems)}</td>
-                <td class="text-end">
-                    ${order.receivedItems > 0
-                    ? `<span class="badge bg-success">${formatNumber(order.receivedItems)}</span>`
-                    : '<span class="text-muted">0</span>'}
-                </td>
-                <td class="text-end">
-                    ${isCancelled
-                    ? '<span class="badge bg-danger">Cancelled</span>'
-                    : order.remainingItems > 0
-                        ? `<span class="badge bg-warning text-dark">${formatNumber(order.remainingItems)}</span>`
-                        : '<span class="badge bg-success">Complete</span>'}
-                </td>
-                <td>${getStatusBadge(order.status)}</td>
-                <td>
-                    ${isClickable
-                    ? `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); viewDetails(${order.purchaseOrderId})">
-                                <i class="fas fa-box-open"></i> Stock In
-                           </button>`
-                    : isCancelled
-                        ? `<button class="btn btn-sm btn-danger" disabled>
-                                    <i class="fas fa-ban"></i> Cancelled
-                               </button>`
-                        : `<button class="btn btn-sm btn-secondary" disabled>
-                                    <i class="fas fa-lock"></i> Not Ready
-                               </button>`
-                }
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
-
-        console.log(`Loaded ${data.length} purchase orders`);
+        console.log(`Loaded ${data.length} purchase orders, showing page ${currentPage} of ${totalPages}`);
     } catch (error) {
         console.error('Load purchase orders failed:', error);
 
@@ -188,6 +157,203 @@ async function loadPurchaseOrders() {
     }
 }
 
+// Render table rows
+function renderTableRows(orders, tbody) {
+    tbody.innerHTML = '';
+    orders.forEach(order => {
+        const row = document.createElement('tr');
+
+        // Check if clickable (Delivered or PartiallyReceived)
+        const isClickable = order.status === 'Delivered' || order.status === 'PartiallyReceived';
+        const isCancelled = order.status === 'Cancelled';
+
+        if (isClickable) {
+            row.className = 'clickable';
+            row.onclick = () => viewDetails(order.purchaseOrderId);
+        } else {
+            row.className = 'disabled';
+            row.title = isCancelled
+                ? 'This order has been cancelled'
+                : 'Stock-in is only available for orders with status "Delivered" or "Partially Received"';
+        }
+
+        // Format expected date
+        let expectedDateDisplay = 'N/A';
+        if (order.expectedReceivingDate) {
+            expectedDateDisplay = formatDate(order.expectedReceivingDate);
+        }
+
+        row.innerHTML = `
+            <td><strong>PO-${String(order.purchaseOrderId).padStart(4, '0')}</strong></td>
+            <td>${order.supplierName || 'N/A'}</td>
+            <td>${expectedDateDisplay}</td>
+            <td class="text-end">${formatNumber(order.totalItems)}</td>
+            <td class="text-end">
+                ${order.receivedItems > 0
+                ? `<span class="badge bg-success">${formatNumber(order.receivedItems)}</span>`
+                : '<span class="text-muted">0</span>'}
+            </td>
+            <td class="text-end">
+                ${isCancelled
+                ? '<span class="badge bg-danger">Cancelled</span>'
+                : order.remainingItems > 0
+                    ? `<span class="badge bg-warning text-dark">${formatNumber(order.remainingItems)}</span>`
+                    : '<span class="badge bg-success">Complete</span>'}
+            </td>
+            <td>${getStatusBadge(order.status)}</td>
+            <td>
+                ${isClickable
+                ? `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); viewDetails(${order.purchaseOrderId})">
+                            <i class="fas fa-box-open"></i> Stock In
+                       </button>`
+                : isCancelled
+                    ? `<button class="btn btn-sm btn-danger" disabled>
+                                <i class="fas fa-ban"></i> Cancelled
+                           </button>`
+                    : `<button class="btn btn-sm btn-secondary" disabled>
+                                <i class="fas fa-lock"></i> Not Ready
+                           </button>`
+            }
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Update pagination info
+function updatePaginationInfo(start, end, total) {
+    const infoElement = document.getElementById('pagination-info');
+    if (infoElement) {
+        const spanElement = infoElement.querySelector('span:last-child');
+        if (spanElement) {
+            spanElement.textContent = `Showing ${start} to ${end} of ${total} entries`;
+        } else {
+            // Fallback if structure is different
+            infoElement.innerHTML = `
+                <i class="fas fa-info-circle text-primary"></i>
+                <span>Showing ${start} to ${end} of ${total} entries</span>
+            `;
+        }
+    }
+}
+
+// Render pagination controls
+function renderPagination(totalPages) {
+    const paginationElement = document.getElementById('pagination-controls');
+    if (!paginationElement) {
+        return;
+    }
+
+    if (totalPages <= 1) {
+        paginationElement.innerHTML = '';
+        return;
+    }
+
+    let html = '<ul class="pagination mb-0">';
+
+    // Previous button
+    html += `
+        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage - 1}); return false;" title="Previous Page">
+                <i class="fas fa-chevron-left me-1"></i> Previous
+            </a>
+        </li>
+    `;
+
+    // Page numbers
+    const maxVisible = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+    if (endPage - startPage < maxVisible - 1) {
+        startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    // First page
+    if (startPage > 1) {
+        html += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(1); return false;" title="Go to page 1">1</a></li>`;
+        if (startPage > 2) {
+            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+    }
+
+    // Page numbers
+    for (let i = startPage; i <= endPage; i++) {
+        html += `
+            <li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="changePage(${i}); return false;" title="Go to page ${i}">${i}</a>
+            </li>
+        `;
+    }
+
+    // Last page
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+        html += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${totalPages}); return false;" title="Go to page ${totalPages}">${totalPages}</a></li>`;
+    }
+
+    // Next button
+    html += `
+        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage + 1}); return false;" title="Next Page">
+                Next <i class="fas fa-chevron-right ms-1"></i>
+            </a>
+        </li>
+    `;
+
+    html += '</ul>';
+    paginationElement.innerHTML = html;
+}
+
+// Change page
+function changePage(page) {
+    const totalPages = Math.ceil(totalItems / pageSize);
+    if (page < 1 || page > totalPages) return;
+    
+    currentPage = page;
+    
+    // Get current page data
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const pageData = allOrders.slice(startIndex, endIndex);
+    
+    // Render table
+    const tbody = document.querySelector('#purchase-orders-table tbody');
+    if (tbody) {
+        renderTableRows(pageData, tbody);
+    }
+    
+    // Update pagination
+    updatePaginationInfo(startIndex + 1, Math.min(endIndex, totalItems), totalItems);
+    renderPagination(totalPages);
+}
+
+// Change page size
+function changePageSize() {
+    const pageSizeSelect = document.getElementById('page-size-select');
+    if (pageSizeSelect) {
+        pageSize = parseInt(pageSizeSelect.value);
+        currentPage = 1; // Reset to first page
+        
+        const totalPages = Math.ceil(totalItems / pageSize);
+        const startIndex = 0;
+        const endIndex = pageSize;
+        const pageData = allOrders.slice(startIndex, endIndex);
+        
+        // Render table
+        const tbody = document.querySelector('#purchase-orders-table tbody');
+        if (tbody) {
+            renderTableRows(pageData, tbody);
+        }
+        
+        // Update pagination
+        updatePaginationInfo(1, Math.min(endIndex, totalItems), totalItems);
+        renderPagination(totalPages);
+    }
+}
+
 // View details (go to stock in form)
 function viewDetails(purchaseOrderId) {
     window.location.href = `/StockIn/Details/${purchaseOrderId}`;
@@ -198,6 +364,7 @@ let searchTimeout;
 function handleSearch() {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
+        currentPage = 1; // Reset to first page on search
         loadPurchaseOrders();
     }, 500);
 }

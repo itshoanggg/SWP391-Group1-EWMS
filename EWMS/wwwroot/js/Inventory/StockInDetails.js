@@ -200,17 +200,62 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) {
 
     select.innerHTML = '<option value="">-- Chọn vị trí --</option>';
 
+    // Get the product ID for this row to check usage across all rows of the same product
+    const productId = parseInt(select.dataset.productId);
+    
+    // Track used locations and their remaining capacity for this product
+    const usedLocations = {};
+    
+    receiptItems.forEach(item => {
+        // Only count items with valid locationId (not null, not undefined, not NaN)
+        if (item.productId === productId && item.locationId && !isNaN(item.locationId) && item.rowId !== rowId) {
+            const qtyInput = document.getElementById(`qty-${item.rowId}`);
+            const qty = qtyInput ? parseInt(qtyInput.value) || 0 : item.receivedQty;
+            
+            if (!usedLocations[item.locationId]) {
+                usedLocations[item.locationId] = 0;
+            }
+            usedLocations[item.locationId] += qty;
+        }
+    });
+
+    console.log(`📍 Populating locations for rowId: ${rowId}, productId: ${productId}`);
+    console.log(`   Used locations:`, usedLocations);
+    console.log(`   All receiptItems for this product:`, receiptItems.filter(i => i.productId === productId).map(i => ({
+        rowId: i.rowId,
+        locationId: i.locationId,
+        receivedQty: i.receivedQty
+    })));
+
+    const availableOptions = [];
     locations.forEach(loc => {
-        const available = loc.maxCapacity - loc.currentStock;
-        if (available <= 0) return;
-        if (excludedLocationId && loc.locationId === excludedLocationId) return;
+        const baseAvailable = loc.maxCapacity - loc.currentStock;
+        
+        // Subtract quantity already allocated to this location by other rows
+        const usedQty = usedLocations[loc.locationId] || 0;
+        const actualAvailable = baseAvailable - usedQty;
+        
+        console.log(`   ${loc.locationCode}: baseAvailable=${baseAvailable}, usedQty=${usedQty}, actualAvailable=${actualAvailable}`);
+        
+        // Only show locations with actual available capacity
+        if (actualAvailable <= 0) {
+            console.log(`   ❌ ${loc.locationCode} excluded (actualAvailable <= 0)`);
+            return;
+        }
+        if (excludedLocationId && loc.locationId === excludedLocationId) {
+            console.log(`   ❌ ${loc.locationCode} excluded (explicitly excluded)`);
+            return;
+        }
 
         const option = document.createElement('option');
         option.value = loc.locationId;
-        option.textContent = `${loc.locationCode} - ${loc.locationName} (${loc.currentStock}/${loc.maxCapacity})`;
-        option.dataset.available = available;
+        option.textContent = `${loc.locationCode} - ${loc.locationName} (${loc.currentStock + usedQty}/${loc.maxCapacity})`;
+        option.dataset.available = actualAvailable;
         select.appendChild(option);
+        availableOptions.push(loc.locationCode);
     });
+
+    console.log(`   ✅ Available options: [${availableOptions.join(', ')}]`);
 }
 
 /* =========================================================
@@ -235,19 +280,32 @@ function handleQuantityChange(input) {
 ========================================================= */
 function handleLocationChange(select) {
     const rowId = select.dataset.rowId;
-    const locationId = parseInt(select.value);
+    const locationId = parseInt(select.value) || null;
     const qtyInput = document.getElementById(`qty-${rowId}`);
     const qty = parseInt(qtyInput.value) || 0;
 
     const item = receiptItems.find(i => i.rowId === rowId);
-    if (!item) return;
+    if (!item) {
+        console.log(`⚠️ Item not found for rowId: ${rowId}`);
+        return;
+    }
 
-    item.locationId = locationId || null;
+    const oldLocationId = item.locationId;
+    item.locationId = locationId;
+
+    console.log(`🔄 Location changed for ${rowId}: ${oldLocationId} → ${item.locationId}, qty: ${qty}`);
 
     if (locationId && qty > 0) {
         checkCapacity(rowId, qty);
     } else {
         clearLocationInfo(rowId);
+    }
+
+    // Refresh all dropdowns for the same product when location changes
+    // This ensures all dropdowns reflect the latest allocations
+    if (oldLocationId !== item.locationId) {
+        console.log(`🔄 Triggering refresh for all location selects (productId: ${item.productId})`);
+        refreshAllLocationSelects(item.productId);
     }
 }
 
@@ -267,7 +325,19 @@ async function checkCapacity(rowId, quantity) {
     const res = await fetch(`/StockIn/CheckLocationCapacity?locationId=${locationId}`);
     const data = await res.json();
 
-    const available = data.maxCapacity - data.currentStock;
+    // Calculate already allocated quantity to this location from other rows
+    const productId = parseInt(select.dataset.productId);
+    let allocatedQty = 0;
+    
+    receiptItems.forEach(item => {
+        if (item.productId === productId && item.locationId === locationId && item.rowId !== rowId) {
+            const qtyInput = document.getElementById(`qty-${item.rowId}`);
+            allocatedQty += qtyInput ? parseInt(qtyInput.value) || 0 : item.receivedQty;
+        }
+    });
+
+    const baseAvailable = data.maxCapacity - data.currentStock;
+    const available = baseAvailable - allocatedQty;
     const locationText = select.options[select.selectedIndex].text;
 
     if (quantity <= available) {
@@ -304,6 +374,8 @@ function clearLocationInfo(rowId) {
    SPLIT TO NEW LOCATION
 ========================================================= */
 function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
+    console.log(`➕ Splitting location: parentRow=${parentRowId}, totalQty=${totalQty}, firstCapacity=${firstCapacity}`);
+    
     const parentRow = document.getElementById(parentRowId);
     const parentItem = receiptItems.find(i => i.rowId === parentRowId);
     const product = productsData.find(p => p.productId === productId);
@@ -317,6 +389,9 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
 
     const parentLocationId = parseInt(document.getElementById(`location-${parentRowId}`).value);
     const remainingQty = totalQty - firstCapacity;
+    
+    console.log(`   Parent location: ${parentLocationId}, remaining qty: ${remainingQty}`);
+    
     if (remainingQty <= 0) return;
 
     const newRowId = `split-${Date.now()}`;
@@ -347,7 +422,7 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
 
     parentRow.after(newRow);
 
-    receiptItems.push({
+    const newItem = {
         rowId: newRowId,
         productId,
         productName: product.productName,
@@ -357,9 +432,15 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
         unitPrice: product.unitPrice,
         isSplit: true,
         parentRowId
-    });
+    };
+    
+    receiptItems.push(newItem);
+    
+    console.log(`   Created new split row: ${newRowId}`);
+    console.log(`   Current receiptItems for product ${productId}:`, receiptItems.filter(i => i.productId === productId));
 
-    populateLocationSelect(newRowId, locationsCache[productId], parentLocationId);
+    // Populate dropdown - it will automatically exclude used-up locations
+    populateLocationSelect(newRowId, locationsCache[productId]);
     updateSummary();
 }
 
@@ -517,12 +598,28 @@ function refreshAllLocationSelects(productId) {
     const locations = locationsCache[productId];
     if (!locations) return;
 
+    console.log('🔄 Refreshing all location selects for productId:', productId);
+
     receiptItems.forEach(item => {
         if (item.productId === productId) {
+            const select = document.getElementById(`location-${item.rowId}`);
+            if (!select) return;
+
+            const currentValue = item.locationId;
+            
+            // Repopulate the dropdown with updated availability
             populateLocationSelect(item.rowId, locations);
-            if (item.locationId) {
-                const select = document.getElementById(`location-${item.rowId}`);
-                if (select) select.value = item.locationId;
+            
+            // Restore the previously selected value if it still exists in the dropdown
+            if (currentValue) {
+                const optionExists = Array.from(select.options).some(opt => parseInt(opt.value) === currentValue);
+                if (optionExists) {
+                    select.value = currentValue;
+                } else {
+                    // Location is no longer available, clear the selection
+                    console.log(`⚠️ Location ${currentValue} no longer available for row ${item.rowId}`);
+                    item.locationId = null;
+                }
             }
         }
     });

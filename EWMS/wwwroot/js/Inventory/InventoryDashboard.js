@@ -50,6 +50,34 @@ async function loadKPIMetrics() {
 }
 
 /* =======================
+   KPI CARDS (New)
+======================= */
+async function loadKPICards() {
+    try {
+        const res = await fetch(`/InventoryDashboard/GetInventoryStats?warehouseId=${warehouseId}`);
+        const data = await res.json();
+
+        if (data.error) {
+            console.error('KPI Cards Error:', data.error);
+            return;
+        }
+
+        // Update KPI values
+        document.getElementById('total-products').textContent = formatNumber(data.totalProducts || 0);
+        document.getElementById('total-stock').textContent = formatNumber(data.totalStock || 0);
+        document.getElementById('low-stock-count').textContent = formatNumber(data.lowStockCount || 0);
+        document.getElementById('out-of-stock-count').textContent = formatNumber(data.outOfStockCount || 0);
+    } catch (error) {
+        console.error('Load KPI Cards failed:', error);
+        // Set default values on error
+        document.getElementById('total-products').textContent = '0';
+        document.getElementById('total-stock').textContent = '0';
+        document.getElementById('low-stock-count').textContent = '0';
+        document.getElementById('out-of-stock-count').textContent = '0';
+    }
+}
+
+/* =======================
    STOCK MOVEMENT
 ======================= */
 async function updateStockMovement(period = 'week', btn) {
@@ -364,6 +392,7 @@ async function refreshDashboard() {
     console.log('Refreshing dashboard for warehouse:', warehouseId);
 
     await Promise.all([
+        loadKPICards(),
         loadKPIMetrics(),
         updateStockMovement('week'),
         updateSalesRevenue('month'),

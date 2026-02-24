@@ -26,6 +26,8 @@ public partial class PurchaseOrder
     [Column(TypeName = "datetime")]
     public DateTime? ExpectedReceivingDate { get; set; }
 
+    [Column(TypeName = "decimal(18, 2)")]
+    public decimal? TotalAmount { get; set; }
 
     [Column(TypeName = "datetime")]
     public DateTime? CreatedAt { get; set; }

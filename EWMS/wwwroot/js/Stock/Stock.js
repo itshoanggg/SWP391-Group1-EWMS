@@ -31,21 +31,7 @@ function formatDate(dateString) {
    LOAD DATA
 ========================================================= */
 
-async function loadSummary() {
-    try {
-        const response = await fetch(`/Stock/GetStockSummary?warehouseId=${warehouseId}`);
-        const data = await response.json();
-        if (data.error) { console.error('Summary error:', data.error); return; }
-
-        document.getElementById('total-locations').textContent = formatNumber(data.totalLocations);
-        document.getElementById('total-products').textContent = formatNumber(data.totalProducts);
-        document.getElementById('total-stock').textContent = formatNumber(data.totalStock);
-        document.getElementById('total-capacity').textContent = formatNumber(data.totalCapacity);
-        document.getElementById('utilization-rate').textContent = data.utilizationRate + '%';
-    } catch (error) {
-        console.error('Load summary failed:', error);
-    }
-}
+// Summary cards removed from view - function no longer needed
 
 async function loadRacks() {
     try {
@@ -287,7 +273,7 @@ function selectLocation(locationId, locationCode, rack) {
 }
 
 async function refreshAll() {
-    await Promise.all([loadSummary(), loadRacks()]);
+    await loadRacks();
 }
 
 /* =========================================================

@@ -1,319 +1,199 @@
-﻿/* =========================================================
-   STOCK IN - LIST PAGE (BLUE PROFESSIONAL THEME)
-========================================================= */
-
 /* =========================================================
-   GRADIENT BACKGROUNDS
+   STOCK-IN INDEX - CSS
 ========================================================= */
-.bg-gradient-primary,
-.bg-primary {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-    color: #fff !important;
+
+/* Table row states */
+.table tbody tr.clickable {
+    cursor: pointer;
 }
 
-.bg-gradient-warning,
-.bg-warning {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
-    color: #fff !important;
+.table tbody tr.clickable:hover {
+    background-color: #e3f2fd;
 }
 
-.bg-gradient-info,
-.bg-info {
-    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
-    color: #fff !important;
+.table tbody tr.disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 
-.bg-gradient-success,
-.bg-success {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-    color: #fff !important;
+.table tbody tr.disabled:hover {
+    background-color: transparent;
 }
 
-/* =========================================================
-   CARD STYLES
-========================================================= */
-.card {
-    border: none;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
-    overflow: hidden;
-    animation: fadeIn 0.4s ease-out;
-}
-
-    .card:hover {
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-        transform: translateY(-3px);
-    }
-
-.card-header {
-    font-weight: 600;
-    padding: 1rem 1.5rem;
-    border-bottom: none;
-}
-
-.card-body {
-    padding: 1.5rem;
-}
-
-/* =========================================================
-   STATISTICS CARDS
-========================================================= */
-.icon-box {
-    opacity: 0.25;
-    transition: 0.3s;
-}
-
-.card:hover .icon-box {
-    opacity: 0.45;
-}
-
-/* =========================================================
-   TABLE STYLES
-========================================================= */
-.table {
-    margin-bottom: 0;
-}
-
-    .table thead th {
-        background-color: #eff6ff;
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 0.8rem;
-        letter-spacing: 0.5px;
-        border-bottom: 2px solid #3b82f6;
-        padding: 0.9rem;
-        color: #1e40af;
-    }
-
-    .table td {
-        vertical-align: middle;
-        padding: 0.75rem 0.9rem;
-    }
-
-    .table tbody tr {
-        transition: all 0.2s ease;
-        cursor: pointer;
-    }
-
-.table-hover tbody tr:hover {
-    background-color: #eff6ff;
-    transform: scale(1.005);
-}
-
-.table-bordered {
-    border: 1px solid #dbeafe;
-}
-
-    .table-bordered th,
-    .table-bordered td {
-        border: 1px solid #dbeafe;
-    }
-
-/* =========================================================
-   STATUS BADGES
-========================================================= */
+/* Badge styling */
 .badge {
-    padding: 0.45rem 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    border-radius: 6px;
-}
-
-.status-pending {
-    background-color: #f59e0b !important;
-    color: #fff !important;
-}
-
-.status-approved {
-    background-color: #3b82f6 !important;
-    color: #fff !important;
-}
-
-.status-received {
-    background-color: #10b981 !important;
-    color: #fff !important;
-}
-
-.status-cancelled {
-    background-color: #ef4444 !important;
-    color: #fff !important;
-}
-
-/* =========================================================
-   BUTTONS
-========================================================= */
-.btn {
-    border-radius: 6px;
-    font-weight: 500;
-    padding: 0.5rem 1.2rem;
-    transition: all 0.3s ease;
-}
-
-    .btn i {
-        margin-right: 0.4rem;
-    }
-
-.btn-primary {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    border: none;
-    color: #fff;
-}
-
-    .btn-primary:hover {
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
-    }
-
-.btn-sm {
-    padding: 0.25rem 0.75rem;
+    padding: 0.5rem 0.8rem;
     font-size: 0.85rem;
 }
 
-/* =========================================================
-   FORM CONTROLS
-========================================================= */
-.form-label {
+/* Card header styling */
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #fff;
+    border-bottom: 2px solid #e3e6ea;
+    padding: 1rem 1.25rem;
+}
+
+.card-header h5 {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.card-header h5 i {
+    font-size: 1.1rem;
+}
+
+/* Pagination styles */
+.pagination {
+    margin: 0;
+    gap: 0.25rem;
+}
+
+.page-item {
+    margin: 0 2px;
+}
+
+.page-link {
+    color: #495057;
+    border: 1px solid #dee2e6;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
     font-weight: 500;
-    margin-bottom: 0.4rem;
-    color: #374151;
+    transition: all 0.2s ease;
+    min-width: 40px;
+    text-align: center;
+    white-space: nowrap;
 }
 
-.form-select,
-.form-control {
-    border-radius: 6px;
-    border: 1px solid #d1d5db;
-    padding: 0.55rem 0.9rem;
-    transition: all 0.3s ease;
+/* Previous/Next buttons with text */
+.page-item:first-child .page-link,
+.page-item:last-child .page-link {
+    padding: 0.5rem 1rem;
+    min-width: auto;
 }
 
-    .form-select:focus,
-    .form-control:focus {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
-    }
-
-/* =========================================================
-   ACTION BUTTONS
-========================================================= */
-.action-buttons {
-    display: flex;
-    gap: 0.4rem;
+.page-link:hover {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-    .action-buttons .btn {
-        padding: 0.25rem 0.5rem;
-    }
-
-/* =========================================================
-   LOADING STATE
-========================================================= */
-.spinner-border {
-    width: 2.5rem;
-    height: 2.5rem;
-    color: #3b82f6;
+.page-link:focus {
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    z-index: 2;
 }
 
-/* =========================================================
-   ANIMATIONS
-========================================================= */
+.page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.3);
+}
+
+.page-item.active .page-link:hover {
+    transform: none;
+}
+
+.page-item.disabled .page-link {
+    color: #adb5bd;
+    pointer-events: none;
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+    opacity: 0.6;
+}
+
+/* Previous/Next buttons with icons */
+.page-link i {
+    font-size: 0.875rem;
+}
+
+/* Ellipsis styling */
+.page-item.disabled .page-link,
+.page-item.disabled span.page-link {
+    background-color: transparent;
+    border: none;
+    cursor: default;
+}
+
+/* Smooth scroll when changing pages */
+.table-responsive {
+    scroll-behavior: smooth;
+}
+
+/* Loading animation for pagination */
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(15px);
+        transform: translateY(10px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
     }
 }
 
-/* =========================================================
-   RESPONSIVE
-========================================================= */
-@media (max-width: 768px) {
-
-    .card-body {
-        padding: 1rem;
-    }
-
-    .table {
-        font-size: 0.85rem;
-    }
-
-    h2 {
-        font-size: 1.4rem;
-    }
-
-    .btn {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.85rem;
-    }
-
-    .action-buttons {
-        flex-direction: column;
-    }
+.pagination {
+    animation: fadeIn 0.3s ease;
 }
 
+/* Card footer styling */
+.card-footer {
+    background-color: #f8f9fa;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid #e3e6ea;
+}
+
+#pagination-info {
+    font-weight: 500;
+    color: #6c757d;
+}
+
+/* Page size selector */
+#page-size-select {
+    width: auto;
+    min-width: 70px;
+    border-radius: 0.375rem;
+    border: 1px solid #ced4da;
+    font-weight: 500;
+}
+
+#page-size-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.page-size-label {
+    font-size: 0.9rem;
+}
+
+/* Responsive adjustments */
 @media (max-width: 576px) {
-
-    .table-responsive {
-        font-size: 0.75rem;
+    .pagination {
+        flex-wrap: wrap;
+        gap: 0.15rem;
     }
 
-    .badge {
-        font-size: 0.65rem;
-        padding: 0.3rem 0.5rem;
+    .page-link {
+        padding: 0.375rem 0.5rem;
+        min-width: 35px;
+        font-size: 0.875rem;
     }
 
-    .icon-box i {
-        font-size: 1.4rem !important;
-    }
-}
-
-/* =========================================================
-   SCROLLBAR CUSTOMIZATION
-========================================================= */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: #f3f4f6;
-    border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    border-radius: 10px;
-}
-
-    ::-webkit-scrollbar-thumb:hover {
-        background: #2563eb;
+    /* Smaller Previous/Next on mobile */
+    .page-item:first-child .page-link,
+    .page-item:last-child .page-link {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
     }
 
-/* =========================================================
-   PRINT STYLES
-========================================================= */
-@media print {
-
-    .btn,
-    .form-select,
-    .form-control,
-    .input-group {
-        display: none;
+    #pagination-info {
+        font-size: 0.875rem;
     }
 
-    .card {
-        box-shadow: none;
-        border: 1px solid #dee2e6;
-        page-break-inside: avoid;
-    }
-
-    .table {
-        font-size: 0.85rem;
+    .card-footer {
+        padding: 0.75rem 1rem;
     }
 }

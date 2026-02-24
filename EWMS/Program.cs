@@ -1,4 +1,8 @@
 using EWMS.Models;
+using EWMS.Repositories;
+using EWMS.Repositories.Interfaces;
+using EWMS.Services;
+using EWMS.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace EWMS
@@ -12,10 +16,22 @@ namespace EWMS
             // Add services to the container.
             builder.Services.AddControllersWithViews();
 
+            // Configure DbContext
             builder.Services.AddDbContext<EWMSContext>(options =>
                 options.UseSqlServer(
                     builder.Configuration.GetConnectionString("DBContext")
                 ));
+
+            // Register Unit of Work
+            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+            // Register Services
+            builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+            builder.Services.AddScoped<IStockInService, StockInService>();
+            builder.Services.AddScoped<IStockService, StockService>();
+            builder.Services.AddScoped<IDashboardService, DashboardService>();
+            builder.Services.AddScoped<ISupplierService, SupplierService>();
+            builder.Services.AddScoped<IUserService, UserService>();
 
             var app = builder.Build();
 
@@ -38,7 +54,7 @@ namespace EWMS
 
             app.MapControllerRoute(
                 name: "default",
-                pattern: "{controller=InventoryDashboard}/{action=InventoryDashboard}/{id?}");
+                pattern: "{controller=StockIn}/{action=Index}/{id?}");
 
             app.Run();
         }
