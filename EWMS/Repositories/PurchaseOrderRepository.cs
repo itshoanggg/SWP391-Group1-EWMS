@@ -6,7 +6,7 @@ namespace EWMS.Repositories
 {
     public class PurchaseOrderRepository : GenericRepository<PurchaseOrder>, IPurchaseOrderRepository
     {
-        public PurchaseOrderRepository(EWMSContext context) : base(context)
+        public PurchaseOrderRepository(EWMSDbContext context) : base(context)
         {
         }
 
@@ -48,8 +48,7 @@ namespace EWMS.Repositories
                 .Where(po =>
                     po.WarehouseId == warehouseId &&
                     po.Status == "InTransit" &&
-                    po.ExpectedReceivingDate.HasValue &&
-                    po.ExpectedReceivingDate.Value.Date <= today)
+                    po.ExpectedReceivingDate.Date <= today)
                 .ToListAsync();
 
             foreach (var po in ordersToUpdate)

@@ -48,7 +48,7 @@ namespace EWMS.Services
                 CreatedBy = userId,
                 Status = "InTransit",
                 CreatedAt = DateTime.Now,
-                ExpectedReceivingDate = model.ExpectedReceivingDate,
+                ExpectedReceivingDate = model.ExpectedReceivingDate ?? DateTime.Now,
                 TotalAmount = totalAmount  // ✅ Save TotalAmount
             };
 

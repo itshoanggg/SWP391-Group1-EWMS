@@ -6,7 +6,7 @@ namespace EWMS.Repositories
 {
     public class SupplierRepository : GenericRepository<Supplier>, ISupplierRepository
     {
-        public SupplierRepository(EWMSContext context) : base(context)
+        public SupplierRepository(EWMSDbContext context) : base(context)
         {
         }
 

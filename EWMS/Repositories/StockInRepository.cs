@@ -6,7 +6,7 @@ namespace EWMS.Repositories
 {
     public class StockInRepository : GenericRepository<StockInReceipt>, IStockInRepository
     {
-        public StockInRepository(EWMSContext context) : base(context)
+        public StockInRepository(EWMSDbContext context) : base(context)
         {
         }
 

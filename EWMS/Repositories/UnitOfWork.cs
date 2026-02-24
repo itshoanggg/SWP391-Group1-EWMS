@@ -7,14 +7,14 @@ namespace EWMS.Repositories
     {
         private readonly EWMSDbContext _context;
 
-        public IPurchaseOrderRepository PurchaseOrders { get; private set; }
-        public IStockInRepository StockIns { get; private set; }
-        public IInventoryRepository Inventories { get; private set; }
-        public IProductRepository Products { get; private set; }
-        public ILocationRepository Locations { get; private set; }
-        public IWarehouseRepository Warehouses { get; private set; }
-        public IUserWarehouseRepository UserWarehouses { get; private set; }
-        public ISupplierRepository Suppliers { get; private set; }
+        public EWMS.Repositories.Interfaces.IPurchaseOrderRepository PurchaseOrders { get; private set; }
+        public EWMS.Repositories.Interfaces.IStockInRepository StockIns { get; private set; }
+        public EWMS.Repositories.Interfaces.IInventoryRepository Inventories { get; private set; }
+        public EWMS.Repositories.Interfaces.IProductRepository Products { get; private set; }
+        public EWMS.Repositories.Interfaces.ILocationRepository Locations { get; private set; }
+        public EWMS.Repositories.Interfaces.IWarehouseRepository Warehouses { get; private set; }
+        public EWMS.Repositories.Interfaces.IUserWarehouseRepository UserWarehouses { get; private set; }
+        public EWMS.Repositories.Interfaces.ISupplierRepository Suppliers { get; private set; }
 
         public UnitOfWork(EWMSDbContext context)
         {

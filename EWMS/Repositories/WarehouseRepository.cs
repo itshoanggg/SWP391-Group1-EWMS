@@ -5,7 +5,7 @@ namespace EWMS.Repositories
 {
     public class WarehouseRepository : GenericRepository<Warehouse>, IWarehouseRepository
     {
-        public WarehouseRepository(EWMSContext context) : base(context)
+        public WarehouseRepository(EWMSDbContext context) : base(context)
         {
         }
     }

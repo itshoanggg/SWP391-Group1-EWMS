@@ -6,7 +6,7 @@ namespace EWMS.Repositories
 {
     public class UserWarehouseRepository : GenericRepository<UserWarehouse>, IUserWarehouseRepository
     {
-        public UserWarehouseRepository(EWMSContext context) : base(context)
+        public UserWarehouseRepository(EWMSDbContext context) : base(context)
         {
         }
 

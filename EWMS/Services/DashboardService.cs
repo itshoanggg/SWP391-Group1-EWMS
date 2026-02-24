@@ -25,7 +25,7 @@ namespace EWMS.Services
                     && so.Status == "Completed"
                     && so.CreatedAt >= fromDate
                     && so.CreatedAt <= toDate)
-                .SumAsync(so => so.TotalAmount ?? 0);
+                .SumAsync(so => so.TotalAmount);
 
             // Profit
             var profitData = await (from so in _unitOfWork.Inventories.Context.SalesOrders
@@ -46,8 +46,7 @@ namespace EWMS.Services
             // Today orders
             var todayOrders = await _unitOfWork.Inventories.Context.SalesOrders
                 .Where(so => so.WarehouseId == warehouseId
-                    && so.CreatedAt.HasValue
-                    && so.CreatedAt.Value.Date == DateTime.Today)
+                    && so.CreatedAt.Date == DateTime.Today)
                 .CountAsync();
 
             // Inventory value
@@ -146,13 +145,13 @@ namespace EWMS.Services
                 .Where(so => so.WarehouseId == warehouseId
                     && so.CreatedAt >= fromDate
                     && so.Status == "Completed"
-                    && so.CreatedAt.HasValue)
-                .GroupBy(so => so.CreatedAt!.Value.Date)
+                    )
+                .GroupBy(so => so.CreatedAt.Date)
                 .Select(g => new
                 {
                     Date = g.Key,
                     Quantity = g.Count(),
-                    Revenue = g.Sum(so => so.TotalAmount ?? 0)
+                    Revenue = g.Sum(so => so.TotalAmount)
                 })
                 .OrderBy(x => x.Date)
                 .ToListAsync();
