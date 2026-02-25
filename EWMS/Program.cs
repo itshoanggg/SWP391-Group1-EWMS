@@ -4,6 +4,10 @@ using EWMS.Repositories.Interfaces;
 using EWMS.Services;
 using EWMS.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc.Authorization;
 
 namespace EWMS
 {
@@ -13,8 +17,27 @@ namespace EWMS
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
-            builder.Services.AddControllersWithViews();
+            // Add services to the container and require authentication globally.
+            builder.Services.AddControllersWithViews(options =>
+            {
+                var policy = new AuthorizationPolicyBuilder()
+                    .RequireAuthenticatedUser()
+                    .Build();
+                options.Filters.Add(new AuthorizeFilter(policy));
+            });
+
+            // Add HttpContextAccessor for reading claims in services
+            builder.Services.AddHttpContextAccessor();
+
+            // Cookie authentication
+            builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+                .AddCookie(options =>
+                {
+                    options.LoginPath = "/Account/Login";
+                    options.LogoutPath = "/Account/Logout";
+                    options.AccessDeniedPath = "/Account/AccessDenied";
+                    options.ExpireTimeSpan = TimeSpan.FromHours(8);
+                });
 
             // Configure DbContext (use EWMSDbContext)
             builder.Services.AddDbContext<EWMSDbContext>(options =>
@@ -43,8 +66,6 @@ namespace EWMS
 
             var app = builder.Build();
 
-
-
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment())
             {
@@ -57,6 +78,8 @@ namespace EWMS
 
             app.UseRouting();
 
+            // IMPORTANT: enable authentication before authorization
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.MapControllerRoute(
