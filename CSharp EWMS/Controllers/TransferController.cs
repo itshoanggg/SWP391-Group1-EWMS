@@ -1,12 +1,15 @@
-﻿using System;
+using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using EWMS.Services;
 using EWMS.Models;
 
 namespace EWMS.Controllers
 {
+    [Authorize] // require login
+    [Authorize(Roles = "Warehouse,Inventory,Admin")] // adjust role names to match DB values
     public class TransferController : Controller
     {
         private readonly TransferService _transferService;
@@ -37,7 +40,7 @@ namespace EWMS.Controllers
             if (!ModelState.IsValid)
             {
                 ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
-                ViewBag.Products = await _transferService.GetProductsAsync();
+                ViewBag.Products = await _transfer_service.GetProductsAsync();
                 return View(model);
             }
 
