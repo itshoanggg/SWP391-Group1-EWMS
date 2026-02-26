@@ -1,26 +1,39 @@
 ﻿using EWMS.DTOs;
 using EWMS.Services;
+using EWMS.Services.Interfaces;
 using EWMS.ViewModels;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace EWMS.Controllers
 {
+    [Authorize(Roles = "Sales Staff")]
     public class SalesOrderController : Controller
     {
         private readonly ISalesOrderService _salesOrderService;
         private readonly IInventoryCheckService _inventoryCheckService;
+        private readonly IUserService _userService;
 
         public SalesOrderController(
             ISalesOrderService salesOrderService,
-            IInventoryCheckService inventoryCheckService)
+            IInventoryCheckService inventoryCheckService,
+            IUserService userService)
         {
             _salesOrderService = salesOrderService;
             _inventoryCheckService = inventoryCheckService;
+            _userService = userService;
         }
 
         public async Task<IActionResult> Index(string? customer, string? status, int page = 1)
         {
-            int warehouseId = 1;
+            var userId = _userService.GetCurrentUserId();
+            if (userId == 0) return RedirectToAction("Login", "Account");
+            int warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            if (warehouseId == 0)
+            {
+                TempData["ErrorMessage"] = "Bạn chưa được phân công vào kho nào.";
+                return RedirectToAction("Index", "Home");
+            }
             const int pageSize = 5;
 
             var viewModel = await _salesOrderService
@@ -64,11 +77,19 @@ namespace EWMS.Controllers
 
         public async Task<IActionResult> Create()
         {
+            var userId = _userService.GetCurrentUserId();
+            if (userId == 0) return RedirectToAction("Login", "Account");
+            int warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            if (warehouseId == 0)
+            {
+                TempData["ErrorMessage"] = "Bạn chưa được phân công vào kho nào.";
+                return RedirectToAction("Index", "Home");
+            }
+
             var products = await _salesOrderService.GetProductsForSelectionAsync();
 
             ViewBag.Products = products;
-            ViewBag.WarehouseId = 1;
-            ViewBag.WarehouseName = "Hanoi Warehouse";
+            ViewBag.WarehouseId = warehouseId;
 
             return View();
         }
@@ -77,13 +98,21 @@ namespace EWMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(CreateSalesOrderViewModel model)
         {
+            var userId = _userService.GetCurrentUserId();
+            if (userId == 0) return RedirectToAction("Login", "Account");
+            int warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            if (warehouseId == 0)
+            {
+                TempData["ErrorMessage"] = "Bạn chưa được phân công vào kho nào.";
+                return RedirectToAction("Index", "Home");
+            }
+
             if (!ModelState.IsValid)
             {
                 var products = await _salesOrderService.GetProductsForSelectionAsync();
 
                 ViewBag.Products = products;
-                ViewBag.WarehouseId = model.WarehouseId;
-                ViewBag.WarehouseName = "Hanoi Warehouse";
+                ViewBag.WarehouseId = warehouseId;
 
                 TempData["ErrorMessage"] = "Please check the order information!";
                 return View(model);
@@ -95,13 +124,14 @@ namespace EWMS.Controllers
 
                 var products = await _salesOrderService.GetProductsForSelectionAsync();
                 ViewBag.Products = products;
-                ViewBag.WarehouseId = model.WarehouseId;
-                ViewBag.WarehouseName = "Hanoi Warehouse";
+                ViewBag.WarehouseId = warehouseId;
 
                 return View(model);
             }
 
-            int currentUserId = 3;
+            // Ensure model's warehouse matches user's warehouse
+            model.WarehouseId = warehouseId;
+            int currentUserId = userId;
 
             try
             {
@@ -124,8 +154,7 @@ namespace EWMS.Controllers
             var reloadProducts = await _salesOrderService.GetProductsForSelectionAsync();
 
             ViewBag.Products = reloadProducts;
-            ViewBag.WarehouseId = model.WarehouseId;
-            ViewBag.WarehouseName = "Hanoi Warehouse";
+            ViewBag.WarehouseId = warehouseId;
 
             return View(model);
         }

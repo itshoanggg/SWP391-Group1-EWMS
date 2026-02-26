@@ -131,11 +131,6 @@ function renderProductsTable() {
                 </select>
                 <div class="location-info mt-1" id="location-info-${rowId}"></div>
             </td>
-            <td>
-                <button class="btn btn-sm btn-primary" onclick="showLocationModal('${rowId}', ${product.productId})">
-                    <i class="fas fa-map-marker-alt"></i> Gọi vị trí
-                </button>
-            </td>
         `;
 
         tbody.appendChild(row);
@@ -194,7 +189,7 @@ async function loadLocationsForProduct(productId, rowId) {
     }
 }
 
-function populateLocationSelect(rowId, locations, excludedLocationId = null) {
+function populateLocationSelect(rowId, locations, excludedLocationId = null) { /* ensure options carry available capacity for immediate enforcement */
     const select = document.getElementById(`location-${rowId}`);
     if (!select) return;
 
@@ -282,7 +277,7 @@ function handleLocationChange(select) {
     const rowId = select.dataset.rowId;
     const locationId = parseInt(select.value) || null;
     const qtyInput = document.getElementById(`qty-${rowId}`);
-    const qty = parseInt(qtyInput.value) || 0;
+    let qty = parseInt(qtyInput.value) || 0;
 
     const item = receiptItems.find(i => i.rowId === rowId);
     if (!item) {
@@ -293,13 +288,37 @@ function handleLocationChange(select) {
     const oldLocationId = item.locationId;
     item.locationId = locationId;
 
-    console.log(`🔄 Location changed for ${rowId}: ${oldLocationId} → ${item.locationId}, qty: ${qty}`);
+    // If a location is selected, enforce capacity and still show split-suggestion when overflow
+    if (locationId) {
+        const option = select.options[select.selectedIndex];
+        const available = parseInt(option?.dataset?.available || '0');
 
-    if (locationId && qty > 0) {
-        checkCapacity(rowId, qty);
+        // Respect both remaining order qty (existing input max) and rack availability
+        const remainingMax = parseInt(qtyInput.max) || qty; // current logical ceiling for this row
+        const newMax = Math.min(remainingMax, isNaN(available) ? remainingMax : available);
+
+        qtyInput.max = newMax;
+
+        if (qty > newMax) {
+            // 1) Show split suggestion for the overflow amount based on the original qty
+            checkCapacity(rowId, qty);
+            // 2) Then cap the actual input value to the rack capacity so user can't exceed it
+            qty = newMax;
+            qtyInput.value = newMax;
+            item.receivedQty = newMax;
+            // Do NOT call checkCapacity again here to keep the split button visible with the remaining quantity
+        } else if (qty > 0) {
+            // Within capacity → just confirm info panel
+            checkCapacity(rowId, qty);
+        } else {
+            clearLocationInfo(rowId);
+        }
     } else {
         clearLocationInfo(rowId);
     }
+
+    console.log(`🔄 Location changed for ${rowId}: ${oldLocationId} → ${item.locationId}, qty: ${qty}`);
+
 
     // Refresh all dropdowns for the same product when location changes
     // This ensures all dropdowns reflect the latest allocations
@@ -417,7 +436,6 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
             </select>
             <div id="location-info-${newRowId}" class="mt-1"></div>
         </td>
-        <td></td>
     `;
 
     parentRow.after(newRow);
@@ -468,7 +486,8 @@ function removeSplitRow(rowId, parentRowId, qty) {
 /* =========================================================
    LOCATION MODAL
 ========================================================= */
-function showLocationModal(rowId, productId) {
+/* Modal selection removed as location is chosen via combobox */
+function showLocationModal_removed() {
     const productInfo = productsData.find(p => p.productId === productId);
     const qtyInput = document.getElementById(`qty-${rowId}`);
     const qty = qtyInput.value;
@@ -502,7 +521,8 @@ function showLocationModal(rowId, productId) {
     modal.show();
 }
 
-function selectLocationFromModal(rowId, locationId) {
+/* Modal selection removed */
+function selectLocationFromModal_removed() {
     const select = document.getElementById(`location-${rowId}`);
     select.value = locationId;
     handleLocationChange(select);

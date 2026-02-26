@@ -63,9 +63,34 @@ namespace EWMS.Controllers
 
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProperties);
 
+            // Prefer role-based landing unless user explicitly navigated to a specific non-default page
+            var defaultPath = Url.Action("Index", "StockIn") ?? "/StockIn/Index";
             if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
-                return Redirect(returnUrl);
+            {
+                var normalizedReturn = returnUrl.TrimEnd('/');
+                var normalizedDefault = defaultPath.TrimEnd('/');
+                if (!string.Equals(normalizedReturn, normalizedDefault, StringComparison.OrdinalIgnoreCase))
+                {
+                    return Redirect(returnUrl);
+                }
+            }
 
+            // Redirect by role to each user's page
+            var role = (user.Role?.RoleName ?? string.Empty).Trim().ToLowerInvariant();
+
+            // Sales team
+            if (role.Contains("sale"))
+                return RedirectToAction("Index", "SalesOrder");
+
+            // Purchasing/Procurement team (cover multiple variants)
+            if (role.Contains("purch") || role.Contains("procure"))
+                return RedirectToAction("Index", "PurchaseOrder");
+
+            // Inventory/Warehouse team
+            if (role.Contains("invent") || role.Contains("warehouse"))
+                return RedirectToAction("Index", "StockIn");
+
+            // Fallback
             return RedirectToAction("Index", "StockIn");
         }
 

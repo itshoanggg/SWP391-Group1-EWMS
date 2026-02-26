@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using EWMS.Services.Interfaces;
 using EWMS.ViewModels;
 
 namespace EWMS.Controllers
 {
+    [Authorize(Roles = "Inventory Staff,Inventory,Warehouse")]
     public class StockInController : Controller
     {
         private readonly IStockInService _stockInService;
@@ -70,9 +72,9 @@ namespace EWMS.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            if (purchaseOrder.Status != "Delivered" && purchaseOrder.Status != "PartiallyReceived")
+            if (purchaseOrder.Status != "ReadyToReceive" && purchaseOrder.Status != "PartiallyReceived")
             {
-                TempData["Error"] = "Chỉ có thể nhập kho cho đơn hàng đã về kho.";
+                TempData["Error"] = "Chỉ có thể nhập kho cho đơn hàng sẵn sàng nhận hoặc đã nhận một phần.";
                 return RedirectToAction(nameof(Index));
             }
 
