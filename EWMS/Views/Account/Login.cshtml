@@ -1,0 +1,141 @@
+﻿@model EWMS.ViewModels.LoginViewModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Sign in";
+    var returnUrl = ViewData["ReturnUrl"] as string ?? string.Empty;
+}
+
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700&display=swap" rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1a227f",
+                        "bg-light": "#f6f6f8",
+                        "bg-dark": "#121320"
+                    },
+                    fontFamily: { "display": ["Manrope", "sans-serif"] },
+                }
+            }
+        }
+    </script>
+    <title>EWMS — Sign in</title>
+</head>
+<body class="min-h-screen bg-bg-light dark:bg-bg-dark font-display text-slate-900 dark:text-slate-100 flex items-center justify-center p-6">
+    <div class="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-6 bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden">
+        <div class="hidden lg:flex flex-col justify-between p-10 bg-gradient-to-br from-primary/90 to-[#2b3a9b] text-white">
+            <div>
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
+                        <span class="material-symbols-outlined text-2xl">inventory_2</span>
+                    </div>
+                    <div>
+                        <div class="text-sm opacity-90 font-semibold">EWMS</div>
+                        <div class="text-xs opacity-80">Enterprise Warehouse Management</div>
+                    </div>
+                </div>
+                <h2 class="text-3xl font-extrabold leading-tight mb-3">Optimizing your logistics lifecycle</h2>
+                <p class="text-slate-200 text-sm max-w-[18rem] font-light">Streamline operations and manage stock with a modern, secure warehouse system.</p>
+            </div>
+            <div class="mt-8 flex items-center gap-3">
+                <div class="flex -space-x-2">
+                    <img class="inline-block h-9 w-9 rounded-full ring-2 ring-white/30" src="https://via.placeholder.com/48" alt="team" />
+                    <img class="inline-block h-9 w-9 rounded-full ring-2 ring-white/30" src="https://via.placeholder.com/48" alt="team" />
+                    <img class="inline-block h-9 w-9 rounded-full ring-2 ring-white/30" src="https://via.placeholder.com/48" alt="team" />
+                </div>
+                <div class="text-xs opacity-90">Trusted by 500+ global enterprises</div>
+            </div>
+        </div>
+
+        <div class="p-8 lg:p-12">
+            <div class="mb-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-lg bg-primary text-white flex items-center justify-center">
+                        <span class="material-symbols-outlined">inventory_2</span>
+                    </div>
+                    <h1 class="text-2xl font-bold">EWMS</h1>
+                </div>
+
+                <h3 class="text-2xl font-semibold mb-1">Welcome back</h3>
+                <p class="text-sm text-slate-500">Sign in to continue to your dashboard.</p>
+            </div>
+
+            <form asp-action="Login" asp-controller="Account" method="post" class="space-y-5" novalidate>
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+
+                <div>
+                    <label for="username" class="text-sm font-medium block mb-2">Username</label>
+                    <input asp-for="Username" id="username" type="text" autocomplete="username" required
+                           class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 focus:ring-2 focus:ring-primary outline-none" />
+                    <span asp-validation-for="Username" class="text-sm text-red-600 mt-1 block"></span>
+                </div>
+
+                <div>
+                    <label for="password" class="text-sm font-medium block mb-2">Password</label>
+                    <div class="relative">
+                        <input asp-for="Password" id="password" type="password" autocomplete="current-password" required
+                               class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 pr-12 focus:ring-2 focus:ring-primary outline-none" />
+                        <button id="togglePassword" type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary">
+                            <span class="material-symbols-outlined">visibility</span>
+                        </button>
+                    </div>
+                    <span asp-validation-for="Password" class="text-sm text-red-600 mt-1 block"></span>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <label class="inline-flex items-center gap-2 text-sm">
+                        <input asp-for="RememberMe" id="remember" type="checkbox" class="h-4 w-4 rounded text-primary border-slate-300" />
+                        <span>Remember this device</span>
+                    </label>
+                    <!-- removed social login & forgot-password per request -->
+                    <div></div>
+                </div>
+
+                <div>
+                    <button type="submit" class="w-full inline-flex items-center justify-center gap-2 bg-primary hover:bg-[#16206a] text-white font-semibold py-3.5 rounded-lg shadow-md">
+                        <span>Login to Dashboard</span>
+                        <span class="material-symbols-outlined">arrow_forward</span>
+                    </button>
+                </div>
+
+                <div asp-validation-summary="ModelOnly" class="text-sm text-red-600"></div>
+            </form>
+
+            <div class="mt-6 text-xs text-slate-500">
+                EWMS Enterprise v4.2.0-stable | Build 2024.11.08
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var btn = document.getElementById('togglePassword');
+            var pwd = document.getElementById('password');
+            if (!btn || !pwd) return;
+            btn.addEventListener('click', function () {
+                if (pwd.type === 'password') {
+                    pwd.type = 'text';
+                    btn.innerHTML = '<span class="material-symbols-outlined">visibility_off</span>';
+                } else {
+                    pwd.type = 'password';
+                    btn.innerHTML = '<span class="material-symbols-outlined">visibility</span>';
+                }
+            });
+        })();
+    </script>
+
+    @section Scripts {
+        <partial name="_ValidationScriptsPartial" />
+    }
+</body>
+</html>

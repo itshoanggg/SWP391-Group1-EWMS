@@ -18,7 +18,7 @@ namespace EWMS.Services
 
         public async Task<IEnumerable<PurchaseOrder>> GetPurchaseOrdersAsync(int warehouseId, string? status = null)
         {
-            await _unitOfWork.PurchaseOrders.UpdateToDeliveredAsync(warehouseId);
+            await _unitOfWork.PurchaseOrders.UpdateToReadyToReceiveAsync(warehouseId);
             await _unitOfWork.SaveChangesAsync();
 
             return await _unitOfWork.PurchaseOrders.GetByWarehouseIdAsync(warehouseId, status);
@@ -46,7 +46,7 @@ namespace EWMS.Services
                 SupplierId = model.SupplierId,
                 WarehouseId = warehouseId,
                 CreatedBy = userId,
-                Status = "InTransit",
+                Status = "Ordered",
                 CreatedAt = DateTime.Now,
                 ExpectedReceivingDate = model.ExpectedReceivingDate ?? DateTime.Now,
                 TotalAmount = totalAmount  // ✅ Save TotalAmount
@@ -76,15 +76,15 @@ namespace EWMS.Services
             return purchaseOrder;
         }
 
-        public async Task<bool> MarkAsDeliveredAsync(int id, int warehouseId)
+        public async Task<bool> MarkAsDeliveredAsync(int id, int warehouseId) // now marks as ReadyToReceive
         {
             var purchaseOrder = await _unitOfWork.PurchaseOrders.FirstOrDefaultAsync(
                 po => po.PurchaseOrderId == id && po.WarehouseId == warehouseId);
 
-            if (purchaseOrder == null || purchaseOrder.Status != "InTransit")
+            if (purchaseOrder == null || purchaseOrder.Status != "Ordered")
                 return false;
 
-            purchaseOrder.Status = "Delivered";
+            purchaseOrder.Status = "ReadyToReceive";
             await _unitOfWork.SaveChangesAsync();
             return true;
         }
@@ -94,7 +94,7 @@ namespace EWMS.Services
             var purchaseOrder = await _unitOfWork.PurchaseOrders.FirstOrDefaultAsync(
                 po => po.PurchaseOrderId == id && po.WarehouseId == warehouseId);
 
-            if (purchaseOrder == null || purchaseOrder.Status != "InTransit")
+            if (purchaseOrder == null || purchaseOrder.Status != "Ordered")
                 return false;
 
             purchaseOrder.Status = "Cancelled";
@@ -106,7 +106,7 @@ namespace EWMS.Services
         {
             var purchaseOrder = await _unitOfWork.PurchaseOrders.GetByIdWithDetailsAsync(id, warehouseId);
 
-            if (purchaseOrder == null || purchaseOrder.Status != "InTransit")
+            if (purchaseOrder == null || purchaseOrder.Status != "Ordered")
                 return false;
 
             _unitOfWork.PurchaseOrders.Delete(purchaseOrder);
@@ -129,7 +129,7 @@ namespace EWMS.Services
 
         public async Task<IEnumerable<PurchaseOrderListDTO>> GetPurchaseOrderListAsync(int warehouseId, string? status, string? search)
         {
-            await _unitOfWork.PurchaseOrders.UpdateToDeliveredAsync(warehouseId);
+            await _unitOfWork.PurchaseOrders.UpdateToReadyToReceiveAsync(warehouseId);
             await _unitOfWork.SaveChangesAsync();
 
             var purchaseOrders = await _unitOfWork.PurchaseOrders.GetByWarehouseIdAsync(warehouseId, status);

@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using EWMS.Services.Interfaces;
 using EWMS.ViewModels;
 
 namespace EWMS.Controllers
 {
+    [Authorize(Roles = "Purchasing Staff")]
     public class PurchaseOrderController : Controller
     {
         private readonly IPurchaseOrderService _purchaseOrderService;
@@ -22,7 +24,7 @@ namespace EWMS.Controllers
         }
 
         // GET: PurchaseOrder/Index
-        public async Task<IActionResult> Index(string status = "InTransit")
+        public async Task<IActionResult> Index(string status = "Ordered")
         {
             var userId = _userService.GetCurrentUserId();
             if (userId == 0)

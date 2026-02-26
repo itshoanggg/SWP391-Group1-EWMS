@@ -18,7 +18,7 @@ namespace EWMS.Services
 
         public async Task<IEnumerable<PurchaseOrderListDTO>> GetPurchaseOrdersForStockInAsync(int warehouseId, string? status, string? search)
         {
-            await _unitOfWork.PurchaseOrders.UpdateToDeliveredAsync(warehouseId);
+            await _unitOfWork.PurchaseOrders.UpdateToReadyToReceiveAsync(warehouseId);
             await _unitOfWork.SaveChangesAsync();
 
             var purchaseOrders = await _unitOfWork.PurchaseOrders.GetByWarehouseIdAsync(warehouseId, status);

@@ -30,8 +30,8 @@ function formatDate(dateString) {
 // Get status badge HTML
 function getStatusBadge(status) {
     const statusMap = {
-        'InTransit': { class: 'bg-info', icon: 'fa-shipping-fast', text: 'In Transit' },
-        'Delivered': { class: 'bg-success', icon: 'fa-check-circle', text: 'Delivered' },
+        'Ordered': { class: 'bg-info', icon: 'fa-clipboard-list', text: 'Ordered' },
+        'ReadyToReceive': { class: 'bg-success', icon: 'fa-check-circle', text: 'Ready To Receive' },
         'PartiallyReceived': { class: 'bg-primary', icon: 'fa-boxes', text: 'Partially Received' },
         'Received': { class: 'bg-dark', icon: 'fa-check-double', text: 'Fully Received' },
         'Cancelled': { class: 'bg-danger', icon: 'fa-ban', text: 'Cancelled' }
@@ -163,8 +163,8 @@ function renderTableRows(orders, tbody) {
     orders.forEach(order => {
         const row = document.createElement('tr');
 
-        // Check if clickable (Delivered or PartiallyReceived)
-        const isClickable = order.status === 'Delivered' || order.status === 'PartiallyReceived';
+        // Check if clickable (ReadyToReceive or PartiallyReceived)
+        const isClickable = order.status === 'ReadyToReceive' || order.status === 'PartiallyReceived';
         const isCancelled = order.status === 'Cancelled';
 
         if (isClickable) {

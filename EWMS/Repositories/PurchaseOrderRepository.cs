@@ -40,20 +40,20 @@ namespace EWMS.Repositories
                 .FirstOrDefaultAsync(po => po.PurchaseOrderId == id && po.WarehouseId == warehouseId);
         }
 
-        public async Task UpdateToDeliveredAsync(int warehouseId)
+        public async Task UpdateToReadyToReceiveAsync(int warehouseId)
         {
             var today = DateTime.Today;
 
             var ordersToUpdate = await _dbSet
                 .Where(po =>
                     po.WarehouseId == warehouseId &&
-                    po.Status == "InTransit" &&
+                    po.Status == "Ordered" &&
                     po.ExpectedReceivingDate.Date <= today)
                 .ToListAsync();
 
             foreach (var po in ordersToUpdate)
             {
-                po.Status = "Delivered";
+                po.Status = "ReadyToReceive";
             }
         }
     }

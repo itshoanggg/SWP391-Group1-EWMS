@@ -1,4 +1,5 @@
 using EWMS.Services;
+using EWMS.Services.Interfaces;
 using EWMS.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,16 +8,26 @@ namespace EWMS.Controllers
     public class StockOutReceiptController : Controller
     {
         private readonly IStockOutReceiptService _stockOutReceiptService;
+        private readonly IUserService _userService;
 
         public StockOutReceiptController(
-            IStockOutReceiptService stockOutReceiptService)
+            IStockOutReceiptService stockOutReceiptService,
+            IUserService userService)
         {
             _stockOutReceiptService = stockOutReceiptService;
+            _userService = userService;
         }
 
         public async Task<IActionResult> Index(string? customer, string? status, int page = 1)
         {
-            int warehouseId = 1;
+            var userId = _userService.GetCurrentUserId();
+            if (userId == 0) return RedirectToAction("Login", "Account");
+            int warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            if (warehouseId == 0)
+            {
+                TempData["ErrorMessage"] = "Bạn chưa được phân công vào kho nào.";
+                return RedirectToAction("Index", "Home");
+            }
 
             const int pageSize = 5;
             var viewModel =
@@ -24,7 +35,6 @@ namespace EWMS.Controllers
                     warehouseId, customer, status, page, pageSize);
 
             ViewBag.WarehouseId = warehouseId;
-            ViewBag.WarehouseName = viewModel.WarehouseName;
 
             return View(viewModel);
         }
@@ -36,7 +46,14 @@ namespace EWMS.Controllers
             string? issuedBy,
             int page = 1)
         {
-            int warehouseId = 1;
+            var userId = _userService.GetCurrentUserId();
+            if (userId == 0) return RedirectToAction("Login", "Account");
+            int warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            if (warehouseId == 0)
+            {
+                TempData["ErrorMessage"] = "Bạn chưa được phân công vào kho nào.";
+                return RedirectToAction("Index", "Home");
+            }
 
             var vm =
                 await _stockOutReceiptService.GetStockOutReceiptsByWarehouseAsync(warehouseId);
@@ -126,8 +143,16 @@ namespace EWMS.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            ViewBag.WarehouseId = 1;
-            ViewBag.WarehouseName = "Hanoi Warehouse";
+            var userId = _userService.GetCurrentUserId();
+            if (userId == 0) return RedirectToAction("Login", "Account");
+            int warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            if (warehouseId == 0)
+            {
+                TempData["ErrorMessage"] = "Bạn chưa được phân công vào kho nào.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            ViewBag.WarehouseId = warehouseId;
 
             return View(order);
         }
@@ -164,7 +189,9 @@ namespace EWMS.Controllers
                 return View(order);
             }
 
-            int currentUserId = 5;
+            var userId = _userService.GetCurrentUserId();
+            if (userId == 0) return RedirectToAction("Login", "Account");
+            int currentUserId = userId;
 
             try
             {
@@ -190,8 +217,9 @@ namespace EWMS.Controllers
             var retryOrder =
                 await _stockOutReceiptService.GetSalesOrderForStockOutAsync(model.SalesOrderId);
 
-            ViewBag.WarehouseId = model.WarehouseId;
-            ViewBag.WarehouseName = "Hanoi Warehouse";
+            var retryUserId = _userService.GetCurrentUserId();
+            int retryWarehouseId = await _userService.GetWarehouseIdByUserIdAsync(retryUserId);
+            ViewBag.WarehouseId = retryWarehouseId;
 
             return View(retryOrder);
         }

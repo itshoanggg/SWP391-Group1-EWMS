@@ -31,7 +31,7 @@
     <!-- Info Alert -->
     <div class="alert alert-info alert-dismissible fade show" role="alert">
         <i class="fas fa-info-circle"></i>
-        <strong>Guide:</strong> Stock-in is only available for orders with status <span class="badge bg-success">Delivered</span> or <span class="badge bg-primary">Partially Received</span>
+        <strong>Guide:</strong> Stock-in is only available for orders with status <span class="badge bg-success">Ready To Receive</span> or <span class="badge bg-primary">Partially Received</span>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
@@ -43,10 +43,10 @@
                     <label class="form-label">Status:</label>
                     <select class="form-select" id="filter-status">
                         <option value="">All</option>
-                        <option value="InTransit">In Transit</option>
-                        <option value="Delivered">Delivered</option>
+                        <option value="Ordered">Ordered</option>
+                        <option value="ReadyToReceive">Ready To Receive</option>
                         <option value="PartiallyReceived">Partially Received</option>
-                        <option value="Received">Fully Received</option>
+                        <option value="Received">Received</option>
                         <option value="Cancelled">Cancelled</option>
                     </select>
                 </div>
