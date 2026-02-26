@@ -1,10 +1,13 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using EWMS.Models;
 using EWMS.ViewModels;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace EWMS.Controllers
 {
@@ -12,10 +15,12 @@ namespace EWMS.Controllers
     public class UsersController : Controller
     {
         private readonly EWMSDbContext _db;
+        private readonly IPasswordHasher<User> _hasher;
 
-        public UsersController(EWMSDbContext db)
+        public UsersController(EWMSDbContext db, IPasswordHasher<User> hasher)
         {
             _db = db;
+            _hasher = hasher;
         }
 
         // GET: Users
@@ -72,13 +77,19 @@ namespace EWMS.Controllers
             var user = new User
             {
                 Username = model.Username,
-                PasswordHash = string.IsNullOrWhiteSpace(model.Password) ? "123456" : model.Password,
                 FullName = model.FullName,
                 Email = model.Email,
                 Phone = model.Phone,
                 RoleId = model.RoleId,
                 IsActive = model.IsActive,
             };
+
+            // Use a secure hashed password. If no password provided, generate a temporary one and force reset elsewhere.
+            var passwordToHash = string.IsNullOrWhiteSpace(model.Password)
+                ? "Temp!" + Guid.NewGuid().ToString("N").Substring(0, 8)
+                : model.Password;
+
+            user.PasswordHash = _hasher.HashPassword(user, passwordToHash);
 
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
@@ -144,7 +155,7 @@ namespace EWMS.Controllers
                 return NotFound();
 
             // username change allowed if unique
-            if (!string.Equals(user.Username, model.Username, System.StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(user.Username, model.Username, StringComparison.OrdinalIgnoreCase))
             {
                 if (await _db.Users.AnyAsync(u => u.Username == model.Username && u.UserId != model.UserId))
                 {
@@ -161,7 +172,7 @@ namespace EWMS.Controllers
             user.IsActive = model.IsActive;
             if (!string.IsNullOrWhiteSpace(model.Password))
             {
-                user.PasswordHash = model.Password;
+                user.PasswordHash = _hasher.HashPassword(user, model.Password);
             }
 
             // update warehouses
@@ -192,9 +203,38 @@ namespace EWMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
         {
-            var user = await _db.Users.FindAsync(id);
+            var user = await _db.Users
+                .Include(u => u.UserWarehouses)
+                .Include(u => u.Role)
+                .SingleOrDefaultAsync(u => u.UserId == id);
+
             if (user == null)
                 return NotFound();
+
+            // Prevent deleting yourself
+            var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (int.TryParse(currentUserIdClaim, out var currentUserId) && currentUserId == user.UserId)
+            {
+                TempData["Error"] = "You cannot delete your own account.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Prevent deleting the last admin
+            var adminCount = await _db.Users
+                .Include(u => u.Role)
+                .CountAsync(u => u.Role != null && u.Role.RoleName == "Admin");
+
+            if (user.Role != null && user.Role.RoleName == "Admin" && adminCount <= 1)
+            {
+                TempData["Error"] = "Cannot delete the last Admin account.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Remove dependent relations explicitly to avoid FK constraint issues
+            if (user.UserWarehouses.Any())
+            {
+                _db.UserWarehouses.RemoveRange(user.UserWarehouses);
+            }
 
             _db.Users.Remove(user);
             await _db.SaveChangesAsync();
