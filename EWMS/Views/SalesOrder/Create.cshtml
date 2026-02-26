@@ -22,14 +22,14 @@
                 <div class="col-md-6">
                     <div class="form-group">
                         <label asp-for="CustomerName" class="form-label">Customer Name *</label>
-                        <input asp-for="CustomerName" class="form-control" required />
+                        <input asp-for="CustomerName" class="form-control" required pattern="^[a-zA-ZÀ-ỹ\s]+$" title="Customer name can only contain letters and spaces" />
                         <span asp-validation-for="CustomerName" class="text-danger"></span>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <label asp-for="CustomerPhone" class="form-label">Phone Number</label>
-                        <input asp-for="CustomerPhone" class="form-control" />
+                        <input asp-for="CustomerPhone" class="form-control" type="tel" pattern="^[0-9+\-\s()]*$" title="Phone number can only contain numbers and characters: + - ( ) space" />
                         <span asp-validation-for="CustomerPhone" class="text-danger"></span>
                     </div>
                 </div>

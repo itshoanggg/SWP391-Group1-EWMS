@@ -6,9 +6,11 @@ namespace EWMS.ViewModels
     {
         [Required(ErrorMessage = "Customer name is required")]
         [StringLength(150)]
+        [RegularExpression(@"^[a-zA-ZÀ-ỹ\s]+$", ErrorMessage = "Customer name can only contain letters and spaces")]
         public string CustomerName { get; set; } = string.Empty;
 
         [StringLength(20)]
+        [RegularExpression(@"^[0-9+\-\s()]*$", ErrorMessage = "Phone number can only contain numbers and characters: + - ( ) space")]
         public string? CustomerPhone { get; set; }
 
         [StringLength(255)]
