@@ -213,7 +213,7 @@
     <div class="sidebar">
         <div class="sidebar-header">
             <h3><i class="bi bi-building"></i> EWMS</h3>
-            <small style="opacity: 0.7;">Enterprise Warehouse System</small>
+            <small style="opacity: 0.7;">@(User.FindFirst("WarehouseName")?.Value ?? "Enterprise Warehouse System")</small>
         </div>
 
         <div class="sidebar-menu">
@@ -282,7 +282,7 @@
                         <i class="bi bi-person"></i>
                     </div>
                     <div>
-                        <div style="font-weight: 600; font-size: 0.9rem;">@User.Identity?.Name</div>
+                        <div style="font-weight: 600; font-size: 0.9rem;">@(User.FindFirst(ClaimTypes.GivenName)?.Value ?? User.Identity?.Name)</div>
                         <small style="opacity: 0.7;">@User.FindFirst(ClaimTypes.Role)?.Value</small>
                     </div>
                 </div>

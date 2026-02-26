@@ -12,6 +12,7 @@ namespace EWMS.ViewModels
         public DateTime? IssuedDate { get; set; }
         public string? Reason { get; set; }
         public string? Notes { get; set; }
+        public string? Status { get; set; }
         public decimal? TotalAmount { get; set; }
         public string WarehouseName { get; set; } = string.Empty;
         public string IssuedByName { get; set; } = string.Empty;

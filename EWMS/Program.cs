@@ -51,6 +51,7 @@ namespace EWMS
             builder.Services.AddScoped<EWMS.Repositories.IProductRepository, ProductRepository>();
             builder.Services.AddScoped<IStockOutReceiptRepository, StockOutReceiptRepository>();
             builder.Services.AddScoped<EWMS.Repositories.ILocationRepository, LocationRepository>();
+            builder.Services.AddScoped<IWarehouseRepository, WarehouseRepository>();
             builder.Services.AddScoped<IInventoryCheckService, InventoryCheckService>();
             builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
             builder.Services.AddScoped<IStockOutReceiptService, StockOutReceiptService>();
@@ -84,7 +85,7 @@ namespace EWMS
 
             app.MapControllerRoute(
                 name: "default",
-                pattern: "{controller=StockIn}/{action=Index}/{id?}");
+                pattern: "{controller=Account}/{action=Login}/{id?}");
 
             app.Run();
         }

@@ -38,6 +38,8 @@ namespace EWMS.Controllers
 
             var user = await _db.Users
                 .Include(u => u.Role)
+                .Include(u => u.UserWarehouses)
+                    .ThenInclude(uw => uw.Warehouse)
                 .SingleOrDefaultAsync(u => u.Username == model.Username && u.PasswordHash == model.Password);
 
             if (user == null || user.IsActive == false)
@@ -46,11 +48,15 @@ namespace EWMS.Controllers
                 return View("~/Views/Account/Login.cshtml", model);
             }
 
+            var warehouseName = user.UserWarehouses.FirstOrDefault()?.Warehouse?.WarehouseName ?? "No Warehouse";
+
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
                 new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.Role, user.Role?.RoleName ?? string.Empty)
+                new Claim(ClaimTypes.GivenName, user.FullName ?? user.Username),
+                new Claim(ClaimTypes.Role, user.Role?.RoleName ?? string.Empty),
+                new Claim("WarehouseName", warehouseName)
             };
 
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -94,7 +100,6 @@ namespace EWMS.Controllers
             return RedirectToAction("Index", "StockIn");
         }
 
-        // Keep POST logout (recommended). Works with the logout form in _Layout.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout()
@@ -103,8 +108,7 @@ namespace EWMS.Controllers
             return RedirectToAction("Login", "Account");
         }
 
-        // Optional: support GET-based logout for convenience (useful if layout still contains anchor links).
-        // Note: GET sign-out is less secure (CSRF risk) — keep POST as primary.
+ 
         [HttpGet]
         public async Task<IActionResult> LogoutGet()
         {

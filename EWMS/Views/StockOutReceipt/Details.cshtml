@@ -62,11 +62,31 @@
                     <div class="detail-label">Reason:</div>
                     <div class="detail-value">@Model.Reason</div>
                 </div>
+                <div class="detail-item">
+                    <div class="detail-label">Status:</div>
+                    <div class="detail-value">
+                        @if (!string.IsNullOrEmpty(Model.Status))
+                        {
+                            <span class="badge 
+                                @(Model.Status == "Pending" ? "bg-warning text-dark" : 
+                                  Model.Status == "Completed" ? "bg-success" : 
+                                  Model.Status == "Cancelled" ? "bg-danger" : "bg-secondary")">
+                                @Model.Status
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">N/A</span>
+                        }
+                    </div>
+                </div>
                 @if (!string.IsNullOrEmpty(Model.Notes))
                 {
                     <div class="detail-item" style="grid-column: 1 / -1;">
                         <div class="detail-label">Notes:</div>
-                        <div class="detail-value">@Model.Notes</div>
+                        <div class="detail-value" style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #3498db;">
+                            @Model.Notes
+                        </div>
                     </div>
                 }
             </div>

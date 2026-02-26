@@ -25,7 +25,7 @@ namespace EWMS.Controllers
             int warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             if (warehouseId == 0)
             {
-                TempData["ErrorMessage"] = "Bạn chưa được phân công vào kho nào.";
+                TempData["ErrorMessage"] = "You haven't been assigned to any warehouse yet.";
                 return RedirectToAction("Index", "Home");
             }
 
@@ -51,7 +51,7 @@ namespace EWMS.Controllers
             int warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             if (warehouseId == 0)
             {
-                TempData["ErrorMessage"] = "Bạn chưa được phân công vào kho nào.";
+                TempData["ErrorMessage"] = "You haven't been assigned to any warehouse yet.";
                 return RedirectToAction("Index", "Home");
             }
 
@@ -148,11 +148,14 @@ namespace EWMS.Controllers
             int warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             if (warehouseId == 0)
             {
-                TempData["ErrorMessage"] = "Bạn chưa được phân công vào kho nào.";
+                TempData["ErrorMessage"] = "You haven't been assigned to any warehouse yet.";
                 return RedirectToAction(nameof(Index));
             }
 
+            var warehouseName = await _userService.GetWarehouseNameByUserIdAsync(userId);
+
             ViewBag.WarehouseId = warehouseId;
+            ViewBag.WarehouseName = warehouseName ?? "Unknown";
 
             return View(order);
         }
@@ -161,6 +164,9 @@ namespace EWMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(CreateStockOutReceiptViewModel model)
         {
+            var userId = _userService.GetCurrentUserId();
+            if (userId == 0) return RedirectToAction("Login", "Account");
+            
             if (!ModelState.IsValid)
             {
                 TempData["ErrorMessage"] =
@@ -169,8 +175,10 @@ namespace EWMS.Controllers
                 var order =
                     await _stockOutReceiptService.GetSalesOrderForStockOutAsync(model.SalesOrderId);
 
+                var warehouseName = await _userService.GetWarehouseNameByUserIdAsync(userId);
+
                 ViewBag.WarehouseId = model.WarehouseId;
-                ViewBag.WarehouseName = "Hanoi Warehouse";
+                ViewBag.WarehouseName = warehouseName ?? "Unknown";
 
                 return View(order);
             }
@@ -183,21 +191,19 @@ namespace EWMS.Controllers
                 var order =
                     await _stockOutReceiptService.GetSalesOrderForStockOutAsync(model.SalesOrderId);
 
+                var warehouseName = await _userService.GetWarehouseNameByUserIdAsync(userId);
+
                 ViewBag.WarehouseId = model.WarehouseId;
-                ViewBag.WarehouseName = "Hanoi Warehouse";
+                ViewBag.WarehouseName = warehouseName ?? "Unknown";
 
                 return View(order);
             }
-
-            var userId = _userService.GetCurrentUserId();
-            if (userId == 0) return RedirectToAction("Login", "Account");
-            int currentUserId = userId;
 
             try
             {
                 var result =
                     await _stockOutReceiptService.CreateStockOutReceiptAsync(
-                        model, currentUserId);
+                        model, userId);
 
                 if (result.Success)
                 {
@@ -217,9 +223,11 @@ namespace EWMS.Controllers
             var retryOrder =
                 await _stockOutReceiptService.GetSalesOrderForStockOutAsync(model.SalesOrderId);
 
-            var retryUserId = _userService.GetCurrentUserId();
-            int retryWarehouseId = await _userService.GetWarehouseIdByUserIdAsync(retryUserId);
+            int retryWarehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            var retryWarehouseName = await _userService.GetWarehouseNameByUserIdAsync(userId);
+            
             ViewBag.WarehouseId = retryWarehouseId;
+            ViewBag.WarehouseName = retryWarehouseName ?? "Unknown";
 
             return View(retryOrder);
         }

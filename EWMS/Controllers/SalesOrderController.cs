@@ -31,7 +31,7 @@ namespace EWMS.Controllers
             int warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             if (warehouseId == 0)
             {
-                TempData["ErrorMessage"] = "Bạn chưa được phân công vào kho nào.";
+                TempData["ErrorMessage"] = "You haven't been assigned to any warehouse yet.";
                 return RedirectToAction("Index", "Home");
             }
             const int pageSize = 5;
@@ -82,14 +82,16 @@ namespace EWMS.Controllers
             int warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             if (warehouseId == 0)
             {
-                TempData["ErrorMessage"] = "Bạn chưa được phân công vào kho nào.";
+                TempData["ErrorMessage"] = "You haven't been assigned to any warehouse yet.";
                 return RedirectToAction("Index", "Home");
             }
 
             var products = await _salesOrderService.GetProductsForSelectionAsync();
+            var warehouseName = await _userService.GetWarehouseNameByUserIdAsync(userId);
 
             ViewBag.Products = products;
             ViewBag.WarehouseId = warehouseId;
+            ViewBag.WarehouseName = warehouseName ?? "Unknown";
 
             return View();
         }
@@ -103,16 +105,18 @@ namespace EWMS.Controllers
             int warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             if (warehouseId == 0)
             {
-                TempData["ErrorMessage"] = "Bạn chưa được phân công vào kho nào.";
+                TempData["ErrorMessage"] = "You haven't been assigned to any warehouse yet.";
                 return RedirectToAction("Index", "Home");
             }
 
             if (!ModelState.IsValid)
             {
                 var products = await _salesOrderService.GetProductsForSelectionAsync();
+                var warehouseName = await _userService.GetWarehouseNameByUserIdAsync(userId);
 
                 ViewBag.Products = products;
                 ViewBag.WarehouseId = warehouseId;
+                ViewBag.WarehouseName = warehouseName ?? "Unknown";
 
                 TempData["ErrorMessage"] = "Please check the order information!";
                 return View(model);
@@ -123,8 +127,10 @@ namespace EWMS.Controllers
                 TempData["ErrorMessage"] = "Please add at least one product!";
 
                 var products = await _salesOrderService.GetProductsForSelectionAsync();
+                var warehouseName = await _userService.GetWarehouseNameByUserIdAsync(userId);
                 ViewBag.Products = products;
                 ViewBag.WarehouseId = warehouseId;
+                ViewBag.WarehouseName = warehouseName ?? "Unknown";
 
                 return View(model);
             }

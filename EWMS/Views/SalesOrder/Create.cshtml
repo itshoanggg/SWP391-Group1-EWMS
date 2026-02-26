@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Create New Order";
+    Layout = "~/Views/Shared/_LayoutSalesStaff.cshtml";
     var products = ViewBag.Products as List<EWMS.ViewModels.ProductSelectViewModel>;
 }
 
@@ -132,7 +133,8 @@
                     <input type="number" name="Details[${productLineCounter}].Quantity" class="form-control quantity-input" placeholder="Quantity" min="1" value="1" onchange="updateTotal(${productLineCounter}); scheduleInventoryCheck();" required />
                 </div>
                 <div class="col-md-2">
-                    <input type="number" step="0.01" name="Details[${productLineCounter}].UnitPrice" class="form-control price-input" placeholder="Unit Price" onchange="updateTotal(${productLineCounter})" required />
+                    <input type="hidden" name="Details[${productLineCounter}].UnitPrice" class="form-control price-input-hidden" />
+                    <input type="text" class="form-control price-input-display" placeholder="Unit Price" readonly />
                 </div>
                 <div class="col-md-2">
                     <input type="text" class="form-control total-input" placeholder="Total" readonly />
@@ -159,13 +161,16 @@
             const select = line.querySelector('.product-select');
             const selectedOption = select.options[select.selectedIndex];
             const price = selectedOption.getAttribute('data-price');
-            const priceInput = line.querySelector('.price-input');
+            const priceInputHidden = line.querySelector('.price-input-hidden');
+            const priceInputDisplay = line.querySelector('.price-input-display');
 
             if (price) {
-                priceInput.value = price;
+                priceInputHidden.value = price;
+                priceInputDisplay.value = formatCurrency(parseFloat(price));
                 updateTotal(lineId);
             } else {
-                priceInput.value = '';
+                priceInputHidden.value = '';
+                priceInputDisplay.value = '';
                 line.querySelector('.total-input').value = '';
             }
         }
@@ -174,7 +179,7 @@
             const line = document.getElementById(`product-line-${lineId}`);
             if (!line) return;
 
-            const price = parseFloat(line.querySelector('.price-input').value || 0);
+            const price = parseFloat(line.querySelector('.price-input-hidden').value || 0);
             const quantity = parseInt(line.querySelector('.quantity-input').value || 0);
             const totalInput = line.querySelector('.total-input');
 

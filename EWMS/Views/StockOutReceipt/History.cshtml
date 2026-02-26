@@ -57,6 +57,7 @@
                     <th>Customer</th>
                     <th>Issue Date</th>
                     <th>Reason</th>
+                    <th>Status</th>
                     <th>Total Amount</th>
                     <th>Issued By</th>
                     <th>Actions</th>
@@ -84,6 +85,21 @@
                             <td>@receipt.CustomerName</td>
                             <td>@(receipt.IssuedDate?.ToString("dd/MM/yyyy") ?? "N/A")</td>
                             <td>@receipt.Reason</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(receipt.Status))
+                                {
+                                    <span class="badge 
+                                        @(receipt.Status == "Pending" ? "bg-warning text-dark" : 
+                                          receipt.Status == "Completed" ? "bg-success" : 
+                                          receipt.Status == "Cancelled" ? "bg-danger" : "bg-secondary")">
+                                        @receipt.Status
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">N/A</span>
+                                }
+                            </td>
                             <td><strong>@((receipt.TotalAmount ?? 0).ToString("N0")) đ</strong></td>
                             <td>@receipt.IssuedByName</td>
                             <td>
@@ -98,7 +114,7 @@
                 else
                 {
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-5">
+                        <td colspan="9" class="text-center text-muted py-5">
                             <i class="bi bi-inbox" style="font-size: 48px; opacity: 0.3;"></i>
                             <p class="mt-2 mb-0">No stock out receipts found</p>
                         </td>

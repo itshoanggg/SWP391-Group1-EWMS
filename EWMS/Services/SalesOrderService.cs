@@ -1,6 +1,7 @@
 ﻿using EWMS.DTOs;
 using EWMS.Models;
 using EWMS.Repositories;
+using EWMS.Repositories.Interfaces;
 using EWMS.ViewModels;
 
 namespace EWMS.Services
@@ -8,27 +9,31 @@ namespace EWMS.Services
     public class SalesOrderService : ISalesOrderService
     {
         private readonly ISalesOrderRepository _salesOrderRepository;
-        private readonly IProductRepository _productRepository;
+        private readonly Repositories.IProductRepository _productRepository;
         private readonly IInventoryCheckService _inventoryCheckService;
+        private readonly IWarehouseRepository _warehouseRepository;
 
         public SalesOrderService(
             ISalesOrderRepository salesOrderRepository,
-            IProductRepository productRepository,
-            IInventoryCheckService inventoryCheckService)
+            Repositories.IProductRepository productRepository,
+            IInventoryCheckService inventoryCheckService,
+            IWarehouseRepository warehouseRepository)
         {
             _salesOrderRepository = salesOrderRepository;
             _productRepository = productRepository;
             _inventoryCheckService = inventoryCheckService;
+            _warehouseRepository = warehouseRepository;
         }
 
         public async Task<SalesOrderListViewModel> GetSalesOrdersByWarehouseAsync(int warehouseId)
         {
             var orders = await _salesOrderRepository.GetSalesOrdersByWarehouseAsync(warehouseId);
+            var warehouseName = await _warehouseRepository.GetWarehouseNameByIdAsync(warehouseId) ?? "Unknown";
 
             var viewModel = new SalesOrderListViewModel
             {
                 WarehouseId = warehouseId,
-                WarehouseName = orders.FirstOrDefault()?.Warehouse.WarehouseName ?? "Unknown",
+                WarehouseName = warehouseName,
                 Orders = orders.Select(MapToViewModel).ToList(),
                 Page = 1,
                 PageSize = orders.Count,
@@ -42,7 +47,7 @@ namespace EWMS.Services
         public async Task<SalesOrderListViewModel> GetSalesOrdersAsync(int warehouseId, string? customer, string? status, int page, int pageSize)
         {
             var (orders, totalCount) = await _salesOrderRepository.GetSalesOrdersAsync(warehouseId, customer, null, null, status, page, pageSize);
-            var warehouseName = orders.FirstOrDefault()?.Warehouse.WarehouseName ?? "Unknown";
+            var warehouseName = await _warehouseRepository.GetWarehouseNameByIdAsync(warehouseId) ?? "Unknown";
 
             var viewModel = new SalesOrderListViewModel
             {
@@ -70,6 +75,7 @@ namespace EWMS.Services
             ExpectedDeliveryDate = o.ExpectedDeliveryDate,
             TotalAmount = o.TotalAmount,
             Status = o.Status,
+            Notes = o.Notes,
             CreatedAt = o.CreatedAt,
             WarehouseName = o.Warehouse.WarehouseName,
             Details = o.SalesOrderDetails.Select(d => new SalesOrderDetailViewModel
@@ -98,6 +104,7 @@ namespace EWMS.Services
                 ExpectedDeliveryDate = order.ExpectedDeliveryDate,
                 TotalAmount = order.TotalAmount,
                 Status = order.Status,
+                Notes = order.Notes,
                 CreatedAt = order.CreatedAt,
                 WarehouseName = order.Warehouse.WarehouseName,
                 Details = order.SalesOrderDetails.Select(d => new SalesOrderDetailViewModel

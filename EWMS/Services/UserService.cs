@@ -21,6 +21,16 @@ namespace EWMS.Services
             return await _unitOfWork.UserWarehouses.GetWarehouseIdByUserIdAsync(userId);
         }
 
+        public async Task<string?> GetWarehouseNameByUserIdAsync(int userId)
+        {
+            var warehouseId = await _unitOfWork.UserWarehouses.GetWarehouseIdByUserIdAsync(userId);
+            if (warehouseId == 0)
+                return null;
+
+            var warehouse = await _unitOfWork.Warehouses.GetByIdAsync(warehouseId);
+            return warehouse?.WarehouseName;
+        }
+
         public int GetCurrentUserId()
         {
             var user = _httpContextAccessor.HttpContext?.User;

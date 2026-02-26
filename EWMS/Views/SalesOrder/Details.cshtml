@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Order Details";
+    Layout = "~/Views/Shared/_LayoutSalesStaff.cshtml";
 }
 
 <div class="page-header">
@@ -15,9 +16,9 @@
         <div class="d-flex gap-2">
             @if (Model.Status == "Pending")
             {
-                <form asp-action="Cancel" asp-route-id="@Model.SalesOrderId" method="post" onsubmit="return confirm('Are you sure you want to cancel this pending order?');">
-                    <button type="submit" class="btn btn-danger btn-sm">Cancel Order</button>
-                </form>
+                <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#cancelOrderModal">
+                    <i class="bi bi-x-circle"></i> Cancel Order
+                </button>
             }
             <button onclick="window.print()" class="btn btn-success btn-sm">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -88,6 +89,20 @@
             </div>
         </div>
 
+        @if (!string.IsNullOrWhiteSpace(Model.Notes))
+        {
+            <div class="detail-section">
+                <h4>Notes</h4>
+                <div class="detail-grid">
+                    <div class="detail-item" style="grid-column: 1 / -1;">
+                        <div class="detail-value" style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #3498db;">
+                            @Model.Notes
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
         <div class="detail-section">
             <h4>Product Details</h4>
             <div class="table-responsive">
@@ -123,6 +138,41 @@
     </div>
 </div>
 
+<!-- Cancel Order Confirmation Modal -->
+<div class="modal fade" id="cancelOrderModal" tabindex="-1" aria-labelledby="cancelOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="cancelOrderModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Cancel Order
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center py-3">
+                    <i class="bi bi-exclamation-circle text-warning" style="font-size: 4rem;"></i>
+                    <h5 class="mt-3 mb-2">Are you sure?</h5>
+                    <p class="text-muted mb-0">
+                        You are about to cancel order <strong>@Model.OrderNumber</strong>.<br />
+                        This action cannot be undone.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg"></i> No, Keep Order
+                </button>
+                <form asp-action="Cancel" asp-route-id="@Model.SalesOrderId" method="post" style="display: inline;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-check-lg"></i> Yes, Cancel Order
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Styles {
     <link rel="stylesheet" href="~/css/salesorder.css" />
     <style>
@@ -130,6 +180,44 @@
             .btn, .page-header p, .card-header .btn {
                 display: none !important;
             }
+
+            /* Hide sidebar and adjust layout for print */
+            .sidebar {
+                display: none !important;
+            }
+
+            .main-content {
+                margin-left: 0 !important;
+                padding: 20px !important;
+            }
+
+            .card {
+                border: none !important;
+                box-shadow: none !important;
+            }
+
+            /* Prevent page breaks */
+            .detail-section {
+                page-break-inside: avoid;
+            }
+        }
+
+        /* Custom modal styling */
+        .modal-content {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .modal-header {
+            border-top-left-radius: 15px;
+            border-top-right-radius: 15px;
+            border-bottom: none;
+        }
+
+        .modal-footer {
+            border-top: 1px solid #dee2e6;
+            padding: 1rem 1.5rem;
         }
     </style>
 }

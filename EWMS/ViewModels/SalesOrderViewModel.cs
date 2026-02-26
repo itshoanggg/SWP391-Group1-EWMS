@@ -10,6 +10,7 @@
         public DateTime ExpectedDeliveryDate { get; set; }
         public decimal TotalAmount { get; set; }
         public string Status { get; set; } = string.Empty;
+        public string? Notes { get; set; }
         public DateTime CreatedAt { get; set; }
         public string WarehouseName { get; set; } = string.Empty;
         public List<SalesOrderDetailViewModel> Details { get; set; } = new();
