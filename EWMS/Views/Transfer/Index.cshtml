@@ -1,5 +1,43 @@
-﻿@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-*@
+﻿@model List<EWMS.Models.TransferRequest>
 @{
+    Layout = "~/Views/Shared/_Layout.cshtml";
 }
+
+<div class="p-6">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-2xl font-bold">Transfer Requests</h2>
+        <a href="@Url.Action("Create", "Transfer")" class="bg-blue-600 text-white px-4 py-2 rounded">Create Transfer</a>
+    </div>
+
+    <table class="w-full border-collapse">
+        <thead>
+            <tr class="text-left">
+                <th class="border p-2">ID</th>
+                <th class="border p-2">From</th>
+                <th class="border p-2">To</th>
+                <th class="border p-2">Type</th>
+                <th class="border p-2">Requested By</th>
+                <th class="border p-2">Requested Date</th>
+                <th class="border p-2">Status</th>
+                <th class="border p-2">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in Model)
+            {
+                <tr>
+                    <td class="border p-2">@t.TransferId</td>
+                    <td class="border p-2">@t.FromWarehouse?.WarehouseName</td>
+                    <td class="border p-2">@t.ToWarehouse?.WarehouseName</td>
+                    <td class="border p-2">@t.TransferType</td>
+                    <td class="border p-2">@t.RequestedByNavigation?.FullName ?? t.RequestedBy.ToString()</td>
+                    <td class="border p-2">@t.RequestedDate?.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td class="border p-2">@t.Status</td>
+                    <td class="border p-2">
+                        <a class="text-blue-600" href="@Url.Action("Details", "Transfer", new { id = t.TransferId })">Details</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
