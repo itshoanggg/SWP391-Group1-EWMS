@@ -3,41 +3,87 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="p-6">
-    <div class="flex items-center justify-between mb-4">
-        <h2 class="text-2xl font-bold">Transfer Requests</h2>
-        <a href="@Url.Action("Create", "Transfer")" class="bg-blue-600 text-white px-4 py-2 rounded">Create Transfer</a>
+<div class="p-6 max-w-7xl mx-auto">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h2 class="text-2xl font-semibold text-gray-800">Transfer Requests</h2>
+
+        <div class="flex items-center gap-3">
+            <input id="transferSearch" type="search" placeholder="Search ID, warehouse, type..." class="border rounded-md px-3 py-2 w-64" />
+
+            @* Create button visible only for allowed roles (adjust role names to match DB) *@
+            @if (User.IsInRole("Warehouse") || User.IsInRole("Inventory") || User.IsInRole("Admin"))
+            {
+                <a href="@Url.Action("Create", "Transfer")" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Create Transfer
+                </a>
+            }
+        </div>
     </div>
 
-    <table class="w-full border-collapse">
-        <thead>
-            <tr class="text-left">
-                <th class="border p-2">ID</th>
-                <th class="border p-2">From</th>
-                <th class="border p-2">To</th>
-                <th class="border p-2">Type</th>
-                <th class="border p-2">Requested By</th>
-                <th class="border p-2">Requested Date</th>
-                <th class="border p-2">Status</th>
-                <th class="border p-2">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var t in Model)
-            {
-                <tr>
-                    <td class="border p-2">@t.TransferId</td>
-                    <td class="border p-2">@t.FromWarehouse?.WarehouseName</td>
-                    <td class="border p-2">@t.ToWarehouse?.WarehouseName</td>
-                    <td class="border p-2">@t.TransferType</td>
-                    <td class="border p-2">@t.RequestedByNavigation?.FullName ?? t.RequestedBy.ToString()</td>
-                    <td class="border p-2">@t.RequestedDate?.ToString("yyyy-MM-dd HH:mm")</td>
-                    <td class="border p-2">@t.Status</td>
-                    <td class="border p-2">
-                        <a class="text-blue-600" href="@Url.Action("Details", "Transfer", new { id = t.TransferId })">Details</a>
-                    </td>
+    <div class="overflow-x-auto bg-white rounded-md shadow">
+        <table id="transferTable" class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr class="text-sm text-left text-gray-600">
+                    <th class="px-4 py-3">ID</th>
+                    <th class="px-4 py-3">From</th>
+                    <th class="px-4 py-3">To</th>
+                    <th class="px-4 py-3">Type</th>
+                    <th class="px-4 py-3">Requested By</th>
+                    <th class="px-4 py-3">Requested Date</th>
+                    <th class="px-4 py-3">Status</th>
+                    <th class="px-4 py-3">Actions</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody class="text-sm bg-white divide-y divide-gray-100">
+                @foreach (var t in Model)
+                {
+                    @{
+                        var status = (t.Status ?? "Pending").ToLowerInvariant();
+                        var statusClass = status switch
+                        {
+                            "approved" => "bg-green-100 text-green-800",
+                            "rejected" => "bg-red-100 text-red-800",
+                            "in transit" => "bg-blue-100 text-blue-800",
+                            _ => "bg-yellow-100 text-yellow-800",
+                        };
+                    }
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3">@t.TransferId</td>
+                        <td class="px-4 py-3">@t.FromWarehouse?.WarehouseName</td>
+                        <td class="px-4 py-3">@t.ToWarehouse?.WarehouseName</td>
+                        <td class="px-4 py-3">@t.TransferType</td>
+                        <td class="px-4 py-3">@t.RequestedByNavigation?.FullName ?? t.RequestedBy.ToString()</td>
+                        <td class="px-4 py-3">@t.RequestedDate?.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded @statusClass">@t.Status</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <a class="text-indigo-600 hover:text-indigo-800 mr-3" href="@Url.Action("Details", "Transfer", new { id = t.TransferId })">Details</a>
+                            @* Example: only certain roles can approve/cancel – show as needed *@
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 </div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const input = document.getElementById('transferSearch');
+            const table = document.getElementById('transferTable');
+            if (!input || !table) return;
+
+            input.addEventListener('input', function () {
+                const q = this.value.trim().toLowerCase();
+                const rows = table.tBodies[0].rows;
+                for (let i = 0; i < rows.length; i++) {
+                    const rowText = rows[i].innerText.toLowerCase();
+                    rows[i].style.display = rowText.indexOf(q) > -1 ? '' : 'none';
+                }
+            });
+        })();
+    </script>
+}

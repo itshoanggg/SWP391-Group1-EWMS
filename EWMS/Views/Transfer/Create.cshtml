@@ -1,16 +1,13 @@
-<<<<<<< Updated upstream
-﻿@{
+@{
     Layout = "~/Views/Shared/_Layout.cshtml";
     var warehouses = ViewBag.Warehouses as List<EWMS.Models.Warehouse>;
     var products = ViewBag.Products as List<EWMS.Models.Product>;
 }
 
 <div class="p-8">
-
     <h2 class="text-2xl font-bold mb-6">Create Transfer Request</h2>
 
     <form asp-action="Create" method="post" class="space-y-6 bg-white p-6 rounded-xl shadow">
-
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="block font-semibold mb-2">Source Warehouse</label>
@@ -62,17 +59,8 @@
             <textarea name="Reason" class="w-full border rounded-lg p-3"></textarea>
         </div>
 
-        <button type="submit"
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg">
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg">
             Create Transfer
         </button>
-
     </form>
 </div>
-=======
-﻿@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-*@
-@{
-}
->>>>>>> Stashed changes
