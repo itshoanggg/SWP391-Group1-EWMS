@@ -17,6 +17,7 @@ namespace EWMS.Repositories
         public async Task<IEnumerable<Location>> GetByWarehouseIdAsync(int warehouseId)
         {
             return await _dbSet
+                .Include(l => l.Inventories)  // ✅ Include Inventories để tính CurrentStock
                 .Where(l => l.WarehouseId == warehouseId)
                 .OrderBy(l => l.LocationCode)
                 .ToListAsync();
@@ -25,6 +26,7 @@ namespace EWMS.Repositories
         public async Task<IEnumerable<Location>> GetByRackAsync(int warehouseId, string rack)
         {
             return await _dbSet
+                .Include(l => l.Inventories)  // ✅ Include Inventories để tính CurrentStock
                 .Where(l => l.WarehouseId == warehouseId && l.Rack == rack)
                 .OrderBy(l => l.LocationCode)
                 .ToListAsync();

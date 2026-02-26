@@ -32,7 +32,7 @@ async function loadPurchaseOrderInfo() {
         document.getElementById('supplier-phone').textContent = data.supplierPhone || 'N/A';
 
         if (data.hasStockIn) {
-            alert('Đơn hàng này đã được nhập kho đủ!');
+            alert('This order has been fully received!');
             document.getElementById('btn-confirm').disabled = true;
         }
     } catch (error) {
@@ -54,7 +54,7 @@ async function loadProducts() {
 
         productsData = data;
 
-        // ✅ DEBUG - Kiểm tra từng sản phẩm
+        // ✅ DEBUG - Check each product
         console.log('🔍 Checking each product:');
         productsData.forEach(p => {
             console.log(`  ${p.productName}:`, {
@@ -85,7 +85,7 @@ function renderProductsTable() {
     let hiddenCount = 0;
 
     productsData.forEach((product, index) => {
-        // ⚠️ BỎ QUA SẢN PHẨM ĐÃ NHẬN ĐỦ
+        // ⚠️ SKIP PRODUCTS ALREADY FULLY RECEIVED
         if (product.remainingQty <= 0) {
             console.log(`  ⏭️ Skipping ${product.productName} (remainingQty = ${product.remainingQty})`); // ✅ DEBUG
             hiddenCount++;
@@ -127,7 +127,7 @@ function renderProductsTable() {
                         data-product-id="${product.productId}"
                         data-row-id="${rowId}"
                         onchange="handleLocationChange(this)">
-                    <option value="">-- Chọn vị trí --</option>
+                    <option value="">-- Select Location --</option>
                 </select>
                 <div class="location-info mt-1" id="location-info-${rowId}"></div>
             </td>
@@ -150,7 +150,7 @@ function renderProductsTable() {
 
     console.log(`📊 Render summary: ${shownCount} shown, ${hiddenCount} hidden`); // ✅ DEBUG
 
-    // ✅ KIỂM TRA NẾU KHÔNG CÒN SẢN PHẨM NÀO
+    // ✅ CHECK IF NO PRODUCTS REMAINING
     if (receiptItems.length === 0) {
         console.log('🎉 All products received!'); // ✅ DEBUG
         tbody.innerHTML = `
@@ -158,7 +158,7 @@ function renderProductsTable() {
                 <td colspan="6" class="text-center py-4">
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle"></i> 
-                        <strong>Đơn hàng này đã được nhập kho đầy đủ!</strong>
+                        <strong>This order has been fully received!</strong>
                     </div>
                 </td>
             </tr>
@@ -193,14 +193,14 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
     const select = document.getElementById(`location-${rowId}`);
     if (!select) return;
 
-    select.innerHTML = '<option value="">-- Chọn vị trí --</option>';
+    select.innerHTML = '<option value="">-- Select Location --</option>';
 
-    // ✅ Track used locations and their remaining capacity (cho TẤT CẢ products)
+    // ✅ Track used locations and their remaining capacity (for ALL products)
     const usedLocations = {};
     
     receiptItems.forEach(item => {
-        // ✅ Đếm TẤT CẢ các row khác (bất kể product) đã dùng location
-        // Vì capacity KHÔNG phân biệt product: 200 capacity = 200 sản phẩm bất kỳ
+        // ✅ Count ALL other rows (any product) using this location
+        // Because capacity does NOT distinguish products: 200 capacity = 200 products of any type
         if (item.locationId && !isNaN(item.locationId) && item.rowId !== rowId) {
             const qtyInput = document.getElementById(`qty-${item.rowId}`);
             const qty = qtyInput ? parseInt(qtyInput.value) || 0 : item.receivedQty;
@@ -219,10 +219,10 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
     locations.forEach(loc => {
         const baseAvailable = loc.maxCapacity - loc.currentStock;
         
-        // ✅ Tính tổng số lượng đã được phân bổ vào location này (TẤT CẢ các rows, bao gồm cả row hiện tại)
+        // ✅ Calculate total quantity allocated to this location (ALL rows, including current row)
         let totalUsedQty = usedLocations[loc.locationId] || 0;
         
-        // ✅ Thêm quantity của row HIỆN TẠI nếu nó cũng đang chọn location này
+        // ✅ Add quantity of CURRENT ROW if it's also selecting this location
         const currentItem = receiptItems.find(i => i.rowId === rowId);
         if (currentItem && currentItem.locationId === loc.locationId) {
             const currentQtyInput = document.getElementById(`qty-${rowId}`);
@@ -246,7 +246,7 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
 
         const option = document.createElement('option');
         option.value = loc.locationId;
-        // ✅ Hiển thị TỔNG số lượng đã dùng (bao gồm cả row hiện tại)
+        // ✅ Display TOTAL quantity used (including current row)
         option.textContent = `${loc.locationCode} - ${loc.locationName} (${loc.currentStock + totalUsedQty}/${loc.maxCapacity})`;
         option.dataset.available = actualAvailable;
         select.appendChild(option);
@@ -323,8 +323,8 @@ function handleLocationChange(select) {
     console.log(`🔄 Location changed for ${rowId}: ${oldLocationId} → ${item.locationId}, qty: ${qty}`);
 
 
-    // ✅ Refresh TẤT CẢ dropdowns khi location changes
-    // Vì capacity KHÔNG phân biệt product, việc chọn location cho 1 product ảnh hưởng đến tất cả
+    // ✅ Refresh ALL dropdowns when location changes
+    // Because capacity does NOT distinguish products, selecting location for 1 product affects all
     if (oldLocationId !== item.locationId) {
         console.log(`🔄 Triggering refresh for ALL location selects`);
         refreshAllLocationSelects();
@@ -347,8 +347,8 @@ async function checkCapacity(rowId, quantity) {
     const res = await fetch(`/StockIn/CheckLocationCapacity?locationId=${locationId}`);
     const data = await res.json();
 
-    // ✅ Tính tổng số lượng ĐÃ ĐƯỢC PHÂN BỔ vào location này từ TẤT CẢ các row khác
-    // Capacity KHÔNG phân biệt product
+    // ✅ Calculate total quantity ALLOCATED to this location from ALL other rows
+    // Capacity does NOT distinguish products
     let allocatedQty = 0;
     
     receiptItems.forEach(item => {
@@ -366,7 +366,7 @@ async function checkCapacity(rowId, quantity) {
         infoDiv.innerHTML = `
             <div class="alert alert-success p-2 mb-0">
                 ${locationText}<br>
-                <b>Còn trống sau nhập: ${available - quantity}</b>
+                <b>Available after receipt: ${available - quantity}</b>
             </div>
         `;
         return;
@@ -376,11 +376,11 @@ async function checkCapacity(rowId, quantity) {
     infoDiv.innerHTML = `
         <div class="alert alert-warning p-2 mb-2">
             ${locationText}<br>
-            <b>Chỉ chứa được ${available}</b>
+            <b>Can only hold ${available}</b>
         </div>
         <button class="btn btn-sm btn-warning"
             onclick="splitToNewLocation('${rowId}', ${parseInt(select.dataset.productId)}, ${quantity}, ${available})">
-            ➕ Thêm rack khác cho ${remain}
+            ➕ Add another rack for ${remain}
         </button>
     `;
 }
@@ -432,11 +432,18 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
                    onchange="handleQuantityChange(this)">
         </td>
         <td>
-            <select id="location-${newRowId}" class="form-select"
-                    data-row-id="${newRowId}" data-product-id="${productId}"
-                    onchange="handleLocationChange(this)">
-                <option value="">-- Chọn rack khác --</option>
-            </select>
+            <div class="d-flex gap-2">
+                <select id="location-${newRowId}" class="form-select"
+                        data-row-id="${newRowId}" data-product-id="${productId}"
+                        onchange="handleLocationChange(this)">
+                    <option value="">-- Select another rack --</option>
+                </select>
+                <button class="btn btn-sm btn-danger" 
+                        onclick="removeSplitRow('${newRowId}', '${parentRowId}', ${remainingQty})"
+                        style="white-space: nowrap;">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
             <div id="location-info-${newRowId}" class="mt-1"></div>
         </td>
     `;
@@ -466,6 +473,8 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
 }
 
 function removeSplitRow(rowId, parentRowId, qty) {
+    console.log(`🗑️ Removing split row: ${rowId}, restoring ${qty} to parent ${parentRowId}`);
+    
     const row = document.getElementById(rowId);
     if (row) row.remove();
 
@@ -476,14 +485,32 @@ function removeSplitRow(rowId, parentRowId, qty) {
     if (parentItem) {
         const parentQtyInput = document.getElementById(`qty-${parentRowId}`);
         const currentMax = parseInt(parentQtyInput.max);
-        parentQtyInput.max = currentMax + qty;
+        const newMax = currentMax + qty;
+        
+        // ✅ Chỉ cập nhật max, GIỮ NGUYÊN value
+        // User có thể tự quyết định nhập bao nhiêu (partial receiving)
+        parentQtyInput.max = newMax;
+        
+        // ✅ Clear location info để refresh
+        clearLocationInfo(parentRowId);
+        
+        // ✅ Nếu parent có location, gọi lại checkCapacity với MAX value
+        // để hiển thị nút split nếu max > capacity
+        if (parentItem.locationId) {
+            checkCapacity(parentRowId, newMax);
+        }
 
         if (parentItem.splitRows) {
             parentItem.splitRows = parentItem.splitRows.filter(id => id !== rowId);
         }
     }
 
+    // ✅ REFRESH ALL DROPDOWNS to update capacity after deletion
+    refreshAllLocationSelects();
+    
     updateSummary();
+    
+    console.log(`✅ Split row removed. Remaining items:`, receiptItems.length);
 }
 
 /* =========================================================
@@ -513,7 +540,7 @@ function showLocationModal_removed() {
             <td><span class="badge bg-info">${loc.currentStock}</span></td>
             <td>
                 <button class="btn btn-sm btn-success" onclick="selectLocationFromModal('${rowId}', ${loc.locationId})">
-                    <i class="fas fa-check"></i> Chọn
+                    <i class="fas fa-check"></i> Select
                 </button>
             </td>
         `;
@@ -549,13 +576,13 @@ function updateSummary() {
 
     const statusElem = document.getElementById('receipt-status');
     if (difference === 0) {
-        statusElem.textContent = 'Đủ hàng';
+        statusElem.textContent = 'Complete';
         statusElem.className = 'text-success';
     } else if (difference > 0) {
-        statusElem.textContent = `Thiếu ${formatNumber(difference)} sản phẩm`;
+        statusElem.textContent = `Missing ${formatNumber(difference)} items`;
         statusElem.className = 'text-warning';
     } else {
-        statusElem.textContent = `Thừa ${formatNumber(Math.abs(difference))} sản phẩm`;
+        statusElem.textContent = `Excess ${formatNumber(Math.abs(difference))} items`;
         statusElem.className = 'text-danger';
     }
 }
@@ -568,16 +595,16 @@ async function confirmStockIn() {
 
     for (const item of receiptItems) {
         if (item.receivedQty > 0 && !item.locationId) {
-            errors.push(`${item.productName}: Chưa chọn vị trí lưu kho`);
+            errors.push(`${item.productName}: Location not selected`);
         }
     }
 
     if (errors.length > 0) {
-        alert('Vui lòng kiểm tra:\n\n' + errors.join('\n'));
+        alert('Please check:\n\n' + errors.join('\n'));
         return;
     }
 
-    if (!confirm('Xác nhận nhập kho các sản phẩm này?')) {
+    if (!confirm('Confirm stock in for these products?')) {
         return;
     }
 
@@ -609,11 +636,11 @@ async function confirmStockIn() {
             alert(result.message);
             window.location.href = '/StockIn/Index';
         } else {
-            alert('Lỗi: ' + result.error);
+            alert('Error: ' + result.error);
         }
     } catch (error) {
         console.error('Confirm stock in failed:', error);
-        alert('Có lỗi xảy ra khi nhập kho!');
+        alert('An error occurred during stock in!');
     }
 }
 
@@ -629,7 +656,7 @@ function refreshAllLocationSelects() {
 
         const currentValue = item.locationId;
         
-        // ✅ Repopulate dropdown với updated availability (cho tất cả products)
+        // ✅ Repopulate dropdown with updated availability (for all products)
         populateLocationSelect(item.rowId, locations);
         
         // Restore previously selected value if still exists
