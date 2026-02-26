@@ -1,0 +1,80 @@
+﻿@model EWMS.ViewModels.CreateUserViewModel
+@{
+    ViewData["Title"] = "Add User";
+    var roles = ViewBag.Roles as List<EWMS.Models.Role> ?? new();
+    var warehouses = ViewBag.Warehouses as List<EWMS.Models.Warehouse> ?? new();
+}
+
+<h2>Add User</h2>
+
+<form asp-action="Create" method="post">
+    @Html.AntiForgeryToken()
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label class="form-label">Username</label>
+                <input asp-for="Username" class="form-control" />
+                <span asp-validation-for="Username" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Password (default 123456)</label>
+                <input asp-for="Password" class="form-control" />
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Full name</label>
+                <input asp-for="FullName" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input asp-for="Email" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Phone</label>
+                <input asp-for="Phone" class="form-control" />
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label class="form-label">Role</label>
+                <select asp-for="RoleId" class="form-select">
+                    <option value="">-- Select role --</option>
+                    @foreach (var r in roles) { <option value="@r.RoleId">@r.RoleName</option> }
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Departments (Warehouses)</label>
+                <div style="max-height:220px; overflow:auto; border:1px solid #ddd; padding:8px;">
+                    @foreach (var w in warehouses)
+                    {
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="WarehouseIds" value="@w.WarehouseId" id="w_@w.WarehouseId" />
+                            <label class="form-check-label" for="w_@w.WarehouseId">@w.WarehouseName</label>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="form-check mb-3">
+                <input asp-for="IsActive" class="form-check-input" />
+                <label asp-for="IsActive" class="form-check-label">Active</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-end">
+        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Create</button>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
