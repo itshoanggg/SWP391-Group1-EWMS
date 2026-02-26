@@ -1,0 +1,53 @@
+﻿@model IEnumerable<EWMS.ViewModels.UserListItemViewModel>
+@{
+    ViewData["Title"] = "User Management";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>User Management</h2>
+    <a asp-action="Create" class="btn btn-primary">Add User</a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+<table class="table table-hover">
+    <thead class="table-light">
+        <tr>
+            <th>Username</th>
+            <th>Full name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Role</th>
+            <th>Departments</th>
+            <th>Active</th>
+            <th style="width:220px">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var u in Model)
+        {
+            <tr>
+                <td>@u.Username</td>
+                <td>@u.FullName</td>
+                <td>@u.Email</td>
+                <td>@u.Phone</td>
+                <td>@u.RoleName</td>
+                <td>@string.Join(", ", u.Warehouses)</td>
+                <td>@(u.IsActive ? "Yes" : "No")</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@u.UserId" class="btn btn-sm btn-outline-primary">Edit</a>
+                    <a asp-action="AssignRoles" asp-route-id="@u.UserId" class="btn btn-sm btn-outline-secondary">Assign Role</a>
+                    <a asp-action="AssignDepartments" asp-route-id="@u.UserId" class="btn btn-sm btn-outline-secondary">Assign Departments</a>
+
+                    <form asp-action="Delete" asp-route-id="@u.UserId" method="post" class="d-inline-block" onsubmit="return confirm('Delete this user?');">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

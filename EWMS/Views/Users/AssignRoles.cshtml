@@ -1,0 +1,25 @@
+﻿@model EWMS.ViewModels.AssignRoleViewModel
+@{
+    ViewData["Title"] = "Assign Role";
+    var roles = ViewBag.Roles as List<EWMS.Models.Role> ?? new();
+}
+
+<h2>Assign Role to @Model.Username</h2>
+
+<form asp-action="AssignRoles" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="UserId" />
+
+    <div class="mb-3">
+        <label class="form-label">Role</label>
+        <select asp-for="RoleId" class="form-select">
+            <option value="">-- Select role --</option>
+            @foreach (var r in roles) { <option value="@r.RoleId" selected="@(Model.RoleId==r.RoleId? "selected": null)">@r.RoleName</option> }
+        </select>
+    </div>
+
+    <div class="text-end">
+        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Assign</button>
+    </div>
+</form>
