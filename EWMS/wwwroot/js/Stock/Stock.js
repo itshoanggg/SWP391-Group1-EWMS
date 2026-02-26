@@ -83,7 +83,7 @@ async function loadProducts(locationId) {
         const response = await fetch(`/Stock/GetProductsByLocation?locationId=${locationId}`);
         const data = await response.json();
         if (data.error) {
-            container.innerHTML = '<div class="alert alert-danger">Lỗi tải dữ liệu</div>';
+            container.innerHTML = '<div class="alert alert-danger">Error loading data</div>';
             return;
         }
 
@@ -159,13 +159,13 @@ function renderNavLocations(rack) {
 function renderProducts() {
     const container = document.getElementById('products-container');
     const badge = document.getElementById('product-count-badge');
-    if (badge) badge.textContent = `${productsData.length} sản phẩm`;
+    if (badge) badge.textContent = `${productsData.length} products`;
 
     if (productsData.length === 0) {
         container.innerHTML = `
             <div class="text-center py-5 text-muted">
                 <i class="bi bi-inbox" style="font-size: 4rem;"></i>
-                <p class="mt-3">Không có sản phẩm nào trong vị trí này</p>
+                <p class="mt-3">There are no products in this location.</p>
             </div>`;
         return;
     }

@@ -283,7 +283,7 @@
                     </div>
                     <div>
                         <div style="font-weight: 600; font-size: 0.9rem;">@User.Identity?.Name</div>
-                        <small style="opacity: 0.7;">@User.FindFirst(ClaimTypes.Role)?.Value ?? ""</small>
+                        <small style="opacity: 0.7;">@User.FindFirst(ClaimTypes.Role)?.Value</small>
                     </div>
                 </div>
                 <div class="mt-3">
