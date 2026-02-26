@@ -195,15 +195,13 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
 
     select.innerHTML = '<option value="">-- Chọn vị trí --</option>';
 
-    // Get the product ID for this row to check usage across all rows of the same product
-    const productId = parseInt(select.dataset.productId);
-    
-    // Track used locations and their remaining capacity for this product
+    // ✅ Track used locations and their remaining capacity (cho TẤT CẢ products)
     const usedLocations = {};
     
     receiptItems.forEach(item => {
-        // Only count items with valid locationId (not null, not undefined, not NaN)
-        if (item.productId === productId && item.locationId && !isNaN(item.locationId) && item.rowId !== rowId) {
+        // ✅ Đếm TẤT CẢ các row khác (bất kể product) đã dùng location
+        // Vì capacity KHÔNG phân biệt product: 200 capacity = 200 sản phẩm bất kỳ
+        if (item.locationId && !isNaN(item.locationId) && item.rowId !== rowId) {
             const qtyInput = document.getElementById(`qty-${item.rowId}`);
             const qty = qtyInput ? parseInt(qtyInput.value) || 0 : item.receivedQty;
             
@@ -214,23 +212,27 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
         }
     });
 
-    console.log(`📍 Populating locations for rowId: ${rowId}, productId: ${productId}`);
+    console.log(`📍 Populating locations for rowId: ${rowId}`);
     console.log(`   Used locations:`, usedLocations);
-    console.log(`   All receiptItems for this product:`, receiptItems.filter(i => i.productId === productId).map(i => ({
-        rowId: i.rowId,
-        locationId: i.locationId,
-        receivedQty: i.receivedQty
-    })));
 
     const availableOptions = [];
     locations.forEach(loc => {
         const baseAvailable = loc.maxCapacity - loc.currentStock;
         
-        // Subtract quantity already allocated to this location by other rows
-        const usedQty = usedLocations[loc.locationId] || 0;
-        const actualAvailable = baseAvailable - usedQty;
+        // ✅ Tính tổng số lượng đã được phân bổ vào location này (TẤT CẢ các rows, bao gồm cả row hiện tại)
+        let totalUsedQty = usedLocations[loc.locationId] || 0;
         
-        console.log(`   ${loc.locationCode}: baseAvailable=${baseAvailable}, usedQty=${usedQty}, actualAvailable=${actualAvailable}`);
+        // ✅ Thêm quantity của row HIỆN TẠI nếu nó cũng đang chọn location này
+        const currentItem = receiptItems.find(i => i.rowId === rowId);
+        if (currentItem && currentItem.locationId === loc.locationId) {
+            const currentQtyInput = document.getElementById(`qty-${rowId}`);
+            const currentQty = currentQtyInput ? parseInt(currentQtyInput.value) || 0 : currentItem.receivedQty;
+            totalUsedQty += currentQty;
+        }
+        
+        const actualAvailable = baseAvailable - (usedLocations[loc.locationId] || 0);
+        
+        console.log(`   ${loc.locationCode}: baseAvailable=${baseAvailable}, usedByOthers=${usedLocations[loc.locationId] || 0}, totalUsed=${totalUsedQty}, actualAvailable=${actualAvailable}`);
         
         // Only show locations with actual available capacity
         if (actualAvailable <= 0) {
@@ -244,7 +246,8 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
 
         const option = document.createElement('option');
         option.value = loc.locationId;
-        option.textContent = `${loc.locationCode} - ${loc.locationName} (${loc.currentStock + usedQty}/${loc.maxCapacity})`;
+        // ✅ Hiển thị TỔNG số lượng đã dùng (bao gồm cả row hiện tại)
+        option.textContent = `${loc.locationCode} - ${loc.locationName} (${loc.currentStock + totalUsedQty}/${loc.maxCapacity})`;
         option.dataset.available = actualAvailable;
         select.appendChild(option);
         availableOptions.push(loc.locationCode);
@@ -320,11 +323,11 @@ function handleLocationChange(select) {
     console.log(`🔄 Location changed for ${rowId}: ${oldLocationId} → ${item.locationId}, qty: ${qty}`);
 
 
-    // Refresh all dropdowns for the same product when location changes
-    // This ensures all dropdowns reflect the latest allocations
+    // ✅ Refresh TẤT CẢ dropdowns khi location changes
+    // Vì capacity KHÔNG phân biệt product, việc chọn location cho 1 product ảnh hưởng đến tất cả
     if (oldLocationId !== item.locationId) {
-        console.log(`🔄 Triggering refresh for all location selects (productId: ${item.productId})`);
-        refreshAllLocationSelects(item.productId);
+        console.log(`🔄 Triggering refresh for ALL location selects`);
+        refreshAllLocationSelects();
     }
 }
 
@@ -344,12 +347,12 @@ async function checkCapacity(rowId, quantity) {
     const res = await fetch(`/StockIn/CheckLocationCapacity?locationId=${locationId}`);
     const data = await res.json();
 
-    // Calculate already allocated quantity to this location from other rows
-    const productId = parseInt(select.dataset.productId);
+    // ✅ Tính tổng số lượng ĐÃ ĐƯỢC PHÂN BỔ vào location này từ TẤT CẢ các row khác
+    // Capacity KHÔNG phân biệt product
     let allocatedQty = 0;
     
     receiptItems.forEach(item => {
-        if (item.productId === productId && item.locationId === locationId && item.rowId !== rowId) {
+        if (item.locationId === locationId && item.rowId !== rowId) {
             const qtyInput = document.getElementById(`qty-${item.rowId}`);
             allocatedQty += qtyInput ? parseInt(qtyInput.value) || 0 : item.receivedQty;
         }
@@ -614,32 +617,30 @@ async function confirmStockIn() {
     }
 }
 
-function refreshAllLocationSelects(productId) {
-    const locations = locationsCache[productId];
-    if (!locations) return;
-
-    console.log('🔄 Refreshing all location selects for productId:', productId);
+function refreshAllLocationSelects() {
+    console.log('🔄 Refreshing ALL location selects (all products)');
 
     receiptItems.forEach(item => {
-        if (item.productId === productId) {
-            const select = document.getElementById(`location-${item.rowId}`);
-            if (!select) return;
+        const locations = locationsCache[item.productId];
+        if (!locations) return;
 
-            const currentValue = item.locationId;
-            
-            // Repopulate the dropdown with updated availability
-            populateLocationSelect(item.rowId, locations);
-            
-            // Restore the previously selected value if it still exists in the dropdown
-            if (currentValue) {
-                const optionExists = Array.from(select.options).some(opt => parseInt(opt.value) === currentValue);
-                if (optionExists) {
-                    select.value = currentValue;
-                } else {
-                    // Location is no longer available, clear the selection
-                    console.log(`⚠️ Location ${currentValue} no longer available for row ${item.rowId}`);
-                    item.locationId = null;
-                }
+        const select = document.getElementById(`location-${item.rowId}`);
+        if (!select) return;
+
+        const currentValue = item.locationId;
+        
+        // ✅ Repopulate dropdown với updated availability (cho tất cả products)
+        populateLocationSelect(item.rowId, locations);
+        
+        // Restore previously selected value if still exists
+        if (currentValue) {
+            const optionExists = Array.from(select.options).some(opt => parseInt(opt.value) === currentValue);
+            if (optionExists) {
+                select.value = currentValue;
+            } else {
+                // Location no longer available, clear selection
+                console.log(`⚠️ Location ${currentValue} no longer available for row ${item.rowId}`);
+                item.locationId = null;
             }
         }
     });
