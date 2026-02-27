@@ -14,6 +14,9 @@ namespace EWMS.Repositories
         {
             return await _dbSet
                 .Include(si => si.StockInDetails)
+                .Include(si => si.Warehouse)
+                .Include(si => si.ReceivedByNavigation)
+                .Include(si => si.PurchaseOrder)
                 .Where(si => si.WarehouseId == warehouseId)
                 .OrderByDescending(si => si.ReceivedDate)
                 .ToListAsync();
@@ -31,6 +34,16 @@ namespace EWMS.Repositories
                     TotalReceived = g.Sum(sid => sid.Quantity)
                 })
                 .ToDictionaryAsync(x => x.ProductId, x => x.TotalReceived);
+        }
+
+        public async Task<List<StockInDetail>> GetDetailsByPurchaseOrderIdAsync(int purchaseOrderId)
+        {
+            return await _dbSet
+                .Where(si => si.PurchaseOrderId == purchaseOrderId)
+                .Include(si => si.StockInDetails)
+                    .ThenInclude(d => d.Location)
+                .SelectMany(si => si.StockInDetails)
+                .ToListAsync();
         }
     }
 }
