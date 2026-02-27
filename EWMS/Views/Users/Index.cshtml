@@ -59,15 +59,36 @@
     }
     .badge-role {
         padding: 6px 12px;
-        border-radius: 20px;
+        border-radius: 6px;
         font-size: 12px;
         font-weight: 600;
+        border: 1px solid;
     }
-    .badge-admin { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-    .badge-warehouse { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; }
-    .badge-sales { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; }
-    .badge-purchasing { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; }
-    .badge-inventory { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; }
+    .badge-admin { 
+        background: #667eea; 
+        color: white; 
+        border-color: #667eea;
+    }
+    .badge-warehouse { 
+        background: #f8f9fa; 
+        color: #495057; 
+        border-color: #dee2e6;
+    }
+    .badge-sales { 
+        background: #f8f9fa; 
+        color: #495057; 
+        border-color: #dee2e6;
+    }
+    .badge-purchasing { 
+        background: #f8f9fa; 
+        color: #495057; 
+        border-color: #dee2e6;
+    }
+    .badge-inventory { 
+        background: #f8f9fa; 
+        color: #495057; 
+        border-color: #dee2e6;
+    }
     .badge-active {
         display: inline-flex;
         align-items: center;
@@ -91,42 +112,32 @@
         font-weight: 500;
         margin: 2px;
         transition: all 0.2s ease;
-        border: none;
+        border: 1px solid #dee2e6;
+        background: white;
+        color: #495057;
     }
     .action-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    }
-    .btn-edit {
-        background: #e3f2fd;
-        color: #1976d2;
+        background: #f8f9fa;
+        border-color: #adb5bd;
     }
     .btn-edit:hover {
-        background: #1976d2;
-        color: white;
-    }
-    .btn-role {
-        background: #f3e5f5;
-        color: #7b1fa2;
+        border-color: #0d6efd;
+        color: #0d6efd;
     }
     .btn-role:hover {
-        background: #7b1fa2;
-        color: white;
-    }
-    .btn-dept {
-        background: #fff3e0;
-        color: #e65100;
+        border-color: #6c757d;
+        color: #6c757d;
     }
     .btn-dept:hover {
-        background: #e65100;
-        color: white;
+        border-color: #fd7e14;
+        color: #fd7e14;
     }
     .btn-delete {
-        background: #ffebee;
-        color: #c62828;
+        color: #dc3545;
+        border-color: #dc3545;
     }
     .btn-delete:hover {
-        background: #c62828;
+        background: #dc3545;
         color: white;
     }
     .alert-success {
