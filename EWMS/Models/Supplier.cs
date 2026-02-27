@@ -29,4 +29,8 @@ public partial class Supplier
 
     [InverseProperty("Supplier")]
     public virtual ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();
+
+    // Back-reference to product categories that are associated with this supplier
+    [InverseProperty("Supplier")]
+    public virtual ICollection<ProductCategory> ProductCategories { get; set; } = new List<ProductCategory>();
 }

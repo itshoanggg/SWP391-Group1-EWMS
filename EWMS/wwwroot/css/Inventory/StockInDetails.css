@@ -345,6 +345,31 @@ body {
 .location-select { margin: 0 auto; display: block; }
 .sku-badge { display: inline-block; }
 
+/* Override: force left alignment for all data on Stock-In Details */
+#products-table thead th,
+#products-table tbody td {
+    text-align: left !important;
+}
+#products-table .text-end,
+#products-table .text-center,
+#products-table .text-start {
+    text-align: left !important;
+}
+#products-table tbody td:nth-child(3),
+#products-table tbody td:nth-child(4) {
+    text-align: left !important;
+}
+/* Align form controls to the left */
+.qty-input {
+    text-align: left !important;
+    margin: 0 !important;
+}
+.location-select {
+    margin: 0 !important;
+    display: inline-block !important;
+}
+
+
 /* =========================================================
    RESPONSIVE
 ========================================================= */

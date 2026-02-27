@@ -23,6 +23,12 @@ namespace EWMS.Services
 
             var purchaseOrders = await _unitOfWork.PurchaseOrders.GetByWarehouseIdAsync(warehouseId, status);
 
+            // If no specific status requested, show only active statuses on the main list
+            if (string.IsNullOrEmpty(status))
+            {
+                purchaseOrders = purchaseOrders.Where(po => po.Status == "Ordered" || po.Status == "ReadyToReceive" || po.Status == "PartiallyReceived");
+            }
+
             if (!string.IsNullOrEmpty(search))
             {
                 purchaseOrders = purchaseOrders.Where(po =>
@@ -292,6 +298,94 @@ namespace EWMS.Services
                 MaxCapacity = location.Capacity,
                 CurrentStock = currentStock
             };
+        }
+
+        public async Task<List<StockInReceiptItemViewModel>> GetStockInReceiptsByWarehouseAsync(int warehouseId, DateTime? dateFrom = null, DateTime? dateTo = null)
+        {
+            var receipts = await _unitOfWork.StockIns.GetByWarehouseIdAsync(warehouseId);
+
+            if (dateFrom.HasValue)
+            {
+                receipts = receipts.Where(r => r.ReceivedDate.HasValue && r.ReceivedDate.Value.Date >= dateFrom.Value.Date);
+            }
+            if (dateTo.HasValue)
+            {
+                var toExclusive = dateTo.Value.Date.AddDays(1);
+                receipts = receipts.Where(r => r.ReceivedDate.HasValue && r.ReceivedDate.Value < toExclusive);
+            }
+
+            return receipts
+                .Select(r => new StockInReceiptItemViewModel
+                {
+                    StockInId = r.StockInId,
+                    WarehouseId = r.WarehouseId,
+                    WarehouseName = r.Warehouse.WarehouseName,
+                    ReceivedBy = r.ReceivedBy,
+                    ReceivedByName = r.ReceivedByNavigation.FullName ?? r.ReceivedByNavigation.Username,
+                    ReceivedDate = r.ReceivedDate,
+                    Reason = r.Reason,
+                    PurchaseOrderId = r.PurchaseOrderId,
+                    TotalAmount = r.TotalAmount,
+                    CreatedAt = r.CreatedAt
+                })
+                .OrderByDescending(x => x.ReceivedDate ?? x.CreatedAt)
+                .ToList();
+        }
+
+        public async Task<IEnumerable<PurchaseOrderListDTO>> GetPurchaseOrdersHistoryAsync(int warehouseId, string? search)
+        {
+            var purchaseOrders = await _unitOfWork.PurchaseOrders.GetByWarehouseIdAsync(warehouseId, null);
+
+            // Only historical statuses
+            purchaseOrders = purchaseOrders.Where(po => po.Status == "Received" || po.Status == "Cancelled");
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                purchaseOrders = purchaseOrders.Where(po =>
+                    po.PurchaseOrderId.ToString().Contains(search) ||
+                    po.Supplier.SupplierName.Contains(search));
+            }
+
+            var list = purchaseOrders.Select(po =>
+            {
+                var totalItems = po.PurchaseOrderDetails.Sum(d => d.Quantity);
+                var receivedItems = po.StockInReceipts
+                    .SelectMany(si => si.StockInDetails)
+                    .Sum(sid => sid.Quantity);
+                var lastReceived = po.StockInReceipts
+                    .OrderByDescending(r => r.ReceivedDate)
+                    .FirstOrDefault()?.ReceivedDate;
+
+                return new PurchaseOrderListDTO
+                {
+                    PurchaseOrderId = po.PurchaseOrderId,
+                    SupplierName = po.Supplier.SupplierName,
+                    ExpectedReceivingDate = po.ExpectedReceivingDate,
+                    TotalItems = totalItems,
+                    ReceivedItems = receivedItems,
+                    RemainingItems = totalItems - receivedItems,
+                    TotalAmount = po.PurchaseOrderDetails.Sum(d => d.TotalPrice ?? 0),
+                    CreatedBy = po.CreatedByNavigation.FullName ?? po.CreatedByNavigation.Username,
+                    Status = po.Status ?? "Unknown",
+                    CreatedAt = po.CreatedAt,
+                    LastReceivedDate = lastReceived
+                };
+            }).ToList();
+
+            return list.OrderByDescending(x => x.LastReceivedDate ?? x.CreatedAt);
+        }
+
+        public async Task<List<PurchaseOrderAllocationDTO>> GetPurchaseOrderAllocationsAsync(int purchaseOrderId)
+        {
+            var details = await _unitOfWork.StockIns.GetDetailsByPurchaseOrderIdAsync(purchaseOrderId);
+            return details.Select(d => new PurchaseOrderAllocationDTO
+            {
+                ProductId = d.ProductId,
+                LocationId = d.LocationId,
+                LocationCode = d.Location.LocationCode,
+                LocationName = d.Location.LocationName,
+                Quantity = d.Quantity
+            }).ToList();
         }
 
         private async Task UpdatePurchaseOrderStatusAsync(int purchaseOrderId, List<StockInDetailViewModel> details)

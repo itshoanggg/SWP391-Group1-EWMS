@@ -12,6 +12,7 @@ namespace EWMS.DTOs
         public string CreatedBy { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public DateTime? CreatedAt { get; set; }
+        public DateTime? LastReceivedDate { get; set; }
     }
 
     public class PurchaseOrderInfoDTO

@@ -16,6 +16,8 @@ namespace EWMS.Repositories
                 .Include(po => po.Supplier)
                 .Include(po => po.CreatedByNavigation)
                 .Include(po => po.PurchaseOrderDetails)
+                .Include(po => po.StockInReceipts)
+                    .ThenInclude(si => si.StockInDetails)
                 .Where(po => po.WarehouseId == warehouseId);
 
             if (!string.IsNullOrEmpty(status))

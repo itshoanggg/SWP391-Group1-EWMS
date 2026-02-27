@@ -169,6 +169,19 @@
     font-size: 0.9rem;
 }
 
+/* Force left alignment for Stock-In table */
+#purchase-orders-table th,
+#purchase-orders-table td {
+    text-align: left !important;
+}
+
+/* Override any Bootstrap alignment utilities within the table */
+#purchase-orders-table .text-end,
+#purchase-orders-table .text-center,
+#purchase-orders-table .text-start {
+    text-align: left !important;
+}
+
 /* Responsive adjustments */
 @media (max-width: 576px) {
     .pagination {

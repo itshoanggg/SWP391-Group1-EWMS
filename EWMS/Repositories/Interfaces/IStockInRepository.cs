@@ -6,5 +6,6 @@ namespace EWMS.Repositories.Interfaces
     {
         Task<IEnumerable<StockInReceipt>> GetByWarehouseIdAsync(int warehouseId);
         Task<Dictionary<int, int>> GetReceivedQuantitiesAsync(int purchaseOrderId);
+        Task<List<StockInDetail>> GetDetailsByPurchaseOrderIdAsync(int purchaseOrderId);
     }
 }
