@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace EWMS.Controllers
 {
-    [Authorize(Roles = "Admin,Inventory,Warehouse,Warehouse Manager,Sales Staff")]
+    [Authorize(Roles = "Admin,Inventory Staff,Warehouse Manager,Sales Staff")]
     public class StockOutReceiptController : Controller
     {
         private readonly IStockOutReceiptService _stockOutReceiptService;

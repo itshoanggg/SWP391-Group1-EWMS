@@ -4,7 +4,7 @@ using EWMS.Services.Interfaces;
 
 namespace EWMS.Controllers
 {
-    [Authorize(Roles = "Admin,Inventory,Warehouse,Warehouse Manager")]
+    [Authorize(Roles = "Admin,Inventory Staff,Warehouse Manager")]
     public class StockController : Controller
     {
         private readonly IStockService _stockService;

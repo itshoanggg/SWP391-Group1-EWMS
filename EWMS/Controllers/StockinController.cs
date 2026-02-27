@@ -6,7 +6,7 @@ using EWMS.ViewModels;
 
 namespace EWMS.Controllers
 {
-    [Authorize(Roles = "Inventory Staff,Inventory,Warehouse")]
+    [Authorize(Roles = "Inventory Staff,Warehouse Manager")]
     public class StockInController : Controller
     {
         private readonly IStockInService _stockInService;
