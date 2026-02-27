@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using EWMS.Services.Interfaces;
 
 namespace EWMS.Controllers
 {
+    [Authorize(Roles = "Admin,Inventory,Warehouse,Warehouse Manager")]
     public class InventoryDashboardController : Controller
     {
         private readonly IDashboardService _dashboardService;

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using EWMS.ViewModels;
 using EWMS.Models;
 
@@ -12,10 +13,12 @@ namespace EWMS.Controllers
     public class AccountController : Controller
     {
         private readonly EWMSDbContext _db;
+        private readonly IPasswordHasher<User> _passwordHasher;
 
-        public AccountController(EWMSDbContext db)
+        public AccountController(EWMSDbContext db, IPasswordHasher<User> passwordHasher)
         {
             _db = db;
+            _passwordHasher = passwordHasher;
         }
 
         [AllowAnonymous]
@@ -40,9 +43,17 @@ namespace EWMS.Controllers
                 .Include(u => u.Role)
                 .Include(u => u.UserWarehouses)
                     .ThenInclude(uw => uw.Warehouse)
-                .SingleOrDefaultAsync(u => u.Username == model.Username && u.PasswordHash == model.Password);
+                .SingleOrDefaultAsync(u => u.Username == model.Username);
 
             if (user == null || user.IsActive == false)
+            {
+                ModelState.AddModelError(string.Empty, "Invalid username or password.");
+                return View("~/Views/Account/Login.cshtml", model);
+            }
+
+            // Verify password using password hasher
+            var verifyResult = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, model.Password);
+            if (verifyResult == PasswordVerificationResult.Failed)
             {
                 ModelState.AddModelError(string.Empty, "Invalid username or password.");
                 return View("~/Views/Account/Login.cshtml", model);

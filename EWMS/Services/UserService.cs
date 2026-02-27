@@ -1,6 +1,9 @@
+using EWMS.DTOs;
+using EWMS.Models;
 using EWMS.Repositories.Interfaces;
 using EWMS.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace EWMS.Services
@@ -9,11 +12,13 @@ namespace EWMS.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly EWMSDbContext _context;
 
-        public UserService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor)
+        public UserService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, EWMSDbContext context)
         {
             _unitOfWork = unitOfWork;
             _httpContextAccessor = httpContextAccessor;
+            _context = context;
         }
 
         public async Task<int> GetWarehouseIdByUserIdAsync(int userId)
@@ -42,6 +47,31 @@ namespace EWMS.Services
                 return 0;
 
             return int.TryParse(idClaim.Value, out var userId) ? userId : 0;
+        }
+
+        public async Task<UserDto?> ValidateUserAsync(string username, string password)
+        {
+            var user = await _context.Users
+                .Include(u => u.Role)
+                .Include(u => u.UserWarehouses)
+                    .ThenInclude(uw => uw.Warehouse)
+                .FirstOrDefaultAsync(u => u.Username == username && u.PasswordHash == password && u.IsActive == true);
+
+            if (user == null)
+                return null;
+
+            var warehouse = user.UserWarehouses.FirstOrDefault()?.Warehouse;
+
+            return new UserDto
+            {
+                UserId = user.UserId,
+                Username = user.Username,
+                FullName = user.FullName ?? user.Username,
+                Email = user.Email,
+                RoleName = user.Role?.RoleName ?? string.Empty,
+                WarehouseId = warehouse?.WarehouseId ?? 0,
+                WarehouseName = warehouse?.WarehouseName ?? string.Empty
+            };
         }
     }
 }

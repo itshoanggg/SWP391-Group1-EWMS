@@ -1,4 +1,4 @@
-﻿/* =========================================================
+/* =========================================================
    GOODS RECEIPT - MAIN LOGIC (WITH DEBUG)
 ========================================================= */
 
@@ -19,7 +19,7 @@ async function loadPurchaseOrderInfo() {
         const response = await fetch(`/StockIn/GetPurchaseOrderInfo?purchaseOrderId=${purchaseOrderId}`);
         const data = await response.json();
 
-        console.log('📋 PO Info:', data); // ✅ DEBUG
+        // DEBUG: console.log removed
 
         if (data.error) {
             console.error('Error:', data.error);
@@ -32,7 +32,7 @@ async function loadPurchaseOrderInfo() {
         document.getElementById('supplier-phone').textContent = data.supplierPhone || 'N/A';
 
         if (data.hasStockIn) {
-            alert('Đơn hàng này đã được nhập kho đủ!');
+            alert('�on h�ng n�y d� du?c nh?p kho d?!');
             document.getElementById('btn-confirm').disabled = true;
         }
     } catch (error) {
@@ -45,7 +45,7 @@ async function loadProducts() {
         const response = await fetch(`/StockIn/GetPurchaseOrderProducts?purchaseOrderId=${purchaseOrderId}`);
         const data = await response.json();
 
-        console.log('📦 Products Data from API:', data); // ✅ DEBUG
+        // DEBUG: console.log removed
 
         if (data.error) {
             console.error('Error:', data.error);
@@ -54,14 +54,12 @@ async function loadProducts() {
 
         productsData = data;
 
-        // ✅ DEBUG - Kiểm tra từng sản phẩm
-        console.log('🔍 Checking each product:');
+        // ? DEBUG - Ki?m tra t?ng s?n ph?m
         productsData.forEach(p => {
-            console.log(`  ${p.productName}:`, {
                 orderedQty: p.orderedQty,
                 receivedQty: p.receivedQty,
                 remainingQty: p.remainingQty,
-                willShow: p.remainingQty > 0 ? '✅ SHOW' : '❌ HIDE'
+                willShow: p.remainingQty > 0 ? '? SHOW' : '? HIDE'
             });
         });
 
@@ -76,7 +74,6 @@ async function loadProducts() {
    RENDER PRODUCTS TABLE
 ========================================================= */
 function renderProductsTable() {
-    console.log('🎨 Starting renderProductsTable()...'); // ✅ DEBUG
 
     const tbody = document.getElementById('products-tbody');
     tbody.innerHTML = '';
@@ -85,14 +82,12 @@ function renderProductsTable() {
     let hiddenCount = 0;
 
     productsData.forEach((product, index) => {
-        // ⚠️ BỎ QUA SẢN PHẨM ĐÃ NHẬN ĐỦ
+        // ?? B? QUA S?N PH?M �� NH?N �?
         if (product.remainingQty <= 0) {
-            console.log(`  ⏭️ Skipping ${product.productName} (remainingQty = ${product.remainingQty})`); // ✅ DEBUG
             hiddenCount++;
             return;
         }
 
-        console.log(`  ✅ Showing ${product.productName} (remainingQty = ${product.remainingQty})`); // ✅ DEBUG
         shownCount++;
 
         const rowId = `product-${product.productId}-${index}`;
@@ -127,7 +122,7 @@ function renderProductsTable() {
                         data-product-id="${product.productId}"
                         data-row-id="${rowId}"
                         onchange="handleLocationChange(this)">
-                    <option value="">-- Chọn vị trí --</option>
+                    <option value="">-- Ch?n v? tr� --</option>
                 </select>
                 <div class="location-info mt-1" id="location-info-${rowId}"></div>
             </td>
@@ -148,17 +143,17 @@ function renderProductsTable() {
         });
     });
 
-    console.log(`📊 Render summary: ${shownCount} shown, ${hiddenCount} hidden`); // ✅ DEBUG
+    // DEBUG: console.log removed
 
-    // ✅ KIỂM TRA NẾU KHÔNG CÒN SẢN PHẨM NÀO
+    // ? KI?M TRA N?U KH�NG C�N S?N PH?M N�O
     if (receiptItems.length === 0) {
-        console.log('🎉 All products received!'); // ✅ DEBUG
+        // DEBUG: console.log removed
         tbody.innerHTML = `
             <tr>
                 <td colspan="6" class="text-center py-4">
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle"></i> 
-                        <strong>Đơn hàng này đã được nhập kho đầy đủ!</strong>
+                        <strong>�on h�ng n�y d� du?c nh?p kho d?y d?!</strong>
                     </div>
                 </td>
             </tr>
@@ -193,14 +188,14 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
     const select = document.getElementById(`location-${rowId}`);
     if (!select) return;
 
-    select.innerHTML = '<option value="">-- Chọn vị trí --</option>';
+    select.innerHTML = '<option value="">-- Ch?n v? tr� --</option>';
 
-    // ✅ Track used locations and their remaining capacity (cho TẤT CẢ products)
+    // ? Track used locations and their remaining capacity (cho T?T C? products)
     const usedLocations = {};
     
     receiptItems.forEach(item => {
-        // ✅ Đếm TẤT CẢ các row khác (bất kể product) đã dùng location
-        // Vì capacity KHÔNG phân biệt product: 200 capacity = 200 sản phẩm bất kỳ
+        // ? �?m T?T C? c�c row kh�c (b?t k? product) d� d�ng location
+        // V� capacity KH�NG ph�n bi?t product: 200 capacity = 200 s?n ph?m b?t k?
         if (item.locationId && !isNaN(item.locationId) && item.rowId !== rowId) {
             const qtyInput = document.getElementById(`qty-${item.rowId}`);
             const qty = qtyInput ? parseInt(qtyInput.value) || 0 : item.receivedQty;
@@ -212,17 +207,15 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
         }
     });
 
-    console.log(`📍 Populating locations for rowId: ${rowId}`);
-    console.log(`   Used locations:`, usedLocations);
 
     const availableOptions = [];
     locations.forEach(loc => {
         const baseAvailable = loc.maxCapacity - loc.currentStock;
         
-        // ✅ Tính tổng số lượng đã được phân bổ vào location này (TẤT CẢ các rows, bao gồm cả row hiện tại)
+        // ? T�nh t?ng s? lu?ng d� du?c ph�n b? v�o location n�y (T?T C? c�c rows, bao g?m c? row hi?n t?i)
         let totalUsedQty = usedLocations[loc.locationId] || 0;
         
-        // ✅ Thêm quantity của row HIỆN TẠI nếu nó cũng đang chọn location này
+        // ? Th�m quantity c?a row HI?N T?I n?u n� cung dang ch?n location n�y
         const currentItem = receiptItems.find(i => i.rowId === rowId);
         if (currentItem && currentItem.locationId === loc.locationId) {
             const currentQtyInput = document.getElementById(`qty-${rowId}`);
@@ -232,28 +225,24 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
         
         const actualAvailable = baseAvailable - (usedLocations[loc.locationId] || 0);
         
-        console.log(`   ${loc.locationCode}: baseAvailable=${baseAvailable}, usedByOthers=${usedLocations[loc.locationId] || 0}, totalUsed=${totalUsedQty}, actualAvailable=${actualAvailable}`);
         
         // Only show locations with actual available capacity
         if (actualAvailable <= 0) {
-            console.log(`   ❌ ${loc.locationCode} excluded (actualAvailable <= 0)`);
             return;
         }
         if (excludedLocationId && loc.locationId === excludedLocationId) {
-            console.log(`   ❌ ${loc.locationCode} excluded (explicitly excluded)`);
             return;
         }
 
         const option = document.createElement('option');
         option.value = loc.locationId;
-        // ✅ Hiển thị TỔNG số lượng đã dùng (bao gồm cả row hiện tại)
+        // ? Hi?n th? T?NG s? lu?ng d� d�ng (bao g?m c? row hi?n t?i)
         option.textContent = `${loc.locationCode} - ${loc.locationName} (${loc.currentStock + totalUsedQty}/${loc.maxCapacity})`;
         option.dataset.available = actualAvailable;
         select.appendChild(option);
         availableOptions.push(loc.locationCode);
     });
 
-    console.log(`   ✅ Available options: [${availableOptions.join(', ')}]`);
 }
 
 /* =========================================================
@@ -284,7 +273,6 @@ function handleLocationChange(select) {
 
     const item = receiptItems.find(i => i.rowId === rowId);
     if (!item) {
-        console.log(`⚠️ Item not found for rowId: ${rowId}`);
         return;
     }
 
@@ -311,7 +299,7 @@ function handleLocationChange(select) {
             item.receivedQty = newMax;
             // Do NOT call checkCapacity again here to keep the split button visible with the remaining quantity
         } else if (qty > 0) {
-            // Within capacity → just confirm info panel
+            // Within capacity ? just confirm info panel
             checkCapacity(rowId, qty);
         } else {
             clearLocationInfo(rowId);
@@ -320,13 +308,11 @@ function handleLocationChange(select) {
         clearLocationInfo(rowId);
     }
 
-    console.log(`🔄 Location changed for ${rowId}: ${oldLocationId} → ${item.locationId}, qty: ${qty}`);
 
 
-    // ✅ Refresh TẤT CẢ dropdowns khi location changes
-    // Vì capacity KHÔNG phân biệt product, việc chọn location cho 1 product ảnh hưởng đến tất cả
+    // ? Refresh T?T C? dropdowns khi location changes
+    // V� capacity KH�NG ph�n bi?t product, vi?c ch?n location cho 1 product ?nh hu?ng d?n t?t c?
     if (oldLocationId !== item.locationId) {
-        console.log(`🔄 Triggering refresh for ALL location selects`);
         refreshAllLocationSelects();
     }
 }
@@ -347,8 +333,8 @@ async function checkCapacity(rowId, quantity) {
     const res = await fetch(`/StockIn/CheckLocationCapacity?locationId=${locationId}`);
     const data = await res.json();
 
-    // ✅ Tính tổng số lượng ĐÃ ĐƯỢC PHÂN BỔ vào location này từ TẤT CẢ các row khác
-    // Capacity KHÔNG phân biệt product
+    // ? T�nh t?ng s? lu?ng �� �U?C PH�N B? v�o location n�y t? T?T C? c�c row kh�c
+    // Capacity KH�NG ph�n bi?t product
     let allocatedQty = 0;
     
     receiptItems.forEach(item => {
@@ -366,7 +352,7 @@ async function checkCapacity(rowId, quantity) {
         infoDiv.innerHTML = `
             <div class="alert alert-success p-2 mb-0">
                 ${locationText}<br>
-                <b>Còn trống sau nhập: ${available - quantity}</b>
+                <b>C�n tr?ng sau nh?p: ${available - quantity}</b>
             </div>
         `;
         return;
@@ -376,11 +362,11 @@ async function checkCapacity(rowId, quantity) {
     infoDiv.innerHTML = `
         <div class="alert alert-warning p-2 mb-2">
             ${locationText}<br>
-            <b>Chỉ chứa được ${available}</b>
+            <b>Ch? ch?a du?c ${available}</b>
         </div>
         <button class="btn btn-sm btn-warning"
             onclick="splitToNewLocation('${rowId}', ${parseInt(select.dataset.productId)}, ${quantity}, ${available})">
-            ➕ Thêm rack khác cho ${remain}
+            ? Th�m rack kh�c cho ${remain}
         </button>
     `;
 }
@@ -396,7 +382,6 @@ function clearLocationInfo(rowId) {
    SPLIT TO NEW LOCATION
 ========================================================= */
 function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
-    console.log(`➕ Splitting location: parentRow=${parentRowId}, totalQty=${totalQty}, firstCapacity=${firstCapacity}`);
     
     const parentRow = document.getElementById(parentRowId);
     const parentItem = receiptItems.find(i => i.rowId === parentRowId);
@@ -412,7 +397,6 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
     const parentLocationId = parseInt(document.getElementById(`location-${parentRowId}`).value);
     const remainingQty = totalQty - firstCapacity;
     
-    console.log(`   Parent location: ${parentLocationId}, remaining qty: ${remainingQty}`);
     
     if (remainingQty <= 0) return;
 
@@ -435,7 +419,7 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
             <select id="location-${newRowId}" class="form-select"
                     data-row-id="${newRowId}" data-product-id="${productId}"
                     onchange="handleLocationChange(this)">
-                <option value="">-- Chọn rack khác --</option>
+                <option value="">-- Ch?n rack kh�c --</option>
             </select>
             <div id="location-info-${newRowId}" class="mt-1"></div>
         </td>
@@ -457,8 +441,6 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
     
     receiptItems.push(newItem);
     
-    console.log(`   Created new split row: ${newRowId}`);
-    console.log(`   Current receiptItems for product ${productId}:`, receiptItems.filter(i => i.productId === productId));
 
     // Populate dropdown - it will automatically exclude used-up locations
     populateLocationSelect(newRowId, locationsCache[productId]);
@@ -513,7 +495,7 @@ function showLocationModal_removed() {
             <td><span class="badge bg-info">${loc.currentStock}</span></td>
             <td>
                 <button class="btn btn-sm btn-success" onclick="selectLocationFromModal('${rowId}', ${loc.locationId})">
-                    <i class="fas fa-check"></i> Chọn
+                    <i class="fas fa-check"></i> Ch?n
                 </button>
             </td>
         `;
@@ -541,7 +523,7 @@ function updateSummary() {
     const totalReceived = receiptItems.reduce((sum, item) => sum + item.receivedQty, 0);
     const difference = totalOrdered - totalReceived;
 
-    console.log('📊 Summary:', { totalSku, totalOrdered, totalReceived, difference }); // ✅ DEBUG
+    // DEBUG: console.log removed
 
     document.getElementById('total-sku').textContent = formatNumber(totalSku);
     document.getElementById('total-ordered').textContent = formatNumber(totalOrdered);
@@ -549,13 +531,13 @@ function updateSummary() {
 
     const statusElem = document.getElementById('receipt-status');
     if (difference === 0) {
-        statusElem.textContent = 'Đủ hàng';
+        statusElem.textContent = '�? h�ng';
         statusElem.className = 'text-success';
     } else if (difference > 0) {
-        statusElem.textContent = `Thiếu ${formatNumber(difference)} sản phẩm`;
+        statusElem.textContent = `Thi?u ${formatNumber(difference)} s?n ph?m`;
         statusElem.className = 'text-warning';
     } else {
-        statusElem.textContent = `Thừa ${formatNumber(Math.abs(difference))} sản phẩm`;
+        statusElem.textContent = `Th?a ${formatNumber(Math.abs(difference))} s?n ph?m`;
         statusElem.className = 'text-danger';
     }
 }
@@ -568,16 +550,16 @@ async function confirmStockIn() {
 
     for (const item of receiptItems) {
         if (item.receivedQty > 0 && !item.locationId) {
-            errors.push(`${item.productName}: Chưa chọn vị trí lưu kho`);
+            errors.push(`${item.productName}: Chua ch?n v? tr� luu kho`);
         }
     }
 
     if (errors.length > 0) {
-        alert('Vui lòng kiểm tra:\n\n' + errors.join('\n'));
+        alert('Vui l�ng ki?m tra:\n\n' + errors.join('\n'));
         return;
     }
 
-    if (!confirm('Xác nhận nhập kho các sản phẩm này?')) {
+    if (!confirm('X�c nh?n nh?p kho c�c s?n ph?m n�y?')) {
         return;
     }
 
@@ -594,7 +576,7 @@ async function confirmStockIn() {
             }))
     };
 
-    console.log('💾 Submitting:', requestData); // ✅ DEBUG
+    // DEBUG: console.log removed
 
     try {
         const response = await fetch('/StockIn/ConfirmStockIn', {
@@ -609,16 +591,15 @@ async function confirmStockIn() {
             alert(result.message);
             window.location.href = '/StockIn/Index';
         } else {
-            alert('Lỗi: ' + result.error);
+            alert('L?i: ' + result.error);
         }
     } catch (error) {
         console.error('Confirm stock in failed:', error);
-        alert('Có lỗi xảy ra khi nhập kho!');
+        alert('C� l?i x?y ra khi nh?p kho!');
     }
 }
 
 function refreshAllLocationSelects() {
-    console.log('🔄 Refreshing ALL location selects (all products)');
 
     receiptItems.forEach(item => {
         const locations = locationsCache[item.productId];
@@ -629,7 +610,7 @@ function refreshAllLocationSelects() {
 
         const currentValue = item.locationId;
         
-        // ✅ Repopulate dropdown với updated availability (cho tất cả products)
+        // ? Repopulate dropdown v?i updated availability (cho t?t c? products)
         populateLocationSelect(item.rowId, locations);
         
         // Restore previously selected value if still exists
@@ -639,7 +620,6 @@ function refreshAllLocationSelects() {
                 select.value = currentValue;
             } else {
                 // Location no longer available, clear selection
-                console.log(`⚠️ Location ${currentValue} no longer available for row ${item.rowId}`);
                 item.locationId = null;
             }
         }
@@ -650,14 +630,9 @@ function refreshAllLocationSelects() {
    INIT
 ========================================================= */
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Goods Receipt initialized');
-    console.log('   PO ID:', purchaseOrderId);
-    console.log('   Warehouse ID:', warehouseId);
-    console.log('   User ID:', userId);
 
     await loadPurchaseOrderInfo();
     await loadProducts();
 
-    console.log('✅ Initialization complete');
-    console.log('📋 Final receiptItems:', receiptItems);
 });
+
