@@ -51,9 +51,29 @@ namespace EWMS.Controllers
                 return View("~/Views/Account/Login.cshtml", model);
             }
 
-            // Verify password using password hasher
-            var verifyResult = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, model.Password);
-            if (verifyResult == PasswordVerificationResult.Failed)
+            // Verify password - support both plain text (legacy) and hashed passwords
+            bool passwordValid = false;
+            
+            // First try: Check if it's a plain text password (legacy support)
+            if (user.PasswordHash == model.Password)
+            {
+                passwordValid = true;
+                
+                // Auto-upgrade to hashed password for better security
+                user.PasswordHash = _passwordHasher.HashPassword(user, model.Password);
+                await _db.SaveChangesAsync();
+            }
+            else
+            {
+                // Second try: Verify as hashed password
+                var verifyResult = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, model.Password);
+                if (verifyResult != PasswordVerificationResult.Failed)
+                {
+                    passwordValid = true;
+                }
+            }
+
+            if (!passwordValid)
             {
                 ModelState.AddModelError(string.Empty, "Invalid username or password.");
                 return View("~/Views/Account/Login.cshtml", model);
