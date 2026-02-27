@@ -1,5 +1,5 @@
-﻿@{
-    ViewData["Title"] = "Stock-In Management";
+@{
+    ViewData["Title"] = "Stock-In History";
     var warehouseId = ViewBag.WarehouseId;
 }
 
@@ -8,18 +8,7 @@
 }
 
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-warehouse"></i> Stock-In Management</h2>
-    </div>
-
-    @if (TempData["Success"] != null)
-    {
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fas fa-check-circle"></i> @TempData["Success"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    }
-
+    
     @if (TempData["Error"] != null)
     {
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -28,60 +17,49 @@
         </div>
     }
 
-    <!-- Info Alert -->
     <div class="alert alert-info alert-dismissible fade show" role="alert">
         <i class="fas fa-info-circle"></i>
-        <strong>Guide:</strong> Stock-in is only available for orders with status <span class="badge bg-success">Ready To Receive</span> or <span class="badge bg-primary">Partially Received</span>
+        <strong>Note:</strong> This page shows purchase orders with status <span class="badge bg-dark">Received</span> or <span class="badge bg-danger">Cancelled</span>.
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
-    <!-- Filters -->
     <div class="card mb-4">
         <div class="card-body">
             <div class="row">
-                <div class="col-md-3">
-                    <label class="form-label">Status:</label>
-                    <select class="form-select" id="filter-status">
-                        <option value="">All</option>
-                        <option value="Ordered">Ordered</option>
-                        <option value="ReadyToReceive">Ready To Receive</option>
-                        <option value="PartiallyReceived">Partially Received</option>
-                        
-                    </select>
-                </div>
                 <div class="col-md-6">
                     <label class="form-label">Search:</label>
                     <input type="text" class="form-control" id="search-input"
                            placeholder="Search by order number or supplier...">
                 </div>
                 <div class="col-md-3 d-flex align-items-end">
-                    <button class="btn btn-primary w-100" onclick="loadPurchaseOrders()">
+                    <button class="btn btn-primary w-100" onclick="loadHistoryPurchaseOrders()">
                         <i class="fas fa-sync-alt"></i> Refresh
                     </button>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <div class="d-flex align-items-center gap-2 w-100 justify-content-end">
+                        <label class="mb-0 text-muted page-size-label">
+                            <i class="fas fa-layer-group"></i> Show:
+                        </label>
+                        <select class="form-select form-select-sm" id="page-size-select" onchange="changePageSize()">
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                        <span class="text-muted page-size-label">entries</span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Purchase Orders Table -->
     <div class="card">
         <div class="card-header">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="mb-0">
-                    <i class="fas fa-list-ul text-primary"></i> Purchase Order List
+                    <i class="fas fa-list-ul text-primary"></i> Historical Purchase Orders
                 </h5>
-                <div class="d-flex align-items-center gap-2">
-                    <label class="mb-0 text-muted page-size-label">
-                        <i class="fas fa-layer-group"></i> Show:
-                    </label>
-                    <select class="form-select form-select-sm" id="page-size-select" onchange="changePageSize()">
-                        <option value="10">10</option>
-                        <option value="25">25</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                    </select>
-                    <span class="text-muted page-size-label">entries</span>
-                </div>
             </div>
         </div>
         <div class="card-body">
@@ -94,7 +72,6 @@
                             <th width="12%">EXPECTED DATE</th>
                             <th width="10%" class="text-end">ORDERED QTY</th>
                             <th width="10%" class="text-end">RECEIVED</th>
-                            <th width="10%" class="text-end">REMAINING</th>
                             <th width="18%">STATUS</th>
                             <th width="10%">ACTION</th>
                         </tr>
@@ -121,7 +98,6 @@
                 </div>
                 <nav aria-label="Table pagination">
                     <div id="pagination-controls">
-                        <!-- Pagination will be rendered here by JavaScript -->
                     </div>
                 </nav>
             </div>
@@ -131,11 +107,5 @@
 
 <script>
     const warehouseId = @warehouseId;
-
-    if (!warehouseId) {
-        console.error('WarehouseId is not defined!');
-        alert('Error: Warehouse could not be identified. Please log in again.');
-    }
 </script>
-<script src="~/js/Inventory/StockIn.js"></script>
-
+<script src="~/js/Inventory/StockInHistory.js"></script>
