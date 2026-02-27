@@ -97,8 +97,12 @@ namespace EWMS.Controllers
                 return RedirectToAction("Index", "PurchaseOrder");
 
             // Inventory/Warehouse team
-            if (role.Contains("invent") || role.Contains("warehouse"))
+            if (role.Contains("invent"))
                 return RedirectToAction("Index", "StockIn");
+
+            if (role.Contains("warehouse"))
+                return RedirectToAction("Index", "StockIn");
+
 
             // Fallback - redirect to User Management for unrecognized roles
             return RedirectToAction("Index", "Users");

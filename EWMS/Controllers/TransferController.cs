@@ -8,7 +8,7 @@ using EWMS.Models;
 
 namespace EWMS.Controllers
 {
-    [Authorize(Roles = "Admin,Warehouse,Inventory,Warehouse Manager")]
+    [Authorize(Roles = "Admin,Warehouse,Inventory,Warehouse Manager,Inventory Staff")]
     public class TransferController : Controller
     {
         private readonly TransferService _transferService;
