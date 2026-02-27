@@ -38,6 +38,24 @@ namespace EWMS.Controllers
             return View();
         }
 
+        // GET: StockIn/History
+        public async Task<IActionResult> History()
+        {
+            var userId = _userService.GetCurrentUserId();
+            if (userId == 0)
+                return RedirectToAction("Login", "Account");
+
+            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            if (warehouseId == 0)
+            {
+                TempData["Error"] = "Bạn chưa được phân công vào kho nào.";
+                return RedirectToAction("Index", "Home");
+            }
+
+            ViewBag.WarehouseId = warehouseId;
+            return View("History");
+        }
+
         // API: Get Purchase Orders
         [HttpGet]
         public async Task<IActionResult> GetPurchaseOrders(int warehouseId, string status = "", string search = "")
@@ -50,6 +68,26 @@ namespace EWMS.Controllers
                     return Json(new { error = "Bạn không có quyền truy cập kho này" });
 
                 var result = await _stockInService.GetPurchaseOrdersForStockInAsync(warehouseId, status, search);
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = $"Lỗi server: {ex.Message}" });
+            }
+        }
+
+        // API: Get Purchase Orders History (Received/Cancelled)
+        [HttpGet]
+        public async Task<IActionResult> GetHistoryPurchaseOrders(int warehouseId, string search = "")
+        {
+            try
+            {
+                var userWarehouseId = await _userService.GetWarehouseIdByUserIdAsync(_userService.GetCurrentUserId());
+
+                if (userWarehouseId != warehouseId)
+                    return Json(new { error = "Bạn không có quyền truy cập kho này" });
+
+                var result = await _stockInService.GetPurchaseOrdersHistoryAsync(warehouseId, search);
                 return Json(result);
             }
             catch (Exception ex)
@@ -84,6 +122,64 @@ namespace EWMS.Controllers
             return View(purchaseOrder);
         }
 
+        // GET: StockIn/PurchaseOrderDetails/{id} - Read-only PO details for Inventory Staff
+        [Authorize(Roles = "Inventory Staff")]
+        [HttpGet]
+        public async Task<IActionResult> PurchaseOrderDetails(int id)
+        {
+            var userId = _userService.GetCurrentUserId();
+            if (userId == 0) return RedirectToAction("Login", "Account");
+
+            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            if (warehouseId == 0)
+            {
+                TempData["Error"] = "Bạn chưa được phân công vào kho nào.";
+                return RedirectToAction("Index", "Home");
+            }
+
+            var purchaseOrder = await _stockInService.GetPurchaseOrderDetailsAsync(id, warehouseId);
+            if (purchaseOrder == null)
+            {
+                TempData["Error"] = "Không tìm thấy đơn mua hàng.";
+                return RedirectToAction(nameof(History));
+            }
+
+            ViewBag.TotalQuantity = purchaseOrder.PurchaseOrderDetails.Sum(d => d.Quantity);
+            ViewBag.TotalAmount = purchaseOrder.PurchaseOrderDetails.Sum(d => d.TotalPrice ?? 0);
+
+            // Reuse existing PO Details view
+            return View("~/Views/PurchaseOrder/Details.cshtml", purchaseOrder);
+        }
+
+        // GET: StockIn/DetailsReadOnly/{id} - Reuse Stock-In details UI in read-only mode
+        [Authorize(Roles = "Inventory Staff")]
+        [HttpGet]
+        public async Task<IActionResult> DetailsReadOnly(int id)
+        {
+            var userId = _userService.GetCurrentUserId();
+            if (userId == 0) return RedirectToAction("Login", "Account");
+
+            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            if (warehouseId == 0)
+            {
+                TempData["Error"] = "Bạn chưa được phân công vào kho nào.";
+                return RedirectToAction("Index", "Home");
+            }
+
+            var purchaseOrder = await _stockInService.GetPurchaseOrderDetailsAsync(id, warehouseId);
+            if (purchaseOrder == null)
+            {
+                TempData["Error"] = "Không tìm thấy đơn mua hàng.";
+                return RedirectToAction(nameof(History));
+            }
+
+            ViewBag.WarehouseId = warehouseId;
+            ViewBag.UserId = userId;
+            ViewBag.ReadOnly = true;
+
+            return View("~/Views/StockIn/Details.cshtml", purchaseOrder);
+        }
+
         // API: Get Purchase Order Info
         [HttpGet]
         public async Task<IActionResult> GetPurchaseOrderInfo(int purchaseOrderId)
@@ -110,6 +206,22 @@ namespace EWMS.Controllers
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(_userService.GetCurrentUserId());
             var products = await _stockInService.GetPurchaseOrderProductsAsync(purchaseOrderId, warehouseId);
             return Json(products);
+        }
+
+        // API: Get allocations by product/location for a PO
+        [HttpGet]
+        public async Task<IActionResult> GetPurchaseOrderAllocations(int purchaseOrderId)
+        {
+            var userId = _userService.GetCurrentUserId();
+            if (userId == 0) return Json(new { error = "Not authenticated" });
+            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            if (warehouseId == 0) return Json(new { error = "No warehouse" });
+
+            var po = await _stockInService.GetPurchaseOrderDetailsAsync(purchaseOrderId, warehouseId);
+            if (po == null) return Json(new { error = "PO not found" });
+
+            var allocations = await _stockInService.GetPurchaseOrderAllocationsAsync(purchaseOrderId);
+            return Json(allocations);
         }
 
         // API: Get Available Locations
