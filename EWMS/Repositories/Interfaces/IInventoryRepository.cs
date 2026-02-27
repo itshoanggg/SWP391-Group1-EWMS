@@ -7,5 +7,6 @@ namespace EWMS.Repositories.Interfaces
         Task<Inventory?> GetByProductAndLocationAsync(int productId, int locationId);
         Task<IEnumerable<Inventory>> GetByWarehouseIdAsync(int warehouseId);
         Task<IEnumerable<Inventory>> GetLowStockAsync(int warehouseId, int threshold);
+        Task<IEnumerable<Inventory>> GetInventoryByProductIdAsync(int productId);
     }
 }

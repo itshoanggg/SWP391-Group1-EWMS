@@ -29,9 +29,6 @@ public partial class SalesOrder
     [StringLength(30)]
     public string Status { get; set; } = null!;
 
-    [Column(TypeName = "datetime")]
-    public DateTime ExpectedDeliveryDate { get; set; }
-
     [Column(TypeName = "decimal(18, 2)")]
     public decimal TotalAmount { get; set; }
 

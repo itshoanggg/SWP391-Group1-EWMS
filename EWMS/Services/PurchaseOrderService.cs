@@ -48,8 +48,6 @@ namespace EWMS.Services
                 CreatedBy = userId,
                 Status = "Ordered",
                 CreatedAt = DateTime.Now,
-                ExpectedReceivingDate = model.ExpectedReceivingDate ?? DateTime.Now,
-                TotalAmount = totalAmount  // ✅ Save TotalAmount
             };
 
             await _unitOfWork.PurchaseOrders.AddAsync(purchaseOrder);
@@ -159,7 +157,7 @@ namespace EWMS.Services
                 {
                     PurchaseOrderId = po.PurchaseOrderId,
                     SupplierName = po.Supplier.SupplierName,
-                    ExpectedReceivingDate = po.ExpectedReceivingDate,
+                    ExpectedReceivingDate = po.CreatedAt, // Use CreatedAt instead
                     TotalItems = totalItems,
                     ReceivedItems = receivedItems,
                     RemainingItems = totalItems - receivedItems,

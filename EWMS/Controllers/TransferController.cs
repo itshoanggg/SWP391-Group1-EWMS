@@ -8,7 +8,12 @@ using EWMS.Models;
 
 namespace EWMS.Controllers
 {
-    [Authorize(Roles = "Admin,Warehouse,Inventory,Warehouse Manager,Inventory Staff")]
+    /// <summary>
+    /// Transfer Request Controller
+    /// User Story: As an inventory staff, I want to manage transfer requests so that inventory movement is controlled.
+    /// Authorization: Admin, Inventory Staff
+    /// </summary>
+    [Authorize(Roles = "Admin,Inventory Staff")]
     public class TransferController : Controller
     {
         private readonly TransferService _transferService;
@@ -34,31 +39,65 @@ namespace EWMS.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(TransferRequest model, int ProductID, int Quantity)
+        public async Task<IActionResult> Create(int FromWarehouseId, int ToWarehouseId, string TransferType, int ProductID, int Quantity, string? Reason)
         {
-            // Validation: Check same warehouse
-            if (model.FromWarehouseId == model.ToWarehouseId)
+            // Clear model state for navigation properties
+            ModelState.Remove("FromWarehouse");
+            ModelState.Remove("ToWarehouse");
+            ModelState.Remove("RequestedByNavigation");
+            ModelState.Remove("ApprovedByNavigation");
+
+            // Validation: Check warehouses selected
+            if (FromWarehouseId == 0)
             {
-                ModelState.AddModelError("", "Source and destination warehouses must be different.");
+                ModelState.AddModelError("", "Vui lòng chọn kho nguồn.");
                 ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
                 ViewBag.Products = await _transferService.GetProductsAsync();
-                return View(model);
+                return View();
+            }
+
+            if (ToWarehouseId == 0)
+            {
+                ModelState.AddModelError("", "Vui lòng chọn kho đích.");
+                ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
+                ViewBag.Products = await _transferService.GetProductsAsync();
+                return View();
+            }
+
+            // Validation: Check same warehouse
+            if (FromWarehouseId == ToWarehouseId)
+            {
+                ModelState.AddModelError("", "Kho nguồn và kho đích phải khác nhau.");
+                ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
+                ViewBag.Products = await _transferService.GetProductsAsync();
+                return View();
+            }
+
+            // Validation: Check transfer type
+            if (string.IsNullOrEmpty(TransferType))
+            {
+                ModelState.AddModelError("", "Vui lòng chọn loại chuyển kho.");
+                ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
+                ViewBag.Products = await _transferService.GetProductsAsync();
+                return View();
+            }
+
+            // Validation: Check product
+            if (ProductID == 0)
+            {
+                ModelState.AddModelError("", "Vui lòng chọn sản phẩm.");
+                ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
+                ViewBag.Products = await _transferService.GetProductsAsync();
+                return View();
             }
 
             // Validation: Check quantity
             if (Quantity <= 0)
             {
-                ModelState.AddModelError("", "Quantity must be greater than 0.");
+                ModelState.AddModelError("", "Số lượng phải lớn hơn 0.");
                 ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
                 ViewBag.Products = await _transferService.GetProductsAsync();
-                return View(model);
-            }
-
-            if (!ModelState.IsValid)
-            {
-                ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
-                ViewBag.Products = await _transferService.GetProductsAsync();
-                return View(model);
+                return View();
             }
 
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -66,24 +105,32 @@ namespace EWMS.Controllers
 
             if (userId == 0)
             {
-                ModelState.AddModelError("", "User not authenticated.");
+                ModelState.AddModelError("", "Người dùng chưa đăng nhập.");
                 ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
                 ViewBag.Products = await _transferService.GetProductsAsync();
-                return View(model);
+                return View();
             }
 
             try
             {
+                var model = new TransferRequest
+                {
+                    FromWarehouseId = FromWarehouseId,
+                    ToWarehouseId = ToWarehouseId,
+                    TransferType = TransferType,
+                    Reason = Reason
+                };
+
                 await _transferService.CreateTransferAsync(model, ProductID, Quantity, userId);
-                TempData["SuccessMessage"] = "Transfer request created successfully!";
+                TempData["SuccessMessage"] = "Tạo yêu cầu chuyển kho thành công!";
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
-                ModelState.AddModelError("", $"Error creating transfer: {ex.Message}");
+                ModelState.AddModelError("", $"Lỗi khi tạo chuyển kho: {ex.Message}");
                 ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
                 ViewBag.Products = await _transferService.GetProductsAsync();
-                return View(model);
+                return View();
             }
         }
 
@@ -94,6 +141,60 @@ namespace EWMS.Controllers
                 return NotFound();
 
             return View(transfer);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin,Inventory Staff")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Approve(int id)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var userId = int.TryParse(userIdClaim, out var uid) ? uid : 0;
+
+                if (userId == 0)
+                {
+                    TempData["ErrorMessage"] = "User not authenticated.";
+                    return RedirectToAction(nameof(Details), new { id });
+                }
+
+                await _transferService.ApproveTransferAsync(id, userId);
+                TempData["SuccessMessage"] = "Transfer request approved successfully!";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error approving transfer: {ex.Message}";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin,Inventory Staff")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Reject(int id, string? rejectionReason)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var userId = int.TryParse(userIdClaim, out var uid) ? uid : 0;
+
+                if (userId == 0)
+                {
+                    TempData["ErrorMessage"] = "User not authenticated.";
+                    return RedirectToAction(nameof(Details), new { id });
+                }
+
+                await _transferService.RejectTransferAsync(id, userId, rejectionReason);
+                TempData["SuccessMessage"] = "Transfer request rejected successfully!";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error rejecting transfer: {ex.Message}";
+                return RedirectToAction(nameof(Details), new { id });
+            }
         }
     }
 }

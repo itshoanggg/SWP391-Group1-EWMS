@@ -47,7 +47,7 @@ namespace EWMS.Services
                 {
                     PurchaseOrderId = po.PurchaseOrderId,
                     SupplierName = po.Supplier.SupplierName,
-                    ExpectedReceivingDate = po.ExpectedReceivingDate,
+                    ExpectedReceivingDate = po.CreatedAt, // Use CreatedAt instead
                     TotalItems = totalItems,
                     ReceivedItems = receivedItems,
                     RemainingItems = totalItems - receivedItems,

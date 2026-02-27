@@ -12,9 +12,9 @@
     string arrivalClass = "";
     int daysRemaining = 0;
 
-    if (Model.ExpectedReceivingDate != DateTime.MinValue)
+    if (Model.CreatedAt != DateTime.MinValue)
     {
-        daysRemaining = (Model.ExpectedReceivingDate.Date - DateTime.Today).Days;
+        daysRemaining = (Model.CreatedAt.Date.AddDays(3) - DateTime.Today).Days;
 
         if (daysRemaining < 0)
         {
@@ -48,18 +48,18 @@
     </div>
 
     <!-- Arrival status alert -->
-    @if (Model.ExpectedReceivingDate != DateTime.MinValue)
+    @if (Model.CreatedAt != DateTime.MinValue)
     {
         <div class="alert alert-@(isArrived ? "success" : "warning") alert-dismissible fade show" role="alert">
             <i class="fas fa-@(isArrived ? "check-circle" : "clock")"></i>
             <strong>Arrival Status:</strong>
             @if (isArrived && Model.Status != "Received" && Model.Status != "PartiallyReceived")
             {
-                <span class="@arrivalClass">Goods have arrived at warehouse (expected: @Model.ExpectedReceivingDate.ToString("dd/MM/yyyy"))</span>
+                <span class="@arrivalClass">Goods have arrived at warehouse (ordered: @Model.CreatedAt.ToString("dd/MM/yyyy"))</span>
             }
             else if (!isArrived)
             {
-                <span class="@arrivalClass">Not yet due (@Model.ExpectedReceivingDate.ToString("dd/MM/yyyy")) - @arrivalStatus</span>
+                <span class="@arrivalClass">Not yet due (ordered: @Model.CreatedAt.ToString("dd/MM/yyyy")) - @arrivalStatus</span>
             }
             else
             {
@@ -88,12 +88,12 @@
                         </div>
                     </div>
 
-                    @if (Model.ExpectedReceivingDate != DateTime.MinValue)
+                    @if (Model.CreatedAt != DateTime.MinValue)
                     {
                         <div class="mb-3">
-                            <label class="text-muted">Expected Receiving Date:</label>
+                            <label class="text-muted">Order Date:</label>
                             <p class="fw-bold">
-                                @Model.ExpectedReceivingDate.ToString("dd/MM/yyyy")
+                                @Model.CreatedAt.ToString("dd/MM/yyyy")
                                 <span class="badge @(isArrived ? "bg-success" : "bg-warning")">
                                     @(isArrived ? "Arrived" : $"{daysRemaining} day(s) left")
                                 </span>
@@ -164,7 +164,7 @@
                             <button class="btn btn-secondary btn-lg w-100" disabled>
                                 <i class="fas fa-clock"></i> Not Yet Due for Receiving
                             </button>
-                            <small class="text-muted d-block mt-2">Expected receiving date: @Model.ExpectedReceivingDate.ToString("dd/MM/yyyy")</small>
+                            <small class="text-muted d-block mt-2">Order date: @Model.CreatedAt.ToString("dd/MM/yyyy")</small>
                         </div>
                     }
                 </div>

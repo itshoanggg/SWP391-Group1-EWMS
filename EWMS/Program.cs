@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Authorization;
+using Microsoft.AspNetCore.Identity;
 
 namespace EWMS
 {
@@ -28,6 +29,9 @@ namespace EWMS
 
             // Add HttpContextAccessor for reading claims in services
             builder.Services.AddHttpContextAccessor();
+
+            // Register Password Hasher for User model
+            builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
             // Cookie authentication
             builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

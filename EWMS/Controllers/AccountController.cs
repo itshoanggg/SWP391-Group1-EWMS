@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using EWMS.ViewModels;
 using EWMS.Models;
 
@@ -12,10 +13,12 @@ namespace EWMS.Controllers
     public class AccountController : Controller
     {
         private readonly EWMSDbContext _db;
+        private readonly IPasswordHasher<User> _passwordHasher;
 
-        public AccountController(EWMSDbContext db)
+        public AccountController(EWMSDbContext db, IPasswordHasher<User> passwordHasher)
         {
             _db = db;
+            _passwordHasher = passwordHasher;
         }
 
         [AllowAnonymous]
@@ -40,9 +43,37 @@ namespace EWMS.Controllers
                 .Include(u => u.Role)
                 .Include(u => u.UserWarehouses)
                     .ThenInclude(uw => uw.Warehouse)
-                .SingleOrDefaultAsync(u => u.Username == model.Username && u.PasswordHash == model.Password);
+                .SingleOrDefaultAsync(u => u.Username == model.Username);
 
             if (user == null || user.IsActive == false)
+            {
+                ModelState.AddModelError(string.Empty, "Invalid username or password.");
+                return View("~/Views/Account/Login.cshtml", model);
+            }
+
+            // Verify password - support both plain text (legacy) and hashed passwords
+            bool passwordValid = false;
+            
+            // First try: Check if it's a plain text password (legacy support)
+            if (user.PasswordHash == model.Password)
+            {
+                passwordValid = true;
+                
+                // Auto-upgrade to hashed password for better security
+                user.PasswordHash = _passwordHasher.HashPassword(user, model.Password);
+                await _db.SaveChangesAsync();
+            }
+            else
+            {
+                // Second try: Verify as hashed password
+                var verifyResult = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, model.Password);
+                if (verifyResult != PasswordVerificationResult.Failed)
+                {
+                    passwordValid = true;
+                }
+            }
+
+            if (!passwordValid)
             {
                 ModelState.AddModelError(string.Empty, "Invalid username or password.");
                 return View("~/Views/Account/Login.cshtml", model);

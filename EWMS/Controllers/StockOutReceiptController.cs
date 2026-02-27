@@ -1,10 +1,12 @@
 using EWMS.Services;
 using EWMS.Services.Interfaces;
 using EWMS.ViewModels;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EWMS.Controllers
 {
+    [Authorize(Roles = "Admin,Inventory Staff,Warehouse Manager,Sales Staff")]
     public class StockOutReceiptController : Controller
     {
         private readonly IStockOutReceiptService _stockOutReceiptService;

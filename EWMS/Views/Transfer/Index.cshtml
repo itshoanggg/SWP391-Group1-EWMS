@@ -1,77 +1,165 @@
 ﻿@model List<EWMS.Models.TransferRequest>
 @{
     Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Chuyển Kho";
 }
 
-<div class="p-6 max-w-7xl mx-auto">
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <div class="mb-4 p-4 bg-green-50 border-l-4 border-green-500 text-green-700">
-            <strong>Success:</strong> @TempData["SuccessMessage"]
-        </div>
+<style>
+    .transfer-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 30px;
+        margin-bottom: 30px;
+        color: white;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
     }
+    .transfer-header h2 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 28px;
+    }
+    .btn-create-transfer {
+        background: white;
+        color: #667eea;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .btn-create-transfer:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        color: #667eea;
+    }
+    .transfer-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+    .search-box {
+        padding: 12px 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+    .search-box:focus {
+        border-color: #667eea;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .status-badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .status-approved {
+        background: #d4edda;
+        color: #155724;
+    }
+    .status-rejected {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    .status-transit {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+    .status-pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+    .btn-details {
+        color: #667eea;
+        font-weight: 600;
+        text-decoration: none;
+        padding: 6px 16px;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        border: 1px solid #667eea;
+        display: inline-block;
+    }
+    .btn-details:hover {
+        background: #667eea;
+        color: white;
+        text-decoration: none;
+    }
+</style>
 
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h2 class="text-2xl font-semibold text-gray-800">Transfer Requests</h2>
+<div class="transfer-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2><i class="bi bi-arrow-left-right me-2"></i>Quản Lý Chuyển Kho</h2>
+        <p class="mb-0 mt-2" style="opacity: 0.9;">Quản lý các yêu cầu chuyển kho giữa các chi nhánh</p>
+    </div>
+    @if (User.IsInRole("Inventory Staff") || User.IsInRole("Admin"))
+    {
+        <a asp-action="Create" class="btn-create-transfer">
+            <i class="bi bi-plus-circle me-2"></i>Tạo Chuyển Kho
+        </a>
+    }
+</div>
 
-        <div class="flex items-center gap-3">
-            <input id="transferSearch" type="search" placeholder="Search ID, warehouse, type..." class="border rounded-md px-3 py-2 w-64" />
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success mb-4">
+        <i class="bi bi-check-circle me-2"></i>@TempData["SuccessMessage"]
+    </div>
+}
 
-            @* Create button visible only for allowed roles (adjust role names to match DB) *@
-            @if (User.IsInRole("Warehouse") || User.IsInRole("Inventory") || User.IsInRole("Admin"))
+<div class="mb-4">
+    <input id="transferSearch" type="search" placeholder="Tìm kiếm theo mã, kho, loại..." class="search-box w-100" style="max-width: 400px;" />
+</div>
+
+<div class="transfer-card">
+    <table id="transferTable" class="table table-hover mb-0">
+        <thead>
+            <tr>
+                <th><i class="bi bi-hash me-2"></i>Mã</th>
+                <th><i class="bi bi-box-arrow-right me-2"></i>Từ Kho</th>
+                <th><i class="bi bi-box-arrow-in-down me-2"></i>Đến Kho</th>
+                <th><i class="bi bi-tag me-2"></i>Loại</th>
+                <th><i class="bi bi-person me-2"></i>Người Yêu Cầu</th>
+                <th><i class="bi bi-calendar me-2"></i>Ngày</th>
+                <th><i class="bi bi-info-circle me-2"></i>Trạng Thái</th>
+                <th><i class="bi bi-gear me-2"></i>Thao Tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in Model)
             {
-                <a href="@Url.Action("Create", "Transfer")" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                    Create Transfer
-                </a>
-            }
-        </div>
-    </div>
-
-    <div class="overflow-x-auto bg-white rounded-md shadow">
-        <table id="transferTable" class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr class="text-sm text-left text-gray-600">
-                    <th class="px-4 py-3">ID</th>
-                    <th class="px-4 py-3">From</th>
-                    <th class="px-4 py-3">To</th>
-                    <th class="px-4 py-3">Type</th>
-                    <th class="px-4 py-3">Requested By</th>
-                    <th class="px-4 py-3">Requested Date</th>
-                    <th class="px-4 py-3">Status</th>
-                    <th class="px-4 py-3">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="text-sm bg-white divide-y divide-gray-100">
-                @foreach (var t in Model)
+                var status = (t.Status ?? "Pending").ToLowerInvariant();
+                var statusClass = status switch
                 {
-                    var status = (t.Status ?? "Pending").ToLowerInvariant();
-                    var statusClass = status switch
-                    {
-                        "approved" => "bg-green-100 text-green-800",
-                        "rejected" => "bg-red-100 text-red-800",
-                        "in transit" => "bg-blue-100 text-blue-800",
-                        _ => "bg-yellow-100 text-yellow-800",
-                    };
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-3">@t.TransferId</td>
-                        <td class="px-4 py-3">@t.FromWarehouse?.WarehouseName</td>
-                        <td class="px-4 py-3">@t.ToWarehouse?.WarehouseName</td>
-                        <td class="px-4 py-3">@t.TransferType</td>
-                        <td class="px-4 py-3">@t.RequestedByNavigation?.FullName ?? t.RequestedBy.ToString()</td>
-                        <td class="px-4 py-3">@t.RequestedDate?.ToString("yyyy-MM-dd HH:mm")</td>
-                        <td class="px-4 py-3">
-                            <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded @statusClass">@t.Status</span>
-                        </td>
-                        <td class="px-4 py-3">
-                            <a class="text-indigo-600 hover:text-indigo-800 mr-3" href="@Url.Action("Details", "Transfer", new { id = t.TransferId })">Details</a>
-                            @* Example: only certain roles can approve/cancel – show as needed *@
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+                    "approved" => "status-approved",
+                    "rejected" => "status-rejected",
+                    "in transit" => "status-transit",
+                    _ => "status-pending",
+                };
+                <tr>
+                    <td><strong>TR-@t.TransferId.ToString("D4")</strong></td>
+                    <td>@t.FromWarehouse?.WarehouseName</td>
+                    <td>@t.ToWarehouse?.WarehouseName</td>
+                    <td><span class="badge bg-secondary">@t.TransferType</span></td>
+                    <td>@t.RequestedByNavigation?.FullName ?? t.RequestedBy.ToString()</td>
+                    <td><small class="text-muted">@t.RequestedDate?.ToString("dd/MM/yyyy HH:mm")</small></td>
+                    <td>
+                        <span class="status-badge @statusClass">@t.Status</span>
+                    </td>
+                    <td>
+                        <a class="btn-details" asp-action="Details" asp-route-id="@t.TransferId">
+                            <i class="bi bi-eye me-1"></i>Chi Tiết
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
 </div>
 
 @section Scripts {

@@ -39,6 +39,19 @@ namespace EWMS.Repositories
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<Inventory>> GetInventoryByProductIdAsync(int productId)
+        {
+            return await _dbSet
+                .Include(i => i.Product)
+                    .ThenInclude(p => p.Category)
+                .Include(i => i.Location)
+                    .ThenInclude(l => l.Warehouse)
+                .Where(i => i.ProductId == productId)
+                .OrderBy(i => i.Location.Warehouse.WarehouseName)
+                    .ThenBy(i => i.Location.LocationName)
+                .ToListAsync();
+        }
+
         // New (master) methods used by InventoryCheck and Sales flows
         public async Task<int> GetCurrentStockAsync(int productId, int warehouseId)
         {
@@ -56,7 +69,7 @@ namespace EWMS.Repositories
                 .Where(pod => pod.ProductId == productId
                     && pod.PurchaseOrder.WarehouseId == warehouseId
                     && pod.PurchaseOrder.Status == "Approved"
-                    && pod.PurchaseOrder.ExpectedReceivingDate < beforeDate
+                    && pod.PurchaseOrder.CreatedAt < beforeDate
                     && !_context.StockInReceipts.Any(sir => sir.PurchaseOrderId == pod.PurchaseOrderId))
                 .SumAsync(pod => pod.Quantity);
 

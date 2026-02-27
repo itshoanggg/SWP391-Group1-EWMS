@@ -1,4 +1,4 @@
-Ôªø/* =========================================================
+/* =========================================================
    GOODS RECEIPT - MAIN LOGIC (WITH DEBUG)
 ========================================================= */
 
@@ -6,7 +6,6 @@ let productsData = [];
 let locationsCache = {};
 let receiptItems = [];
 let locationUsage = {};
-let allocationsByProduct = {}; // for read-only rendering per-location
 
 function formatNumber(value) {
     return new Intl.NumberFormat('vi-VN').format(value);
@@ -20,7 +19,7 @@ async function loadPurchaseOrderInfo() {
         const response = await fetch(`/StockIn/GetPurchaseOrderInfo?purchaseOrderId=${purchaseOrderId}`);
         const data = await response.json();
 
-        console.log('üìã PO Info:', data); // ‚úÖ DEBUG
+        // DEBUG: console.log removed
 
         if (data.error) {
             console.error('Error:', data.error);
@@ -33,11 +32,8 @@ async function loadPurchaseOrderInfo() {
         document.getElementById('supplier-phone').textContent = data.supplierPhone || 'N/A';
 
         if (data.hasStockIn) {
-            if (!(window.readOnlyMode === true || window.readOnlyMode === 'true')) {
-                alert('This order has been fully received!');
-                const btn = document.getElementById('btn-confirm');
-                if (btn) btn.disabled = true;
-            }
+            alert('–on h‡ng n‡y d„ du?c nh?p kho d?!');
+            document.getElementById('btn-confirm').disabled = true;
         }
     } catch (error) {
         console.error('Load PO info failed:', error);
@@ -49,7 +45,7 @@ async function loadProducts() {
         const response = await fetch(`/StockIn/GetPurchaseOrderProducts?purchaseOrderId=${purchaseOrderId}`);
         const data = await response.json();
 
-        console.log('üì¶ Products Data from API:', data); // ‚úÖ DEBUG
+        // DEBUG: console.log removed
 
         if (data.error) {
             console.error('Error:', data.error);
@@ -58,14 +54,12 @@ async function loadProducts() {
 
         productsData = data;
 
-        // ‚úÖ DEBUG - Check each product
-        console.log('üîç Checking each product:');
+        // ? DEBUG - Ki?m tra t?ng s?n ph?m
         productsData.forEach(p => {
-            console.log(`  ${p.productName}:`, {
                 orderedQty: p.orderedQty,
                 receivedQty: p.receivedQty,
                 remainingQty: p.remainingQty,
-                willShow: p.remainingQty > 0 ? '‚úÖ SHOW' : '‚ùå HIDE'
+                willShow: p.remainingQty > 0 ? '? SHOW' : '? HIDE'
             });
         });
 
@@ -80,8 +74,6 @@ async function loadProducts() {
    RENDER PRODUCTS TABLE
 ========================================================= */
 function renderProductsTable() {
-    const isReadOnly = (window.readOnlyMode === true || window.readOnlyMode === 'true');
-    console.log('üé® Starting renderProductsTable()...'); // ‚úÖ DEBUG
 
     const tbody = document.getElementById('products-tbody');
     tbody.innerHTML = '';
@@ -90,148 +82,83 @@ function renderProductsTable() {
     let hiddenCount = 0;
 
     productsData.forEach((product, index) => {
-        const rowAllocations = isReadOnly ? (allocationsByProduct[product.productId] || []) : [];
-        // ‚ö†Ô∏è In interactive mode, skip products already fully received
-        if (!isReadOnly && product.remainingQty <= 0) {
-            console.log(`  ‚è≠Ô∏è Skipping ${product.productName} (remainingQty = ${product.remainingQty})`); // ‚úÖ DEBUG
+        // ?? B? QUA S?N PH?M –√ NH?N –?
+        if (product.remainingQty <= 0) {
             hiddenCount++;
             return;
         }
 
-        console.log(`  ‚úÖ Showing ${product.productName} (remainingQty = ${product.remainingQty})`); // ‚úÖ DEBUG
         shownCount++;
 
         const rowId = `product-${product.productId}-${index}`;
 
         const row = document.createElement('tr');
         row.id = rowId;
-        const qtyValue = isReadOnly ? (product.receivedQty || 0) : product.remainingQty;
-        const maxValue = isReadOnly ? (product.orderedQty || qtyValue) : product.remainingQty;
-        const disabledAttr = isReadOnly ? 'disabled' : '';
+        row.innerHTML = `
+            <td>
+                <div class="sku-badge">${product.sku}</div>
+            </td>
+            <td>
+                <div class="product-name">${product.productName}</div>
+                <small class="text-muted">${product.categoryName}</small>
+            </td>
+            <td>
+                <span class="badge bg-secondary">${formatNumber(product.orderedQty)}</span>
+            </td>
+            <td>
+                <input type="number" 
+                       class="form-control qty-input" 
+                       id="qty-${rowId}"
+                       data-product-id="${product.productId}"
+                       data-row-id="${rowId}"
+                       value="${product.remainingQty}"
+                       min="0"
+                       max="${product.remainingQty}"
+                       onchange="handleQuantityChange(this)">
+            </td>
+            <td>
+                <select class="form-select location-select" 
+                        id="location-${rowId}"
+                        data-product-id="${product.productId}"
+                        data-row-id="${rowId}"
+                        onchange="handleLocationChange(this)">
+                    <option value="">-- Ch?n v? trÌ --</option>
+                </select>
+                <div class="location-info mt-1" id="location-info-${rowId}"></div>
+            </td>
+        `;
 
-        // In read-only mode with multiple allocations: render one sub-row per allocation
-        if (isReadOnly && rowAllocations.length > 1) {
-            // Main row (header for product)
-            row.innerHTML = `
-                <td>
-                    <div class="sku-badge">${product.sku}</div>
-                </td>
-                <td>
-                    <div class="product-name">${product.productName}</div>
-                    <small class="text-muted">${product.categoryName}</small>
-                </td>
-                <td>
-                    <span class="badge bg-secondary">${formatNumber(product.orderedQty)}</span>
-                </td>
-                <td colspan="2">
-                    <div class="text-muted">Received in ${rowAllocations.length} locations:</div>
-                </td>
-            `;
-            tbody.appendChild(row);
+        tbody.appendChild(row);
+        loadLocationsForProduct(product.productId, rowId);
 
-            // Per-allocation rows
-            rowAllocations.forEach((al, i) => {
-                const subId = `${rowId}-alloc-${i}`;
-                const sub = document.createElement('tr');
-                sub.className = 'bg-light';
-                sub.id = subId;
-                sub.innerHTML = `
-                    <td></td>
-                    <td><small class="text-muted">${al.locationCode} - ${al.locationName ?? ''}</small></td>
-                    <td><span class="badge bg-info">${formatNumber(al.quantity)}</span></td>
-                    <td>
-                        <input type="number" class="form-control" value="${al.quantity}" disabled />
-                    </td>
-                    <td>
-                        <select class="form-select" disabled>
-                            <option>${al.locationCode} - ${al.locationName ?? ''}</option>
-                        </select>
-                    </td>
-                `;
-                tbody.appendChild(sub);
-            });
-        } else {
-            // Single-row rendering (interactive OR single allocation)
-            // If read-only and single allocation exists, prefill the select with saved location
-            const singleAlloc = isReadOnly && rowAllocations.length === 1 ? rowAllocations[0] : null;
-            const selectHtml = singleAlloc
-                ? `<select class="form-select location-select" id="location-${rowId}" data-product-id="${product.productId}" data-row-id="${rowId}" ${disabledAttr}>
-                        <option value="${singleAlloc.locationId}">${singleAlloc.locationCode} - ${singleAlloc.locationName ?? ''}</option>
-                   </select>`
-                : `<select class="form-select location-select" id="location-${rowId}" data-product-id="${product.productId}" data-row-id="${rowId}" ${disabledAttr} onchange="handleLocationChange(this)">
-                        <option value="">-- Select Location --</option>
-                   </select>`;
-
-            row.innerHTML = `
-                <td>
-                    <div class="sku-badge">${product.sku}</div>
-                </td>
-                <td>
-                    <div class="product-name">${product.productName}</div>
-                    <small class="text-muted">${product.categoryName}</small>
-                </td>
-                <td>
-                    <span class="badge bg-secondary">${formatNumber(product.orderedQty)}</span>
-                </td>
-                <td>
-                    <input type="number" 
-                           class="form-control qty-input" 
-                           id="qty-${rowId}"
-                           data-product-id="${product.productId}"
-                           data-row-id="${rowId}"
-                           value="${qtyValue}"
-                           min="0"
-                           max="${maxValue}"
-                           ${disabledAttr}
-                           onchange="handleQuantityChange(this)">
-                </td>
-                <td>
-                    ${selectHtml}
-                    <div class="location-info mt-1" id="location-info-${rowId}"></div>
-                </td>
-            `;
-            tbody.appendChild(row);
-
-            
-        }
-
-        // Only load available locations in interactive mode
-        if (!isReadOnly) {
-            loadLocationsForProduct(product.productId, rowId);
-        }
-
-        // Track receipt items only for interactive mode
-        if (!isReadOnly) {
-            receiptItems.push({
-                rowId: rowId,
-                productId: product.productId,
-                productName: product.productName,
-                orderedQty: product.orderedQty,
-                receivedQty: product.remainingQty,
-                locationId: null,
-                unitPrice: product.unitPrice,
-                splitRows: []
-            });
-        }
+        receiptItems.push({
+            rowId: rowId,
+            productId: product.productId,
+            productName: product.productName,
+            orderedQty: product.orderedQty,
+            receivedQty: product.remainingQty,
+            locationId: null,
+            unitPrice: product.unitPrice,
+            splitRows: []
+        });
     });
 
-    console.log(`üìä Render summary: ${shownCount} shown, ${hiddenCount} hidden`); // ‚úÖ DEBUG
+    // DEBUG: console.log removed
 
-    // ‚úÖ CHECK IF NO PRODUCTS REMAINING (interactive only)
-    if (!isReadOnly && receiptItems.length === 0) {
-        console.log('üéâ All products received!'); // ‚úÖ DEBUG
+    // ? KI?M TRA N?U KH‘NG C“N S?N PH?M N¿O
+    if (receiptItems.length === 0) {
+        // DEBUG: console.log removed
         tbody.innerHTML = `
             <tr>
                 <td colspan="6" class="text-center py-4">
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle"></i> 
-                        <strong>This order has been fully received!</strong>
+                        <strong>–on h‡ng n‡y d„ du?c nh?p kho d?y d?!</strong>
                     </div>
                 </td>
             </tr>
         `;
-        const btn = document.getElementById('btn-confirm');
-        if (btn) btn.disabled = true;
+        document.getElementById('btn-confirm').disabled = true;
     }
 }
 
@@ -261,14 +188,14 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
     const select = document.getElementById(`location-${rowId}`);
     if (!select) return;
 
-    select.innerHTML = '<option value="">-- Select Location --</option>';
+    select.innerHTML = '<option value="">-- Ch?n v? trÌ --</option>';
 
-    // ‚úÖ Track used locations and their remaining capacity (for ALL products)
+    // ? Track used locations and their remaining capacity (cho T?T C? products)
     const usedLocations = {};
     
     receiptItems.forEach(item => {
-        // ‚úÖ Count ALL other rows (any product) using this location
-        // Because capacity does NOT distinguish products: 200 capacity = 200 products of any type
+        // ? –?m T?T C? c·c row kh·c (b?t k? product) d„ d˘ng location
+        // VÏ capacity KH‘NG ph‚n bi?t product: 200 capacity = 200 s?n ph?m b?t k?
         if (item.locationId && !isNaN(item.locationId) && item.rowId !== rowId) {
             const qtyInput = document.getElementById(`qty-${item.rowId}`);
             const qty = qtyInput ? parseInt(qtyInput.value) || 0 : item.receivedQty;
@@ -280,17 +207,15 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
         }
     });
 
-    console.log(`üìç Populating locations for rowId: ${rowId}`);
-    console.log(`   Used locations:`, usedLocations);
 
     const availableOptions = [];
     locations.forEach(loc => {
         const baseAvailable = loc.maxCapacity - loc.currentStock;
         
-        // ‚úÖ Calculate total quantity allocated to this location (ALL rows, including current row)
+        // ? TÌnh t?ng s? lu?ng d„ du?c ph‚n b? v‡o location n‡y (T?T C? c·c rows, bao g?m c? row hi?n t?i)
         let totalUsedQty = usedLocations[loc.locationId] || 0;
         
-        // ‚úÖ Add quantity of CURRENT ROW if it's also selecting this location
+        // ? ThÍm quantity c?a row HI?N T?I n?u nÛ cung dang ch?n location n‡y
         const currentItem = receiptItems.find(i => i.rowId === rowId);
         if (currentItem && currentItem.locationId === loc.locationId) {
             const currentQtyInput = document.getElementById(`qty-${rowId}`);
@@ -300,28 +225,24 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
         
         const actualAvailable = baseAvailable - (usedLocations[loc.locationId] || 0);
         
-        console.log(`   ${loc.locationCode}: baseAvailable=${baseAvailable}, usedByOthers=${usedLocations[loc.locationId] || 0}, totalUsed=${totalUsedQty}, actualAvailable=${actualAvailable}`);
         
         // Only show locations with actual available capacity
         if (actualAvailable <= 0) {
-            console.log(`   ‚ùå ${loc.locationCode} excluded (actualAvailable <= 0)`);
             return;
         }
         if (excludedLocationId && loc.locationId === excludedLocationId) {
-            console.log(`   ‚ùå ${loc.locationCode} excluded (explicitly excluded)`);
             return;
         }
 
         const option = document.createElement('option');
         option.value = loc.locationId;
-        // ‚úÖ Display TOTAL quantity used (including current row)
+        // ? Hi?n th? T?NG s? lu?ng d„ d˘ng (bao g?m c? row hi?n t?i)
         option.textContent = `${loc.locationCode} - ${loc.locationName} (${loc.currentStock + totalUsedQty}/${loc.maxCapacity})`;
         option.dataset.available = actualAvailable;
         select.appendChild(option);
         availableOptions.push(loc.locationCode);
     });
 
-    console.log(`   ‚úÖ Available options: [${availableOptions.join(', ')}]`);
 }
 
 /* =========================================================
@@ -352,7 +273,6 @@ function handleLocationChange(select) {
 
     const item = receiptItems.find(i => i.rowId === rowId);
     if (!item) {
-        console.log(`‚ö†Ô∏è Item not found for rowId: ${rowId}`);
         return;
     }
 
@@ -379,7 +299,7 @@ function handleLocationChange(select) {
             item.receivedQty = newMax;
             // Do NOT call checkCapacity again here to keep the split button visible with the remaining quantity
         } else if (qty > 0) {
-            // Within capacity ‚Üí just confirm info panel
+            // Within capacity ? just confirm info panel
             checkCapacity(rowId, qty);
         } else {
             clearLocationInfo(rowId);
@@ -388,13 +308,11 @@ function handleLocationChange(select) {
         clearLocationInfo(rowId);
     }
 
-    console.log(`üîÑ Location changed for ${rowId}: ${oldLocationId} ‚Üí ${item.locationId}, qty: ${qty}`);
 
 
-    // ‚úÖ Refresh ALL dropdowns when location changes
-    // Because capacity does NOT distinguish products, selecting location for 1 product affects all
+    // ? Refresh T?T C? dropdowns khi location changes
+    // VÏ capacity KH‘NG ph‚n bi?t product, vi?c ch?n location cho 1 product ?nh hu?ng d?n t?t c?
     if (oldLocationId !== item.locationId) {
-        console.log(`üîÑ Triggering refresh for ALL location selects`);
         refreshAllLocationSelects();
     }
 }
@@ -415,8 +333,8 @@ async function checkCapacity(rowId, quantity) {
     const res = await fetch(`/StockIn/CheckLocationCapacity?locationId=${locationId}`);
     const data = await res.json();
 
-    // ‚úÖ Calculate total quantity ALLOCATED to this location from ALL other rows
-    // Capacity does NOT distinguish products
+    // ? TÌnh t?ng s? lu?ng –√ –U?C PH¬N B? v‡o location n‡y t? T?T C? c·c row kh·c
+    // Capacity KH‘NG ph‚n bi?t product
     let allocatedQty = 0;
     
     receiptItems.forEach(item => {
@@ -434,7 +352,7 @@ async function checkCapacity(rowId, quantity) {
         infoDiv.innerHTML = `
             <div class="alert alert-success p-2 mb-0">
                 ${locationText}<br>
-                <b>Available after receipt: ${available - quantity}</b>
+                <b>CÚn tr?ng sau nh?p: ${available - quantity}</b>
             </div>
         `;
         return;
@@ -444,11 +362,11 @@ async function checkCapacity(rowId, quantity) {
     infoDiv.innerHTML = `
         <div class="alert alert-warning p-2 mb-2">
             ${locationText}<br>
-            <b>Can only hold ${available}</b>
+            <b>Ch? ch?a du?c ${available}</b>
         </div>
         <button class="btn btn-sm btn-warning"
             onclick="splitToNewLocation('${rowId}', ${parseInt(select.dataset.productId)}, ${quantity}, ${available})">
-            ‚ûï Add another rack for ${remain}
+            ? ThÍm rack kh·c cho ${remain}
         </button>
     `;
 }
@@ -464,7 +382,6 @@ function clearLocationInfo(rowId) {
    SPLIT TO NEW LOCATION
 ========================================================= */
 function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
-    console.log(`‚ûï Splitting location: parentRow=${parentRowId}, totalQty=${totalQty}, firstCapacity=${firstCapacity}`);
     
     const parentRow = document.getElementById(parentRowId);
     const parentItem = receiptItems.find(i => i.rowId === parentRowId);
@@ -480,7 +397,6 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
     const parentLocationId = parseInt(document.getElementById(`location-${parentRowId}`).value);
     const remainingQty = totalQty - firstCapacity;
     
-    console.log(`   Parent location: ${parentLocationId}, remaining qty: ${remainingQty}`);
     
     if (remainingQty <= 0) return;
 
@@ -500,18 +416,11 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
                    onchange="handleQuantityChange(this)">
         </td>
         <td>
-            <div class="d-flex gap-2">
-                <select id="location-${newRowId}" class="form-select"
-                        data-row-id="${newRowId}" data-product-id="${productId}"
-                        onchange="handleLocationChange(this)">
-                    <option value="">-- Select another rack --</option>
-                </select>
-                <button class="btn btn-sm btn-danger" 
-                        onclick="removeSplitRow('${newRowId}', '${parentRowId}', ${remainingQty})"
-                        style="white-space: nowrap;">
-                    <i class="fas fa-trash"></i> Delete
-                </button>
-            </div>
+            <select id="location-${newRowId}" class="form-select"
+                    data-row-id="${newRowId}" data-product-id="${productId}"
+                    onchange="handleLocationChange(this)">
+                <option value="">-- Ch?n rack kh·c --</option>
+            </select>
             <div id="location-info-${newRowId}" class="mt-1"></div>
         </td>
     `;
@@ -532,8 +441,6 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
     
     receiptItems.push(newItem);
     
-    console.log(`   Created new split row: ${newRowId}`);
-    console.log(`   Current receiptItems for product ${productId}:`, receiptItems.filter(i => i.productId === productId));
 
     // Populate dropdown - it will automatically exclude used-up locations
     populateLocationSelect(newRowId, locationsCache[productId]);
@@ -541,8 +448,6 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
 }
 
 function removeSplitRow(rowId, parentRowId, qty) {
-    console.log(`üóëÔ∏è Removing split row: ${rowId}, restoring ${qty} to parent ${parentRowId}`);
-    
     const row = document.getElementById(rowId);
     if (row) row.remove();
 
@@ -553,32 +458,14 @@ function removeSplitRow(rowId, parentRowId, qty) {
     if (parentItem) {
         const parentQtyInput = document.getElementById(`qty-${parentRowId}`);
         const currentMax = parseInt(parentQtyInput.max);
-        const newMax = currentMax + qty;
-        
-        // ‚úÖ Ch·ªâ c·∫≠p nh·∫≠t max, GI·ªÆ NGUY√äN value
-        // User c√≥ th·ªÉ t·ª± quy·∫øt ƒë·ªãnh nh·∫≠p bao nhi√™u (partial receiving)
-        parentQtyInput.max = newMax;
-        
-        // ‚úÖ Clear location info ƒë·ªÉ refresh
-        clearLocationInfo(parentRowId);
-        
-        // ‚úÖ N·∫øu parent c√≥ location, g·ªçi l·∫°i checkCapacity v·ªõi MAX value
-        // ƒë·ªÉ hi·ªÉn th·ªã n√∫t split n·∫øu max > capacity
-        if (parentItem.locationId) {
-            checkCapacity(parentRowId, newMax);
-        }
+        parentQtyInput.max = currentMax + qty;
 
         if (parentItem.splitRows) {
             parentItem.splitRows = parentItem.splitRows.filter(id => id !== rowId);
         }
     }
 
-    // ‚úÖ REFRESH ALL DROPDOWNS to update capacity after deletion
-    refreshAllLocationSelects();
-    
     updateSummary();
-    
-    console.log(`‚úÖ Split row removed. Remaining items:`, receiptItems.length);
 }
 
 /* =========================================================
@@ -608,7 +495,7 @@ function showLocationModal_removed() {
             <td><span class="badge bg-info">${loc.currentStock}</span></td>
             <td>
                 <button class="btn btn-sm btn-success" onclick="selectLocationFromModal('${rowId}', ${loc.locationId})">
-                    <i class="fas fa-check"></i> Select
+                    <i class="fas fa-check"></i> Ch?n
                 </button>
             </td>
         `;
@@ -636,7 +523,7 @@ function updateSummary() {
     const totalReceived = receiptItems.reduce((sum, item) => sum + item.receivedQty, 0);
     const difference = totalOrdered - totalReceived;
 
-    console.log('üìä Summary:', { totalSku, totalOrdered, totalReceived, difference }); // ‚úÖ DEBUG
+    // DEBUG: console.log removed
 
     document.getElementById('total-sku').textContent = formatNumber(totalSku);
     document.getElementById('total-ordered').textContent = formatNumber(totalOrdered);
@@ -644,13 +531,13 @@ function updateSummary() {
 
     const statusElem = document.getElementById('receipt-status');
     if (difference === 0) {
-        statusElem.textContent = 'Complete';
+        statusElem.textContent = '–? h‡ng';
         statusElem.className = 'text-success';
     } else if (difference > 0) {
-        statusElem.textContent = `Missing ${formatNumber(difference)} items`;
+        statusElem.textContent = `Thi?u ${formatNumber(difference)} s?n ph?m`;
         statusElem.className = 'text-warning';
     } else {
-        statusElem.textContent = `Excess ${formatNumber(Math.abs(difference))} items`;
+        statusElem.textContent = `Th?a ${formatNumber(Math.abs(difference))} s?n ph?m`;
         statusElem.className = 'text-danger';
     }
 }
@@ -663,16 +550,16 @@ async function confirmStockIn() {
 
     for (const item of receiptItems) {
         if (item.receivedQty > 0 && !item.locationId) {
-            errors.push(`${item.productName}: Location not selected`);
+            errors.push(`${item.productName}: Chua ch?n v? trÌ luu kho`);
         }
     }
 
     if (errors.length > 0) {
-        alert('Please check:\n\n' + errors.join('\n'));
+        alert('Vui lÚng ki?m tra:\n\n' + errors.join('\n'));
         return;
     }
 
-    if (!confirm('Confirm stock in for these products?')) {
+    if (!confirm('X·c nh?n nh?p kho c·c s?n ph?m n‡y?')) {
         return;
     }
 
@@ -689,7 +576,7 @@ async function confirmStockIn() {
             }))
     };
 
-    console.log('üíæ Submitting:', requestData); // ‚úÖ DEBUG
+    // DEBUG: console.log removed
 
     try {
         const response = await fetch('/StockIn/ConfirmStockIn', {
@@ -704,16 +591,15 @@ async function confirmStockIn() {
             alert(result.message);
             window.location.href = '/StockIn/Index';
         } else {
-            alert('Error: ' + result.error);
+            alert('L?i: ' + result.error);
         }
     } catch (error) {
         console.error('Confirm stock in failed:', error);
-        alert('An error occurred during stock in!');
+        alert('CÛ l?i x?y ra khi nh?p kho!');
     }
 }
 
 function refreshAllLocationSelects() {
-    console.log('üîÑ Refreshing ALL location selects (all products)');
 
     receiptItems.forEach(item => {
         const locations = locationsCache[item.productId];
@@ -724,7 +610,7 @@ function refreshAllLocationSelects() {
 
         const currentValue = item.locationId;
         
-        // ‚úÖ Repopulate dropdown with updated availability (for all products)
+        // ? Repopulate dropdown v?i updated availability (cho t?t c? products)
         populateLocationSelect(item.rowId, locations);
         
         // Restore previously selected value if still exists
@@ -734,7 +620,6 @@ function refreshAllLocationSelects() {
                 select.value = currentValue;
             } else {
                 // Location no longer available, clear selection
-                console.log(`‚ö†Ô∏è Location ${currentValue} no longer available for row ${item.rowId}`);
                 item.locationId = null;
             }
         }
@@ -745,44 +630,9 @@ function refreshAllLocationSelects() {
    INIT
 ========================================================= */
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('üöÄ Goods Receipt initialized');
-
-    if (window.readOnlyMode === true || window.readOnlyMode === 'true') {
-        // Disable all inputs/selects and hide confirm button if exists
-        setTimeout(() => {
-            document.querySelectorAll('input, select, button').forEach(el => {
-                if (el.id === 'btn-confirm') {
-                    el.style.display = 'none';
-                } else if (el.tagName === 'INPUT' || el.tagName === 'SELECT') {
-                    el.disabled = true;
-                }
-            });
-        }, 0);
-    }
-    console.log('   PO ID:', purchaseOrderId);
-    console.log('   Warehouse ID:', warehouseId);
-    console.log('   User ID:', userId);
 
     await loadPurchaseOrderInfo();
     await loadProducts();
 
-    if (window.readOnlyMode === true || window.readOnlyMode === 'true') {
-        try {
-            const res = await fetch(`/StockIn/GetPurchaseOrderAllocations?purchaseOrderId=${purchaseOrderId}`);
-            const allocs = await res.json();
-            if (Array.isArray(allocs)) {
-                // Group by productId
-                const byProduct = allocs.reduce((m, a) => {
-                    (m[a.productId] = m[a.productId] || []).push(a);
-                    return m;
-                }, {});
-                // Save and re-render to show multi-allocation rows properly
-                allocationsByProduct = byProduct;
-                renderProductsTable();
-            }
-        } catch (e) { console.error('Load allocations failed', e); }
-    }
-
-    console.log('‚úÖ Initialization complete');
-    console.log('üìã Final receiptItems:', receiptItems);
 });
+
