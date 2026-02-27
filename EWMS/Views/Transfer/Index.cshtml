@@ -4,6 +4,13 @@
 }
 
 <div class="p-6 max-w-7xl mx-auto">
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="mb-4 p-4 bg-green-50 border-l-4 border-green-500 text-green-700">
+            <strong>Success:</strong> @TempData["SuccessMessage"]
+        </div>
+    }
+
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h2 class="text-2xl font-semibold text-gray-800">Transfer Requests</h2>
 
@@ -38,16 +45,14 @@
             <tbody class="text-sm bg-white divide-y divide-gray-100">
                 @foreach (var t in Model)
                 {
-                    @{
-                        var status = (t.Status ?? "Pending").ToLowerInvariant();
-                        var statusClass = status switch
-                        {
-                            "approved" => "bg-green-100 text-green-800",
-                            "rejected" => "bg-red-100 text-red-800",
-                            "in transit" => "bg-blue-100 text-blue-800",
-                            _ => "bg-yellow-100 text-yellow-800",
-                        };
-                    }
+                    var status = (t.Status ?? "Pending").ToLowerInvariant();
+                    var statusClass = status switch
+                    {
+                        "approved" => "bg-green-100 text-green-800",
+                        "rejected" => "bg-red-100 text-red-800",
+                        "in transit" => "bg-blue-100 text-blue-800",
+                        _ => "bg-yellow-100 text-yellow-800",
+                    };
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3">@t.TransferId</td>
                         <td class="px-4 py-3">@t.FromWarehouse?.WarehouseName</td>

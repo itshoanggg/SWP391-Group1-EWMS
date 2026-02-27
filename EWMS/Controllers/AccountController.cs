@@ -84,6 +84,10 @@ namespace EWMS.Controllers
             // Redirect by role to each user's page
             var role = (user.Role?.RoleName ?? string.Empty).Trim().ToLowerInvariant();
 
+            // Admin - redirect to User Management
+            if (role.Contains("admin"))
+                return RedirectToAction("Index", "Users");
+
             // Sales team
             if (role.Contains("sale"))
                 return RedirectToAction("Index", "SalesOrder");
@@ -96,8 +100,8 @@ namespace EWMS.Controllers
             if (role.Contains("invent") || role.Contains("warehouse"))
                 return RedirectToAction("Index", "StockIn");
 
-            // Fallback
-            return RedirectToAction("Index", "StockIn");
+            // Fallback - redirect to User Management for unrecognized roles
+            return RedirectToAction("Index", "Users");
         }
 
         [HttpPost]
