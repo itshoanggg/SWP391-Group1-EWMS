@@ -6,6 +6,7 @@ let productsData = [];
 let locationsCache = {};
 let receiptItems = [];
 let locationUsage = {};
+let allocationsByProduct = {}; // for read-only rendering per-location
 
 function formatNumber(value) {
     return new Intl.NumberFormat('vi-VN').format(value);
@@ -32,8 +33,11 @@ async function loadPurchaseOrderInfo() {
         document.getElementById('supplier-phone').textContent = data.supplierPhone || 'N/A';
 
         if (data.hasStockIn) {
-            alert('This order has been fully received!');
-            document.getElementById('btn-confirm').disabled = true;
+            if (!(window.readOnlyMode === true || window.readOnlyMode === 'true')) {
+                alert('This order has been fully received!');
+                const btn = document.getElementById('btn-confirm');
+                if (btn) btn.disabled = true;
+            }
         }
     } catch (error) {
         console.error('Load PO info failed:', error);
@@ -76,6 +80,7 @@ async function loadProducts() {
    RENDER PRODUCTS TABLE
 ========================================================= */
 function renderProductsTable() {
+    const isReadOnly = (window.readOnlyMode === true || window.readOnlyMode === 'true');
     console.log('🎨 Starting renderProductsTable()...'); // ✅ DEBUG
 
     const tbody = document.getElementById('products-tbody');
@@ -85,8 +90,9 @@ function renderProductsTable() {
     let hiddenCount = 0;
 
     productsData.forEach((product, index) => {
-        // ⚠️ SKIP PRODUCTS ALREADY FULLY RECEIVED
-        if (product.remainingQty <= 0) {
+        const rowAllocations = isReadOnly ? (allocationsByProduct[product.productId] || []) : [];
+        // ⚠️ In interactive mode, skip products already fully received
+        if (!isReadOnly && product.remainingQty <= 0) {
             console.log(`  ⏭️ Skipping ${product.productName} (remainingQty = ${product.remainingQty})`); // ✅ DEBUG
             hiddenCount++;
             return;
@@ -99,59 +105,120 @@ function renderProductsTable() {
 
         const row = document.createElement('tr');
         row.id = rowId;
-        row.innerHTML = `
-            <td>
-                <div class="sku-badge">${product.sku}</div>
-            </td>
-            <td>
-                <div class="product-name">${product.productName}</div>
-                <small class="text-muted">${product.categoryName}</small>
-            </td>
-            <td>
-                <span class="badge bg-secondary">${formatNumber(product.orderedQty)}</span>
-            </td>
-            <td>
-                <input type="number" 
-                       class="form-control qty-input" 
-                       id="qty-${rowId}"
-                       data-product-id="${product.productId}"
-                       data-row-id="${rowId}"
-                       value="${product.remainingQty}"
-                       min="0"
-                       max="${product.remainingQty}"
-                       onchange="handleQuantityChange(this)">
-            </td>
-            <td>
-                <select class="form-select location-select" 
-                        id="location-${rowId}"
-                        data-product-id="${product.productId}"
-                        data-row-id="${rowId}"
-                        onchange="handleLocationChange(this)">
-                    <option value="">-- Select Location --</option>
-                </select>
-                <div class="location-info mt-1" id="location-info-${rowId}"></div>
-            </td>
-        `;
+        const qtyValue = isReadOnly ? (product.receivedQty || 0) : product.remainingQty;
+        const maxValue = isReadOnly ? (product.orderedQty || qtyValue) : product.remainingQty;
+        const disabledAttr = isReadOnly ? 'disabled' : '';
 
-        tbody.appendChild(row);
-        loadLocationsForProduct(product.productId, rowId);
+        // In read-only mode with multiple allocations: render one sub-row per allocation
+        if (isReadOnly && rowAllocations.length > 1) {
+            // Main row (header for product)
+            row.innerHTML = `
+                <td>
+                    <div class="sku-badge">${product.sku}</div>
+                </td>
+                <td>
+                    <div class="product-name">${product.productName}</div>
+                    <small class="text-muted">${product.categoryName}</small>
+                </td>
+                <td>
+                    <span class="badge bg-secondary">${formatNumber(product.orderedQty)}</span>
+                </td>
+                <td colspan="2">
+                    <div class="text-muted">Received in ${rowAllocations.length} locations:</div>
+                </td>
+            `;
+            tbody.appendChild(row);
 
-        receiptItems.push({
-            rowId: rowId,
-            productId: product.productId,
-            productName: product.productName,
-            orderedQty: product.orderedQty,
-            receivedQty: product.remainingQty,
-            locationId: null,
-            unitPrice: product.unitPrice,
-            splitRows: []
-        });
+            // Per-allocation rows
+            rowAllocations.forEach((al, i) => {
+                const subId = `${rowId}-alloc-${i}`;
+                const sub = document.createElement('tr');
+                sub.className = 'bg-light';
+                sub.id = subId;
+                sub.innerHTML = `
+                    <td></td>
+                    <td><small class="text-muted">${al.locationCode} - ${al.locationName ?? ''}</small></td>
+                    <td><span class="badge bg-info">${formatNumber(al.quantity)}</span></td>
+                    <td>
+                        <input type="number" class="form-control" value="${al.quantity}" disabled />
+                    </td>
+                    <td>
+                        <select class="form-select" disabled>
+                            <option>${al.locationCode} - ${al.locationName ?? ''}</option>
+                        </select>
+                    </td>
+                `;
+                tbody.appendChild(sub);
+            });
+        } else {
+            // Single-row rendering (interactive OR single allocation)
+            // If read-only and single allocation exists, prefill the select with saved location
+            const singleAlloc = isReadOnly && rowAllocations.length === 1 ? rowAllocations[0] : null;
+            const selectHtml = singleAlloc
+                ? `<select class="form-select location-select" id="location-${rowId}" data-product-id="${product.productId}" data-row-id="${rowId}" ${disabledAttr}>
+                        <option value="${singleAlloc.locationId}">${singleAlloc.locationCode} - ${singleAlloc.locationName ?? ''}</option>
+                   </select>`
+                : `<select class="form-select location-select" id="location-${rowId}" data-product-id="${product.productId}" data-row-id="${rowId}" ${disabledAttr} onchange="handleLocationChange(this)">
+                        <option value="">-- Select Location --</option>
+                   </select>`;
+
+            row.innerHTML = `
+                <td>
+                    <div class="sku-badge">${product.sku}</div>
+                </td>
+                <td>
+                    <div class="product-name">${product.productName}</div>
+                    <small class="text-muted">${product.categoryName}</small>
+                </td>
+                <td>
+                    <span class="badge bg-secondary">${formatNumber(product.orderedQty)}</span>
+                </td>
+                <td>
+                    <input type="number" 
+                           class="form-control qty-input" 
+                           id="qty-${rowId}"
+                           data-product-id="${product.productId}"
+                           data-row-id="${rowId}"
+                           value="${qtyValue}"
+                           min="0"
+                           max="${maxValue}"
+                           ${disabledAttr}
+                           onchange="handleQuantityChange(this)">
+                </td>
+                <td>
+                    ${selectHtml}
+                    <div class="location-info mt-1" id="location-info-${rowId}"></div>
+                </td>
+            `;
+            tbody.appendChild(row);
+
+            
+        }
+
+        // Only load available locations in interactive mode
+        if (!isReadOnly) {
+            loadLocationsForProduct(product.productId, rowId);
+        }
+
+        // Track receipt items only for interactive mode
+        if (!isReadOnly) {
+            receiptItems.push({
+                rowId: rowId,
+                productId: product.productId,
+                productName: product.productName,
+                orderedQty: product.orderedQty,
+                receivedQty: product.remainingQty,
+                locationId: null,
+                unitPrice: product.unitPrice,
+                splitRows: []
+            });
+        }
     });
 
     console.log(`📊 Render summary: ${shownCount} shown, ${hiddenCount} hidden`); // ✅ DEBUG
 
-    // ✅ CHECK IF NO PRODUCTS REMAINING
-    if (receiptItems.length === 0) {
+    // ✅ CHECK IF NO PRODUCTS REMAINING (interactive only)
+    if (!isReadOnly && receiptItems.length === 0) {
         console.log('🎉 All products received!'); // ✅ DEBUG
         tbody.innerHTML = `
             <tr>
@@ -163,7 +230,8 @@ function renderProductsTable() {
                 </td>
             </tr>
         `;
-        document.getElementById('btn-confirm').disabled = true;
+        const btn = document.getElementById('btn-confirm');
+        if (btn) btn.disabled = true;
     }
 }
 
@@ -678,12 +746,42 @@ function refreshAllLocationSelects() {
 ========================================================= */
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Goods Receipt initialized');
+
+    if (window.readOnlyMode === true || window.readOnlyMode === 'true') {
+        // Disable all inputs/selects and hide confirm button if exists
+        setTimeout(() => {
+            document.querySelectorAll('input, select, button').forEach(el => {
+                if (el.id === 'btn-confirm') {
+                    el.style.display = 'none';
+                } else if (el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+                    el.disabled = true;
+                }
+            });
+        }, 0);
+    }
     console.log('   PO ID:', purchaseOrderId);
     console.log('   Warehouse ID:', warehouseId);
     console.log('   User ID:', userId);
 
     await loadPurchaseOrderInfo();
     await loadProducts();
+
+    if (window.readOnlyMode === true || window.readOnlyMode === 'true') {
+        try {
+            const res = await fetch(`/StockIn/GetPurchaseOrderAllocations?purchaseOrderId=${purchaseOrderId}`);
+            const allocs = await res.json();
+            if (Array.isArray(allocs)) {
+                // Group by productId
+                const byProduct = allocs.reduce((m, a) => {
+                    (m[a.productId] = m[a.productId] || []).push(a);
+                    return m;
+                }, {});
+                // Save and re-render to show multi-allocation rows properly
+                allocationsByProduct = byProduct;
+                renderProductsTable();
+            }
+        } catch (e) { console.error('Load allocations failed', e); }
+    }
 
     console.log('✅ Initialization complete');
     console.log('📋 Final receiptItems:', receiptItems);
