@@ -5,75 +5,234 @@
     var warehouses = ViewBag.Warehouses as List<EWMS.Models.Warehouse> ?? new();
 }
 
-<h2>Add User</h2>
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 25px 30px;
+        margin-bottom: 30px;
+        color: white;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+    .page-header h2 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 26px;
+    }
+    .form-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        padding: 35px;
+    }
+    .form-label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+    .form-control, .form-select {
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 10px 15px;
+        transition: all 0.3s ease;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+    }
+    .warehouses-container {
+        max-height: 220px;
+        overflow-y: auto;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 15px;
+        background: #f8f9fa;
+    }
+    .form-check {
+        padding: 8px 12px;
+        margin-bottom: 5px;
+        border-radius: 6px;
+        transition: background 0.2s ease;
+    }
+    .form-check:hover {
+        background: #e9ecef;
+    }
+    .form-check-input:checked {
+        background-color: #667eea;
+        border-color: #667eea;
+    }
+    .btn-cancel {
+        background: #f8f9fa;
+        color: #495057;
+        border: 2px solid #dee2e6;
+        padding: 10px 30px;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    .btn-cancel:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
+        color: #495057;
+    }
+    .btn-create {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 10px 40px;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    .btn-create:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+    .section-divider {
+        background: linear-gradient(90deg, transparent, #667eea, transparent);
+        height: 2px;
+        margin: 25px 0;
+        border-radius: 2px;
+    }
+    .input-icon {
+        position: relative;
+    }
+    .input-icon i {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #adb5bd;
+    }
+    .input-icon .form-control {
+        padding-left: 45px;
+    }
+    .password-hint {
+        font-size: 12px;
+        color: #6c757d;
+        margin-top: 5px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .active-switch {
+        background: #e9ecef;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 10px;
+    }
+</style>
 
-<form asp-action="Create" method="post">
-    @Html.AntiForgeryToken()
+<div class="page-header">
+    <h2><i class="fas fa-user-plus me-2"></i>Add New User</h2>
+    <p class="mb-0 mt-2" style="opacity: 0.9; font-size: 14px;">Create a new user account and assign permissions</p>
+</div>
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="mb-3">
-                <label class="form-label">Username</label>
-                <input asp-for="Username" class="form-control" />
-                <span asp-validation-for="Username" class="text-danger"></span>
-            </div>
+<div class="form-card">
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        @Html.ValidationSummary(true, "", new { @class = "alert alert-danger" })
 
-            <div class="mb-3">
-                <label class="form-label">Password (default 123456)</label>
-                <input asp-for="Password" class="form-control" />
-                <span asp-validation-for="Password" class="text-danger"></span>
-            </div>
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="mb-3"><i class="fas fa-user-circle me-2" style="color: #667eea;"></i>Account Information</h5>
+                
+                <div class="mb-3">
+                    <label class="form-label"><i class="fas fa-user me-2"></i>Username</label>
+                    <input asp-for="Username" class="form-control" placeholder="Enter username" />
+                    <span asp-validation-for="Username" class="text-danger small"></span>
+                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Full name</label>
-                <input asp-for="FullName" class="form-control" />
-            </div>
+                <div class="mb-3">
+                    <label class="form-label"><i class="fas fa-key me-2"></i>Password</label>
+                    <input asp-for="Password" type="password" class="form-control" placeholder="Leave blank for default (123456)" />
+                    <div class="password-hint">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Default password will be set if left empty</span>
+                    </div>
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Email</label>
-                <input asp-for="Email" class="form-control" />
-            </div>
+                <div class="mb-3">
+                    <label class="form-label"><i class="fas fa-id-card me-2"></i>Full Name</label>
+                    <input asp-for="FullName" class="form-control" placeholder="Enter full name" />
+                </div>
 
-            <div class="mb-3">
-                <label class="form-label">Phone</label>
-                <input asp-for="Phone" class="form-control" />
-            </div>
-        </div>
+                <div class="mb-3">
+                    <label class="form-label"><i class="fas fa-envelope me-2"></i>Email</label>
+                    <input asp-for="Email" type="email" class="form-control" placeholder="user@example.com" />
+                </div>
 
-        <div class="col-md-6">
-            <div class="mb-3">
-                <label class="form-label">Role</label>
-                <select asp-for="RoleId" class="form-select">
-                    <option value="">-- Select role --</option>
-                    @foreach (var r in roles) { <option value="@r.RoleId">@r.RoleName</option> }
-                </select>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Departments (Warehouses)</label>
-                <div style="max-height:220px; overflow:auto; border:1px solid #ddd; padding:8px;">
-                    @foreach (var w in warehouses)
-                    {
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="WarehouseIds" value="@w.WarehouseId" id="w_@w.WarehouseId" />
-                            <label class="form-check-label" for="w_@w.WarehouseId">@w.WarehouseName</label>
-                        </div>
-                    }
+                <div class="mb-3">
+                    <label class="form-label"><i class="fas fa-phone me-2"></i>Phone Number</label>
+                    <input asp-for="Phone" class="form-control" placeholder="0900000000" />
                 </div>
             </div>
 
-            <div class="form-check mb-3">
-                <input asp-for="IsActive" class="form-check-input" />
-                <label asp-for="IsActive" class="form-check-label">Active</label>
+            <div class="col-md-6">
+                <h5 class="mb-3"><i class="fas fa-shield-alt me-2" style="color: #667eea;"></i>Permissions & Access</h5>
+
+                <div class="mb-3">
+                    <label class="form-label"><i class="fas fa-user-tag me-2"></i>Role</label>
+                    <select asp-for="RoleId" class="form-select">
+                        <option value="">-- Select user role --</option>
+                        @foreach (var r in roles)
+                        {
+                            <option value="@r.RoleId">@r.RoleName</option>
+                        }
+                    </select>
+                    <span asp-validation-for="RoleId" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label"><i class="fas fa-warehouse me-2"></i>Assigned Warehouses</label>
+                    <div class="warehouses-container">
+                        @if (warehouses.Any())
+                        {
+                            @foreach (var w in warehouses)
+                            {
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="WarehouseIds" value="@w.WarehouseId" id="w_@w.WarehouseId" />
+                                    <label class="form-check-label" for="w_@w.WarehouseId">
+                                        <i class="fas fa-building me-2" style="color: #667eea;"></i>@w.WarehouseName
+                                    </label>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-muted mb-0"><i class="fas fa-info-circle me-2"></i>No warehouses available</p>
+                        }
+                    </div>
+                </div>
+
+                <div class="active-switch">
+                    <div class="form-check form-switch">
+                        <input asp-for="IsActive" class="form-check-input" style="width: 50px; height: 25px;" />
+                        <label asp-for="IsActive" class="form-check-label ms-2">
+                            <strong>Account Active</strong>
+                            <br><small class="text-muted">Enable user to login to the system</small>
+                        </label>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="text-end">
-        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
-        <button type="submit" class="btn btn-primary">Create</button>
-    </div>
-</form>
+        <div class="section-divider"></div>
+
+        <div class="text-end">
+            <a asp-action="Index" class="btn btn-cancel me-2">
+                <i class="fas fa-times me-2"></i>Cancel
+            </a>
+            <button type="submit" class="btn btn-create">
+                <i class="fas fa-check-circle me-2"></i>Create User
+            </button>
+        </div>
+    </form>
+</div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
