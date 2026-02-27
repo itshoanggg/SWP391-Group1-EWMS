@@ -97,7 +97,7 @@
         <h2><i class="bi bi-arrow-left-right me-2"></i>Quản Lý Chuyển Kho</h2>
         <p class="mb-0 mt-2" style="opacity: 0.9;">Quản lý các yêu cầu chuyển kho giữa các chi nhánh</p>
     </div>
-    @if (User.IsInRole("Warehouse Manager") || User.IsInRole("Inventory Staff") || User.IsInRole("Admin"))
+    @if (User.IsInRole("Inventory Staff") || User.IsInRole("Admin"))
     {
         <a asp-action="Create" class="btn-create-transfer">
             <i class="bi bi-plus-circle me-2"></i>Tạo Chuyển Kho

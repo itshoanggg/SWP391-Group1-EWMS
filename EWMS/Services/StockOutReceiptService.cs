@@ -117,7 +117,7 @@ namespace EWMS.Services
                     CustomerName = o.CustomerName,
                     CustomerPhone = o.CustomerPhone,
                     CustomerAddress = o.CustomerAddress,
-                    ExpectedDeliveryDate = o.ExpectedDeliveryDate,
+                    ExpectedDeliveryDate = o.CreatedAt.AddDays(3), // Use CreatedAt + 3 days
                     TotalAmount = o.TotalAmount,
                     Status = o.Status,
                     Notes = o.Notes,
@@ -175,7 +175,7 @@ namespace EWMS.Services
                 CustomerName = o.CustomerName,
                 CustomerPhone = o.CustomerPhone,
                 CustomerAddress = o.CustomerAddress,
-                ExpectedDeliveryDate = o.ExpectedDeliveryDate,
+                ExpectedDeliveryDate = o.CreatedAt.AddDays(3), // Use CreatedAt + 3 days
                 TotalAmount = o.TotalAmount,
                 Status = o.Status,
                 Notes = o.Notes,
@@ -241,7 +241,7 @@ namespace EWMS.Services
                 CustomerName = order.CustomerName,
                 CustomerPhone = order.CustomerPhone,
                 CustomerAddress = order.CustomerAddress,
-                ExpectedDeliveryDate = order.ExpectedDeliveryDate,
+                ExpectedDeliveryDate = order.CreatedAt.AddDays(3), // Use CreatedAt + 3 days
                 TotalAmount = order.TotalAmount,
                 Status = order.Status,
                 Notes = order.Notes,

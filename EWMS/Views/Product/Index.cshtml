@@ -1,0 +1,145 @@
+@model List<EWMS.ViewModels.ProductListViewModel>
+@{
+    ViewData["Title"] = "Product Information";
+}
+
+<style>
+    .product-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 30px;
+        margin-bottom: 30px;
+        color: white;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+    .product-header h2 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 28px;
+    }
+    .product-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+    .search-box {
+        padding: 12px 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+    .search-box:focus {
+        border-color: #667eea;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .btn-details {
+        color: #667eea;
+        font-weight: 600;
+        text-decoration: none;
+        padding: 6px 16px;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        border: 1px solid #667eea;
+        display: inline-block;
+    }
+    .btn-details:hover {
+        background: #667eea;
+        color: white;
+        text-decoration: none;
+    }
+    .table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #495057;
+        border-bottom: 2px solid #dee2e6;
+    }
+    .table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+
+<div class="product-header">
+    <div>
+        <h2><i class="bi bi-box-seam me-2"></i>Product Information</h2>
+        <p class="mb-0 mt-2" style="opacity: 0.9;">View detailed product information for accurate storage decisions</p>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success mb-4">
+        <i class="bi bi-check-circle me-2"></i>@TempData["SuccessMessage"]
+    </div>
+}
+
+<div class="mb-4">
+    <input id="productSearch" type="search" placeholder="Search by product name, category, or unit..." class="search-box w-100" style="max-width: 500px;" />
+</div>
+
+<div class="product-card">
+    <table id="productTable" class="table table-hover mb-0">
+        <thead>
+            <tr>
+                <th><i class="bi bi-hash me-2"></i>ID</th>
+                <th><i class="bi bi-box-seam me-2"></i>Product Name</th>
+                <th><i class="bi bi-tag me-2"></i>Category</th>
+                <th><i class="bi bi-rulers me-2"></i>Unit</th>
+                <th><i class="bi bi-cash-coin me-2"></i>Cost Price</th>
+                <th><i class="bi bi-currency-dollar me-2"></i>Selling Price</th>
+                <th><i class="bi bi-gear me-2"></i>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model == null || !Model.Any())
+            {
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                        No products found
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var product in Model)
+                {
+                    <tr>
+                        <td><strong>@product.ProductId</strong></td>
+                        <td>@product.ProductName</td>
+                        <td><span class="badge bg-info">@product.CategoryName</span></td>
+                        <td>@product.Unit</td>
+                        <td>@product.CostPrice.ToString("N2") VND</td>
+                        <td>@product.SellingPrice.ToString("N2") VND</td>
+                        <td>
+                            <a class="btn-details" asp-action="Details" asp-route-id="@product.ProductId">
+                                <i class="bi bi-eye me-1"></i>Details
+                            </a>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const input = document.getElementById('productSearch');
+            const table = document.getElementById('productTable');
+            if (!input || !table) return;
+
+            input.addEventListener('input', function () {
+                const q = this.value.trim().toLowerCase();
+                const rows = table.tBodies[0].rows;
+                for (let i = 0; i < rows.length; i++) {
+                    const rowText = rows[i].innerText.toLowerCase();
+                    rows[i].style.display = rowText.indexOf(q) > -1 ? '' : 'none';
+                }
+            });
+        })();
+    </script>
+}

@@ -48,7 +48,7 @@ namespace EWMS.Repositories
                 .Where(po =>
                     po.WarehouseId == warehouseId &&
                     po.Status == "Ordered" &&
-                    po.ExpectedReceivingDate.Date <= today)
+                    po.CreatedAt.Date <= today)
                 .ToListAsync();
 
             foreach (var po in ordersToUpdate)

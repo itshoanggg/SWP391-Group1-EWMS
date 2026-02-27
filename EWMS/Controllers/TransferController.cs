@@ -8,7 +8,12 @@ using EWMS.Models;
 
 namespace EWMS.Controllers
 {
-    [Authorize(Roles = "Admin,Inventory Staff,Warehouse Manager")]
+    /// <summary>
+    /// Transfer Request Controller
+    /// User Story: As an inventory staff, I want to manage transfer requests so that inventory movement is controlled.
+    /// Authorization: Admin, Inventory Staff
+    /// </summary>
+    [Authorize(Roles = "Admin,Inventory Staff")]
     public class TransferController : Controller
     {
         private readonly TransferService _transferService;
@@ -136,6 +141,60 @@ namespace EWMS.Controllers
                 return NotFound();
 
             return View(transfer);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin,Inventory Staff")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Approve(int id)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var userId = int.TryParse(userIdClaim, out var uid) ? uid : 0;
+
+                if (userId == 0)
+                {
+                    TempData["ErrorMessage"] = "User not authenticated.";
+                    return RedirectToAction(nameof(Details), new { id });
+                }
+
+                await _transferService.ApproveTransferAsync(id, userId);
+                TempData["SuccessMessage"] = "Transfer request approved successfully!";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error approving transfer: {ex.Message}";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin,Inventory Staff")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Reject(int id, string? rejectionReason)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var userId = int.TryParse(userIdClaim, out var uid) ? uid : 0;
+
+                if (userId == 0)
+                {
+                    TempData["ErrorMessage"] = "User not authenticated.";
+                    return RedirectToAction(nameof(Details), new { id });
+                }
+
+                await _transferService.RejectTransferAsync(id, userId, rejectionReason);
+                TempData["SuccessMessage"] = "Transfer request rejected successfully!";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error rejecting transfer: {ex.Message}";
+                return RedirectToAction(nameof(Details), new { id });
+            }
         }
     }
 }

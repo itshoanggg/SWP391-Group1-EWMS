@@ -1,0 +1,249 @@
+@model EWMS.ViewModels.ProductDetailsViewModel
+@{
+    ViewData["Title"] = "Product Details";
+}
+
+<style>
+    .product-details-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 30px;
+        margin-bottom: 30px;
+        color: white;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+    .detail-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        padding: 25px;
+        margin-bottom: 20px;
+    }
+    .detail-card h5 {
+        color: #667eea;
+        font-weight: 600;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #e0e0e0;
+        padding-bottom: 10px;
+    }
+    .info-row {
+        display: flex;
+        padding: 12px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .info-row:last-child {
+        border-bottom: none;
+    }
+    .info-label {
+        font-weight: 600;
+        color: #495057;
+        width: 200px;
+        flex-shrink: 0;
+    }
+    .info-value {
+        color: #212529;
+        flex-grow: 1;
+    }
+    .warehouse-section {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 15px;
+    }
+    .warehouse-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #dee2e6;
+    }
+    .warehouse-name {
+        font-size: 18px;
+        font-weight: 600;
+        color: #495057;
+    }
+    .warehouse-total {
+        background: #667eea;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+    }
+    .location-item {
+        background: white;
+        padding: 12px 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .location-item:last-child {
+        margin-bottom: 0;
+    }
+    .location-name {
+        font-weight: 500;
+        color: #495057;
+    }
+    .location-quantity {
+        font-weight: 600;
+        color: #667eea;
+        font-size: 16px;
+    }
+    .total-inventory-badge {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 15px 25px;
+        border-radius: 10px;
+        font-size: 20px;
+        font-weight: 700;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+    }
+    .btn-back {
+        background: white;
+        color: #667eea;
+        border: 2px solid #667eea;
+        padding: 10px 25px;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-back:hover {
+        background: #667eea;
+        color: white;
+        text-decoration: none;
+    }
+    .last-updated {
+        font-size: 12px;
+        color: #6c757d;
+        margin-left: 10px;
+    }
+</style>
+
+<div class="product-details-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2><i class="bi bi-box-seam me-2"></i>@Model.ProductName</h2>
+            <p class="mb-0 mt-2" style="opacity: 0.9;">Detailed product information and inventory locations</p>
+        </div>
+        <a asp-action="Index" class="btn-back">
+            <i class="bi bi-arrow-left me-2"></i>Back to List
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="detail-card">
+            <h5><i class="bi bi-info-circle me-2"></i>Product Information</h5>
+            <div class="info-row">
+                <div class="info-label"><i class="bi bi-hash me-2"></i>Product ID:</div>
+                <div class="info-value"><strong>@Model.ProductId</strong></div>
+            </div>
+            <div class="info-row">
+                <div class="info-label"><i class="bi bi-box-seam me-2"></i>Product Name:</div>
+                <div class="info-value">@Model.ProductName</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label"><i class="bi bi-tag me-2"></i>Category:</div>
+                <div class="info-value"><span class="badge bg-info">@Model.CategoryName</span></div>
+            </div>
+            <div class="info-row">
+                <div class="info-label"><i class="bi bi-rulers me-2"></i>Unit:</div>
+                <div class="info-value">@Model.Unit</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label"><i class="bi bi-cash-coin me-2"></i>Cost Price:</div>
+                <div class="info-value"><strong>@Model.CostPrice.ToString("N2") VND</strong></div>
+            </div>
+            <div class="info-row">
+                <div class="info-label"><i class="bi bi-currency-dollar me-2"></i>Selling Price:</div>
+                <div class="info-value"><strong>@Model.SellingPrice.ToString("N2") VND</strong></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="detail-card">
+            <h5><i class="bi bi-bar-chart me-2"></i>Total Inventory</h5>
+            <div class="total-inventory-badge">
+                <i class="bi bi-boxes me-2"></i>@Model.TotalInventory @Model.Unit
+            </div>
+            <div class="mt-3 text-muted" style="font-size: 14px;">
+                <i class="bi bi-info-circle me-2"></i>
+                Total quantity across all warehouses and locations
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="detail-card">
+    <h5><i class="bi bi-warehouse me-2"></i>Inventory by Warehouse and Location</h5>
+    
+    @if (Model.InventoryByWarehouse == null || !Model.InventoryByWarehouse.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            No inventory records found for this product.
+        </div>
+    }
+    else
+    {
+        @foreach (var warehouse in Model.InventoryByWarehouse)
+        {
+            <div class="warehouse-section">
+                <div class="warehouse-header">
+                    <div class="warehouse-name">
+                        <i class="bi bi-building me-2"></i>@warehouse.WarehouseName
+                    </div>
+                    <div class="warehouse-total">
+                        Total: @warehouse.TotalQuantity @Model.Unit
+                    </div>
+                </div>
+                
+                @if (warehouse.Locations != null && warehouse.Locations.Any())
+                {
+                    <div class="locations-list">
+                        @foreach (var location in warehouse.Locations)
+                        {
+                            <div class="location-item">
+                                <div>
+                                    <span class="location-name">
+                                        <i class="bi bi-geo-alt me-2"></i>@location.LocationName
+                                    </span>
+                                    @if (location.LastUpdated.HasValue)
+                                    {
+                                        <span class="last-updated">
+                                            <i class="bi bi-clock me-1"></i>Updated: @location.LastUpdated.Value.ToString("dd/MM/yyyy HH:mm")
+                                        </span>
+                                    }
+                                </div>
+                                <div class="location-quantity">
+                                    @location.Quantity @Model.Unit
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-muted">
+                        <i class="bi bi-inbox me-2"></i>No location data available
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+<div class="mt-4">
+    <a asp-action="Index" class="btn btn-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Back to Product List
+    </a>
+</div>

@@ -6,5 +6,7 @@ namespace EWMS.Repositories.Interfaces
     {
         Task<IEnumerable<Product>> GetAllWithCategoryAsync();
         Task<Product?> GetByIdWithCategoryAsync(int id);
+        Task<List<Product>> GetAllProductsAsync();
+        Task<Product?> GetProductByIdAsync(int productId);
     }
 }

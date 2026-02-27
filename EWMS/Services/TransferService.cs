@@ -87,5 +87,56 @@ namespace EWMS.Services
 
             return request.TransferId;
         }
+
+        public async Task<bool> ApproveTransferAsync(int transferId, int approvedBy)
+        {
+            var transfer = await _db.TransferRequests.FindAsync(transferId);
+            if (transfer == null)
+            {
+                throw new InvalidOperationException("Transfer request not found.");
+            }
+
+            if (transfer.Status != "Pending")
+            {
+                throw new InvalidOperationException($"Cannot approve transfer with status: {transfer.Status}");
+            }
+
+            transfer.Status = "Approved";
+            transfer.ApprovedBy = approvedBy;
+            transfer.ApprovedDate = DateTime.Now;
+
+            _db.TransferRequests.Update(transfer);
+            await _db.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<bool> RejectTransferAsync(int transferId, int rejectedBy, string? rejectionReason = null)
+        {
+            var transfer = await _db.TransferRequests.FindAsync(transferId);
+            if (transfer == null)
+            {
+                throw new InvalidOperationException("Transfer request not found.");
+            }
+
+            if (transfer.Status != "Pending")
+            {
+                throw new InvalidOperationException($"Cannot reject transfer with status: {transfer.Status}");
+            }
+
+            transfer.Status = "Rejected";
+            transfer.ApprovedBy = rejectedBy;
+            transfer.ApprovedDate = DateTime.Now;
+            
+            if (!string.IsNullOrEmpty(rejectionReason))
+            {
+                transfer.Reason = (transfer.Reason ?? "") + " | Rejection Reason: " + rejectionReason;
+            }
+
+            _db.TransferRequests.Update(transfer);
+            await _db.SaveChangesAsync();
+
+            return true;
+        }
     }
 }
