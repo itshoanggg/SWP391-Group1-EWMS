@@ -116,15 +116,21 @@ namespace EWMS.Services
 
         public async Task<IEnumerable<ProductBySupplierDTO>> GetProductsBySupplierAsync(int supplierId)
         {
-            var products = await _unitOfWork.Products.GetAllWithCategoryAsync();
+            // Query directly from DB with filter by SupplierId via Category to avoid loading all products
+            var filtered = await _unitOfWork.Products.Context.Products
+                .Include(p => p.Category)
+                .Where(p => p.Category != null && p.Category.SupplierId == supplierId)
+                .OrderBy(p => p.ProductName)
+                .Select(p => new ProductBySupplierDTO
+                {
+                    ProductId = p.ProductId,
+                    ProductName = p.ProductName,
+                    CategoryName = p.Category!.CategoryName,
+                    CostPrice = p.CostPrice ?? 0
+                })
+                .ToListAsync();
 
-            return products.Select(p => new ProductBySupplierDTO
-            {
-                ProductId = p.ProductId,
-                ProductName = p.ProductName,
-                CategoryName = p.Category?.CategoryName ?? "N/A",
-                CostPrice = p.CostPrice ?? 0
-            }).ToList();
+            return filtered;
         }
 
         public async Task<IEnumerable<PurchaseOrderListDTO>> GetPurchaseOrderListAsync(int warehouseId, string? status, string? search)
