@@ -272,6 +272,17 @@
                     </div>
                 </div>
             </div>
+
+            @* Users (Admin only) *@
+            @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Admin"))
+            {
+                <a href="@Url.Action("Index", "Users")" class="sidebar-menu-item">
+                    <div>
+                        <i class="bi bi-people menu-icon"></i>
+                        <span>Users</span>
+                    </div>
+                </a>
+            }
         </div>
 
         <div class="sidebar-footer">

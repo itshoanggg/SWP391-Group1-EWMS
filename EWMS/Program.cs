@@ -65,6 +65,9 @@ namespace EWMS
             builder.Services.AddScoped<ISupplierService, SupplierService>();
             builder.Services.AddScoped<IUserService, UserService>();
 
+            // Register TransferService so TransferController can be resolved
+            builder.Services.AddScoped<TransferService>();
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
