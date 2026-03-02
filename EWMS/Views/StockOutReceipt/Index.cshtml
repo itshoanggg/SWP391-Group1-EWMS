@@ -1,4 +1,4 @@
-@model EWMS.ViewModels.StockOutOrderListViewModel
+﻿@model EWMS.ViewModels.StockOutOrderListViewModel
 @{
     ViewData["Title"] = "Stock Out Management";
 }
@@ -77,7 +77,7 @@
                             <td>@order.CustomerName</td>
                             <td>@order.CreatedAt.ToString("dd/MM/yyyy")</td>
                             <td>@order.ExpectedDeliveryDate.ToString("dd/MM/yyyy")</td>
-                            <td><strong>@order.TotalAmount.ToString("N0") đ</strong></td>
+                            <td><strong>@order.TotalAmount.ToString("N0") VND</strong></td>
                             <td>
                                 @if (order.Status == "Pending")
                                 {

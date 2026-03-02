@@ -52,7 +52,7 @@
                     </div>
                     <div class="detail-item">
                         <div class="detail-label">Total Amount:</div>
-                        <div class="detail-value"><strong>@Model.TotalAmount.ToString("N0") đ</strong></div>
+                        <div class="detail-value"><strong>@Model.TotalAmount.ToString("N0") VND</strong></div>
                     </div>
                     @if (!string.IsNullOrEmpty(Model.Notes))
                     {
@@ -201,7 +201,7 @@
                         <div class="inventory-item">
                             <div>
                                 <strong>${productName}</strong><br>
-                                <small class="text-muted">Vị trí: ${selectedOption.text}</small>
+                                <small class="text-muted">Location: ${selectedOption.text}</small>
                             </div>
                             <div class="text-end ${statusClass} fw-bold">
                                 <i class="bi bi-${icon}"></i> ${available} Existing / ${requiredQty} need

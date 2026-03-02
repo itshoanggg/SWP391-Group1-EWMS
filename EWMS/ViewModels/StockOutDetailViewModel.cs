@@ -2,7 +2,8 @@ namespace EWMS.ViewModels
 {
     public class StockOutDetailViewModel
     {
-        public int StockOutDetailId { get; set; }
+        // Composite Key components (no longer need StockOutDetailId)
+        public int StockOutId { get; set; }
         public int ProductId { get; set; }
         public string ProductName { get; set; } = string.Empty;
         public int LocationId { get; set; }

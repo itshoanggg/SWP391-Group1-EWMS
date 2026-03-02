@@ -72,7 +72,7 @@ namespace EWMS.Services
             CustomerName = o.CustomerName,
             CustomerPhone = o.CustomerPhone,
             CustomerAddress = o.CustomerAddress,
-            ExpectedDeliveryDate = o.CreatedAt.AddDays(3), // Use CreatedAt + 3 days
+            ExpectedDeliveryDate = o.ExpectedDeliveryDate,
             TotalAmount = o.TotalAmount,
             Status = o.Status,
             Notes = o.Notes,
@@ -101,7 +101,7 @@ namespace EWMS.Services
                 CustomerName = order.CustomerName,
                 CustomerPhone = order.CustomerPhone,
                 CustomerAddress = order.CustomerAddress,
-                ExpectedDeliveryDate = order.CreatedAt.AddDays(3), // Use CreatedAt + 3 days
+                ExpectedDeliveryDate = order.ExpectedDeliveryDate,
                 TotalAmount = order.TotalAmount,
                 Status = order.Status,
                 Notes = order.Notes,
@@ -123,46 +123,71 @@ namespace EWMS.Services
             CreateSalesOrderViewModel model,
             int createdByUserId)
         {
-            var inventoryCheckRequest = new InventoryCheckRequest
+            try
             {
-                WarehouseId = model.WarehouseId,
-                ExpectedDeliveryDate = model.ExpectedDeliveryDate,
-                Products = model.Details.Select(d => new ProductQuantityDto
+                // Group by ProductId to handle duplicate products (merge quantities)
+                var groupedDetails = model.Details
+                    .GroupBy(d => d.ProductId)
+                    .Select(g => new
+                    {
+                        ProductId = g.Key,
+                        Quantity = g.Sum(d => d.Quantity),
+                        UnitPrice = g.First().UnitPrice // Use first unit price for duplicates
+                    })
+                    .ToList();
+
+                var inventoryCheckRequest = new InventoryCheckRequest
                 {
-                    ProductId = d.ProductId,
-                    Quantity = d.Quantity
-                }).ToList()
-            };
+                    WarehouseId = model.WarehouseId,
+                    ExpectedDeliveryDate = model.ExpectedDeliveryDate,
+                    Products = groupedDetails.Select(d => new ProductQuantityDto
+                    {
+                        ProductId = d.ProductId,
+                        Quantity = d.Quantity
+                    }).ToList()
+                };
 
-            var checkResult = await _inventoryCheckService.CheckInventoryAvailabilityAsync(inventoryCheckRequest);
+                var checkResult = await _inventoryCheckService.CheckInventoryAvailabilityAsync(inventoryCheckRequest);
 
-            if (!checkResult.IsValid)
-            {
-                return (false, checkResult.Message, null);
+                if (!checkResult.IsValid)
+                {
+                    return (false, checkResult.Message, null);
+                }
+
+                var salesOrder = new SalesOrder
+                {
+                    WarehouseId = model.WarehouseId,
+                    CustomerName = model.CustomerName,
+                    CustomerPhone = model.CustomerPhone,
+                    CustomerAddress = model.CustomerAddress,
+                    ExpectedDeliveryDate = model.ExpectedDeliveryDate,
+                    CreatedBy = createdByUserId,
+                    Status = "Pending",
+                    TotalAmount = groupedDetails.Sum(d => d.Quantity * d.UnitPrice),
+                    Notes = model.Notes,
+                    CreatedAt = DateTime.Now,
+                    SalesOrderDetails = groupedDetails.Select(d => new SalesOrderDetail
+                    {
+                        ProductId = d.ProductId,
+                        Quantity = d.Quantity,
+                        UnitPrice = d.UnitPrice,
+                        // TotalPrice is a computed column, don't set it
+                    }).ToList()
+                };
+
+                var createdOrder = await _salesOrderRepository.CreateSalesOrderAsync(salesOrder);
+
+                return (true, "Order created successfully and sent to inventory department!", createdOrder.SalesOrderId);
             }
-
-            var salesOrder = new SalesOrder
+            catch (Exception ex)
             {
-                WarehouseId = model.WarehouseId,
-                CustomerName = model.CustomerName,
-                CustomerPhone = model.CustomerPhone,
-                CustomerAddress = model.CustomerAddress,
-                CreatedBy = createdByUserId,
-                Status = "Pending",
-                TotalAmount = model.Details.Sum(d => d.Quantity * d.UnitPrice),
-                Notes = model.Notes,
-                CreatedAt = DateTime.Now,
-                SalesOrderDetails = model.Details.Select(d => new SalesOrderDetail
-                {
-                    ProductId = d.ProductId,
-                    Quantity = d.Quantity,
-                    UnitPrice = d.UnitPrice
-                }).ToList()
-            };
-
-            var createdOrder = await _salesOrderRepository.CreateSalesOrderAsync(salesOrder);
-
-            return (true, "Order created successfully and sent to inventory department!", createdOrder.SalesOrderId);
+                // Log the inner exception details
+                var innerMessage = ex.InnerException?.Message ?? ex.Message;
+                var detailedMessage = $"Error creating sales order: {innerMessage}";
+                
+                // Return detailed error for debugging
+                return (false, detailedMessage, null);
+            }
         }
 
         public async Task<List<ProductSelectViewModel>> GetProductsForSelectionAsync()

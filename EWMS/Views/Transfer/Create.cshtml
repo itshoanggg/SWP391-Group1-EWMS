@@ -1,6 +1,6 @@
 @{
     Layout = "~/Views/Shared/_Layout.cshtml";
-    ViewData["Title"] = "Tạo Chuyển Kho";
+    ViewData["Title"] = "Create Transfer";
     var warehouses = ViewBag.Warehouses as List<EWMS.Models.Warehouse> ?? new List<EWMS.Models.Warehouse>();
     var products = ViewBag.Products as List<EWMS.Models.Product> ?? new List<EWMS.Models.Product>();
 }
@@ -64,15 +64,15 @@
 </style>
 
 <div class="create-header">
-    <h2><i class="bi bi-plus-circle me-2"></i>Tạo Yêu Cầu Chuyển Kho</h2>
-    <p class="mb-0 mt-2" style="opacity: 0.9;">Chuyển hàng hóa giữa các kho</p>
+    <h2><i class="bi bi-plus-circle me-2"></i>Create Transfer Request</h2>
+    <p class="mb-0 mt-2" style="opacity: 0.9;">Transfer goods between warehouses</p>
 </div>
 
 @if (ViewData.ModelState.ErrorCount > 0)
 {
     <div class="alert alert-danger mb-4">
         <i class="bi bi-exclamation-circle me-2"></i>
-        <strong>Lỗi:</strong> Vui lòng kiểm tra lại thông tin.
+        <strong>Error:</strong> Please check the information.
         <div class="mb-0 mt-2">
             @Html.ValidationSummary(false, "", new { @class = "text-danger" })
         </div>
@@ -85,9 +85,9 @@
 
         <div class="row mb-4">
             <div class="col-md-6">
-                <label class="form-label"><i class="bi bi-box-arrow-right me-2"></i>Kho Nguồn</label>
+                <label class="form-label"><i class="bi bi-box-arrow-right me-2"></i>Source Warehouse</label>
                 <select name="FromWarehouseId" class="form-select" required>
-                    <option value="">-- Chọn kho nguồn --</option>
+                    <option value="">-- Select Source Warehouse --</option>
                     @foreach (var w in warehouses)
                     {
                         <option value="@w.WarehouseId">@w.WarehouseName</option>
@@ -96,9 +96,9 @@
             </div>
 
             <div class="col-md-6">
-                <label class="form-label"><i class="bi bi-box-arrow-in-down me-2"></i>Kho Đích</label>
+                <label class="form-label"><i class="bi bi-box-arrow-in-down me-2"></i>Destination Warehouse</label>
                 <select name="ToWarehouseId" class="form-select" required>
-                    <option value="">-- Chọn kho đích --</option>
+                    <option value="">-- Select Destination Warehouse --</option>
                     @foreach (var w in warehouses)
                     {
                         <option value="@w.WarehouseId">@w.WarehouseName</option>
@@ -109,19 +109,19 @@
 
         <div class="row mb-4">
             <div class="col-md-6">
-                <label class="form-label"><i class="bi bi-tag me-2"></i>Loại Chuyển Kho</label>
+                <label class="form-label"><i class="bi bi-tag me-2"></i>Transfer Type</label>
                 <select name="TransferType" class="form-select" required>
-                    <option value="">-- Chọn loại --</option>
-                    <option value="Internal">Chuyển Nội Bộ</option>
-                    <option value="Return">Trả Hàng</option>
-                    <option value="Damage">Hàng Hỏng</option>
+                    <option value="">-- Select Type --</option>
+                    <option value="Internal">Internal Transfer</option>
+                    <option value="Return">Return</option>
+                    <option value="Damage">Damaged Goods</option>
                 </select>
             </div>
 
             <div class="col-md-6">
-                <label class="form-label"><i class="bi bi-box me-2"></i>Sản Phẩm</label>
+                <label class="form-label"><i class="bi bi-box me-2"></i>Product</label>
                 <select name="ProductID" class="form-select" required>
-                    <option value="">-- Chọn sản phẩm --</option>
+                    <option value="">-- Select Product --</option>
                     @foreach (var p in products)
                     {
                         <option value="@p.ProductId">@p.ProductName</option>
@@ -131,21 +131,21 @@
         </div>
 
         <div class="mb-4">
-            <label class="form-label"><i class="bi bi-123 me-2"></i>Số Lượng</label>
-            <input type="number" name="Quantity" class="form-control" min="1" placeholder="Nhập số lượng" required />
+            <label class="form-label"><i class="bi bi-123 me-2"></i>Quantity</label>
+            <input type="number" name="Quantity" class="form-control" min="1" placeholder="Enter quantity" required />
         </div>
 
         <div class="mb-4">
-            <label class="form-label"><i class="bi bi-chat-left-text me-2"></i>Lý Do / Ghi Chú</label>
-            <textarea name="Reason" class="form-control" rows="4" placeholder="Nhập lý do chuyển kho..."></textarea>
+            <label class="form-label"><i class="bi bi-chat-left-text me-2"></i>Reason / Notes</label>
+            <textarea name="Reason" class="form-control" rows="4" placeholder="Enter transfer reason..."></textarea>
         </div>
 
         <div class="d-flex justify-content-end gap-3">
             <a asp-action="Index" class="btn-cancel">
-                <i class="bi bi-x-circle me-2"></i>Hủy
+                <i class="bi bi-x-circle me-2"></i>Cancel
             </a>
             <button type="submit" class="btn-create">
-                <i class="bi bi-check-circle me-2"></i>Tạo Chuyển Kho
+                <i class="bi bi-check-circle me-2"></i>Create Transfer
             </button>
         </div>
     </form>

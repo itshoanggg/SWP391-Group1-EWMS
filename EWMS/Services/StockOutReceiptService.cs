@@ -49,7 +49,7 @@ namespace EWMS.Services
                     CreatedAt = r.CreatedAt,
                     Details = r.StockOutDetails.Select(d => new StockOutDetailViewModel
                     {
-                        StockOutDetailId = d.StockOutDetailId,
+                        StockOutId = d.StockOutId,
                         ProductId = d.ProductId,
                         ProductName = d.Product.ProductName,
                         LocationId = d.LocationId,
@@ -90,7 +90,7 @@ namespace EWMS.Services
                 CreatedAt = receipt.CreatedAt,
                 Details = receipt.StockOutDetails.Select(d => new StockOutDetailViewModel
                 {
-                    StockOutDetailId = d.StockOutDetailId,
+                    StockOutId = d.StockOutId,
                     ProductId = d.ProductId,
                     ProductName = d.Product.ProductName,
                     LocationId = d.LocationId,
@@ -117,7 +117,7 @@ namespace EWMS.Services
                     CustomerName = o.CustomerName,
                     CustomerPhone = o.CustomerPhone,
                     CustomerAddress = o.CustomerAddress,
-                    ExpectedDeliveryDate = o.CreatedAt.AddDays(3), // Use CreatedAt + 3 days
+                    ExpectedDeliveryDate = o.ExpectedDeliveryDate,
                     TotalAmount = o.TotalAmount,
                     Status = o.Status,
                     Notes = o.Notes,
@@ -241,7 +241,7 @@ namespace EWMS.Services
                 CustomerName = order.CustomerName,
                 CustomerPhone = order.CustomerPhone,
                 CustomerAddress = order.CustomerAddress,
-                ExpectedDeliveryDate = order.CreatedAt.AddDays(3), // Use CreatedAt + 3 days
+                ExpectedDeliveryDate = order.ExpectedDeliveryDate,
                 TotalAmount = order.TotalAmount,
                 Status = order.Status,
                 Notes = order.Notes,
@@ -302,8 +302,8 @@ namespace EWMS.Services
                         ProductId = d.ProductId,
                         LocationId = d.LocationId,
                         Quantity = d.Quantity,
-                        UnitPrice = d.UnitPrice,
-                        TotalPrice = d.Quantity * d.UnitPrice
+                        UnitPrice = d.UnitPrice
+                        // TotalPrice is a computed column, don't set it
                     }).ToList()
             };
 

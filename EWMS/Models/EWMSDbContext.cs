@@ -141,9 +141,13 @@ public partial class EWMSDbContext : DbContext
 
         modelBuilder.Entity<PurchaseOrderDetail>(entity =>
         {
-            entity.HasKey(e => e.PurchaseOrderDetailId).HasName("PK__Purchase__5026B6F8F3DE3DF8");
+            // Composite Primary Key: (PurchaseOrderID, ProductID)
+            entity.HasKey(e => new { e.PurchaseOrderId, e.ProductId })
+                .HasName("PK__PurchaseOrderDetails");
 
-            entity.Property(e => e.TotalPrice).HasComputedColumnSql("([Quantity]*[UnitPrice])", true);
+            entity.Property(e => e.TotalPrice)
+                .HasComputedColumnSql("([Quantity]*[UnitPrice])", true)
+                .ValueGeneratedOnAddOrUpdate();
 
             entity.HasOne(d => d.Product).WithMany(p => p.PurchaseOrderDetails)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -175,9 +179,13 @@ public partial class EWMSDbContext : DbContext
 
         modelBuilder.Entity<SalesOrderDetail>(entity =>
         {
-            entity.HasKey(e => e.SalesOrderDetailId).HasName("PK__SalesOrd__6B9B5105283D350A");
+            // Composite Primary Key: (SalesOrderID, ProductID)
+            entity.HasKey(e => new { e.SalesOrderId, e.ProductId })
+                .HasName("PK__SalesOrderDetails");
 
-            entity.Property(e => e.TotalPrice).HasComputedColumnSql("([Quantity]*[UnitPrice])", true);
+            entity.Property(e => e.TotalPrice)
+                .HasComputedColumnSql("([Quantity]*[UnitPrice])", true)
+                .ValueGeneratedOnAddOrUpdate();
 
             entity.HasOne(d => d.Product).WithMany(p => p.SalesOrderDetails)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -188,9 +196,13 @@ public partial class EWMSDbContext : DbContext
 
         modelBuilder.Entity<StockInDetail>(entity =>
         {
-            entity.HasKey(e => e.StockInDetailId).HasName("PK__StockInD__EEDA10336BCA716C");
+            // Composite Primary Key: (StockInID, ProductID, LocationID)
+            entity.HasKey(e => new { e.StockInId, e.ProductId, e.LocationId })
+                .HasName("PK__StockInDetails");
 
-            entity.Property(e => e.TotalPrice).HasComputedColumnSql("([Quantity]*[UnitPrice])", true);
+            entity.Property(e => e.TotalPrice)
+                .HasComputedColumnSql("([Quantity]*[UnitPrice])", true)
+                .ValueGeneratedOnAddOrUpdate();
 
             entity.HasOne(d => d.Location).WithMany(p => p.StockInDetails)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -226,9 +238,13 @@ public partial class EWMSDbContext : DbContext
 
         modelBuilder.Entity<StockOutDetail>(entity =>
         {
-            entity.HasKey(e => e.StockOutDetailId).HasName("PK__StockOut__EB248EFFF2BB9B54");
+            // Composite Primary Key: (StockOutID, ProductID, LocationID)
+            entity.HasKey(e => new { e.StockOutId, e.ProductId, e.LocationId })
+                .HasName("PK__StockOutDetails");
 
-            entity.Property(e => e.TotalPrice).HasComputedColumnSql("([Quantity]*[UnitPrice])", true);
+            entity.Property(e => e.TotalPrice)
+                .HasComputedColumnSql("([Quantity]*[UnitPrice])", true)
+                .ValueGeneratedOnAddOrUpdate();
 
             entity.HasOne(d => d.Location).WithMany(p => p.StockOutDetails)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -316,7 +332,9 @@ public partial class EWMSDbContext : DbContext
 
         modelBuilder.Entity<UserWarehouse>(entity =>
         {
-            entity.HasKey(e => e.UserWarehouseId).HasName("PK__UserWare__BEEFA8461CC98871");
+            // Composite Primary Key: (UserID, WarehouseID)
+            entity.HasKey(e => new { e.UserId, e.WarehouseId })
+                .HasName("PK__UserWarehouses");
 
             entity.Property(e => e.AssignedDate).HasDefaultValueSql("(getdate())");
 

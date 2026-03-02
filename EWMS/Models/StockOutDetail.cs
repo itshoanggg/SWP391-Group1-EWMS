@@ -6,13 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EWMS.Models;
 
-[Index("StockOutId", Name = "IX_StockOutDetails_StockOutID")]
 public partial class StockOutDetail
 {
-    [Key]
-    [Column("StockOutDetailID")]
-    public int StockOutDetailId { get; set; }
-
+    // Composite Primary Key: (StockOutID, ProductID, LocationID)
     [Column("StockOutID")]
     public int StockOutId { get; set; }
 
@@ -27,7 +23,8 @@ public partial class StockOutDetail
     [Column(TypeName = "decimal(18, 2)")]
     public decimal UnitPrice { get; set; }
 
-    [Column(TypeName = "decimal(29, 2)")]
+    [Column(TypeName = "decimal(18, 2)")]
+    [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
     public decimal? TotalPrice { get; set; }
 
     [ForeignKey("LocationId")]

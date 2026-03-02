@@ -45,6 +45,7 @@ namespace EWMS.Services
             {
                 SupplierId = model.SupplierId,
                 WarehouseId = warehouseId,
+                ExpectedReceivingDate = model.ExpectedReceivingDate ?? DateTime.Now.AddDays(7),
                 CreatedBy = userId,
                 Status = "Ordered",
                 CreatedAt = DateTime.Now,
@@ -53,21 +54,30 @@ namespace EWMS.Services
             await _unitOfWork.PurchaseOrders.AddAsync(purchaseOrder);
             await _unitOfWork.SaveChangesAsync();
 
-            foreach (var detail in model.Details)
-            {
-                if (detail.ProductId > 0 && detail.Quantity > 0 && detail.UnitPrice > 0)
+            // Group by ProductId to handle duplicate products (merge quantities)
+            var groupedDetails = model.Details
+                .Where(d => d.ProductId > 0 && d.Quantity > 0 && d.UnitPrice > 0)
+                .GroupBy(d => d.ProductId)
+                .Select(g => new
                 {
-                    var orderDetail = new PurchaseOrderDetail
-                    {
-                        PurchaseOrderId = purchaseOrder.PurchaseOrderId,
-                        ProductId = detail.ProductId,
-                        Quantity = detail.Quantity,
-                        UnitPrice = detail.UnitPrice,
-                        TotalPrice = detail.Quantity * detail.UnitPrice  // ✅ Calculate TotalPrice
-                    };
+                    ProductId = g.Key,
+                    Quantity = g.Sum(d => d.Quantity),
+                    UnitPrice = g.First().UnitPrice // Use first unit price for duplicates
+                })
+                .ToList();
 
-                    await _unitOfWork.PurchaseOrders.Context.PurchaseOrderDetails.AddAsync(orderDetail);
-                }
+            foreach (var detail in groupedDetails)
+            {
+                var orderDetail = new PurchaseOrderDetail
+                {
+                    PurchaseOrderId = purchaseOrder.PurchaseOrderId,
+                    ProductId = detail.ProductId,
+                    Quantity = detail.Quantity,
+                    UnitPrice = detail.UnitPrice
+                    // TotalPrice is a computed column, don't set it
+                };
+
+                await _unitOfWork.PurchaseOrders.Context.PurchaseOrderDetails.AddAsync(orderDetail);
             }
 
             await _unitOfWork.SaveChangesAsync();
@@ -157,7 +167,7 @@ namespace EWMS.Services
                 {
                     PurchaseOrderId = po.PurchaseOrderId,
                     SupplierName = po.Supplier.SupplierName,
-                    ExpectedReceivingDate = po.CreatedAt, // Use CreatedAt instead
+                    ExpectedReceivingDate = po.ExpectedReceivingDate,
                     TotalItems = totalItems,
                     ReceivedItems = receivedItems,
                     RemainingItems = totalItems - receivedItems,

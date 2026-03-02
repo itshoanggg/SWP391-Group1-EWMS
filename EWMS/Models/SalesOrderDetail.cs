@@ -8,10 +8,7 @@ namespace EWMS.Models;
 
 public partial class SalesOrderDetail
 {
-    [Key]
-    [Column("SalesOrderDetailID")]
-    public int SalesOrderDetailId { get; set; }
-
+    // Composite Primary Key: (SalesOrderID, ProductID)
     [Column("SalesOrderID")]
     public int SalesOrderId { get; set; }
 
@@ -23,7 +20,8 @@ public partial class SalesOrderDetail
     [Column(TypeName = "decimal(18, 2)")]
     public decimal UnitPrice { get; set; }
 
-    [Column(TypeName = "decimal(29, 2)")]
+    [Column(TypeName = "decimal(18, 2)")]
+    [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
     public decimal? TotalPrice { get; set; }
 
     [ForeignKey("ProductId")]

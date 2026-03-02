@@ -43,23 +43,14 @@ async function loadHistoryPurchaseOrders() {
             </td>
         </tr>`;
 
-        const urlReceived = `/StockIn/GetPurchaseOrders?warehouseId=${warehouseId}&status=Received&search=${encodeURIComponent(search)}`;
-        const urlCancelled = `/StockIn/GetPurchaseOrders?warehouseId=${warehouseId}&status=Cancelled&search=${encodeURIComponent(search)}`;
+        // Use the dedicated history API endpoint
+        const url = `/StockIn/GetHistoryPurchaseOrders?warehouseId=${warehouseId}&search=${encodeURIComponent(search)}`;
+        
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('HTTP error loading history');
 
-        const [resReceived, resCancelled] = await Promise.all([fetch(urlReceived), fetch(urlCancelled)]);
-        if (!resReceived.ok || !resCancelled.ok) throw new Error('HTTP error loading history');
-
-        const [dataReceived, dataCancelled] = await Promise.all([resReceived.json(), resCancelled.json()]);
-        const listReceived = Array.isArray(dataReceived) ? dataReceived : [];
-        const listCancelled = Array.isArray(dataCancelled) ? dataCancelled : [];
-
-        let filtered = [...listReceived, ...listCancelled];
-        // Sort by lastReceivedDate (desc), fallback to createdAt
-        filtered.sort((a, b) => {
-            const da = a.lastReceivedDate ? new Date(a.lastReceivedDate) : (a.createdAt ? new Date(a.createdAt) : 0);
-            const db = b.lastReceivedDate ? new Date(b.lastReceivedDate) : (b.createdAt ? new Date(b.createdAt) : 0);
-            return db - da;
-        });
+        const data = await response.json();
+        let filtered = Array.isArray(data) ? data : [];
 
         if (filtered.length === 0) {
             tbody.innerHTML = `
@@ -191,6 +182,24 @@ function handleSearch() {
         currentPage = 1;
         loadHistoryPurchaseOrders();
     }, 500);
+}
+
+function changePageSize() {
+    pageSize = parseInt(document.getElementById('page-size-select')?.value || 10);
+    currentPage = 1;
+    
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const pageData = allOrders.slice(startIndex, endIndex);
+    
+    const tbody = document.querySelector('#purchase-orders-table tbody');
+    if (tbody) {
+        renderTableRows(pageData, tbody);
+    }
+    
+    const totalPages = Math.ceil(totalItems / pageSize);
+    updatePaginationInfo(startIndex + 1, Math.min(endIndex, totalItems), totalItems);
+    renderPagination(totalPages);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
