@@ -18,6 +18,9 @@ public partial class PurchaseOrder
     [Column("WarehouseID")]
     public int WarehouseId { get; set; }
 
+    [Column(TypeName = "datetime")]
+    public DateTime ExpectedReceivingDate { get; set; }
+
     public int CreatedBy { get; set; }
 
     [StringLength(30)]

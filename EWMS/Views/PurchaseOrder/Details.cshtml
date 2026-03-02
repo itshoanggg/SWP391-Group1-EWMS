@@ -12,9 +12,9 @@
     string arrivalClass = "";
     int daysRemaining = 0;
 
-    if (Model.CreatedAt != DateTime.MinValue)
+    if (Model.ExpectedReceivingDate != DateTime.MinValue)
     {
-        daysRemaining = (Model.CreatedAt.Date.AddDays(3) - DateTime.Today).Days;
+        daysRemaining = (Model.ExpectedReceivingDate.Date - DateTime.Today).Days;
 
         if (daysRemaining < 0)
         {
@@ -47,24 +47,49 @@
         </a>
     </div>
 
-    <!-- Arrival status alert -->
-    @if (Model.CreatedAt != DateTime.MinValue)
+    <!-- Status alert -->
+    @if (Model.Status == "Ordered")
     {
-        <div class="alert alert-@(isArrived ? "success" : "warning") alert-dismissible fade show" role="alert">
-            <i class="fas fa-@(isArrived ? "check-circle" : "clock")"></i>
-            <strong>Arrival Status:</strong>
-            @if (isArrived && Model.Status != "Received" && Model.Status != "PartiallyReceived")
-            {
-                <span class="@arrivalClass">Goods have arrived at warehouse (ordered: @Model.CreatedAt.ToString("dd/MM/yyyy"))</span>
-            }
-            else if (!isArrived)
-            {
-                <span class="@arrivalClass">Not yet due (ordered: @Model.CreatedAt.ToString("dd/MM/yyyy")) - @arrivalStatus</span>
-            }
-            else
-            {
-                <span class="text-info">Goods have been stocked in</span>
-            }
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <i class="fas fa-clock"></i>
+            <strong>Status:</strong>
+            <span>Order placed. Expected receiving: @Model.ExpectedReceivingDate.ToString("dd/MM/yyyy") - @daysRemaining day(s) remaining</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    else if (Model.Status == "ReadyToReceive")
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle"></i>
+            <strong>Status:</strong>
+            <span>Goods ready to receive. Expected date reached.</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    else if (Model.Status == "PartiallyReceived")
+    {
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="fas fa-box-open"></i>
+            <strong>Status:</strong>
+            <span>Partially received. Some items still pending.</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    else if (Model.Status == "Received")
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle"></i>
+            <strong>Status:</strong>
+            <span>Fully received. All items in stock.</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    else if (Model.Status == "Cancelled")
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-times-circle"></i>
+            <strong>Status:</strong>
+            <span>Order cancelled.</span>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
@@ -88,15 +113,28 @@
                         </div>
                     </div>
 
-                    @if (Model.CreatedAt != DateTime.MinValue)
+                    @if (Model.ExpectedReceivingDate != DateTime.MinValue)
                     {
                         <div class="mb-3">
-                            <label class="text-muted">Order Date:</label>
+                            <label class="text-muted">Expected Receiving Date:</label>
                             <p class="fw-bold">
-                                @Model.CreatedAt.ToString("dd/MM/yyyy")
-                                <span class="badge @(isArrived ? "bg-success" : "bg-warning")">
-                                    @(isArrived ? "Arrived" : $"{daysRemaining} day(s) left")
-                                </span>
+                                @Model.ExpectedReceivingDate.ToString("dd/MM/yyyy")
+                                @if (Model.Status == "ReadyToReceive" || Model.Status == "PartiallyReceived" || Model.Status == "Received")
+                                {
+                                    <span class="badge bg-success">Ready/Arrived</span>
+                                }
+                                else if (Model.Status == "Cancelled")
+                                {
+                                    <span class="badge bg-danger">Cancelled</span>
+                                }
+                                else if (daysRemaining >= 0)
+                                {
+                                    <span class="badge bg-warning">@daysRemaining day(s) left</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">Overdue</span>
+                                }
                             </p>
                         </div>
                     }
@@ -268,8 +306,8 @@
                                         <span class="badge bg-success">Complete</span>
                                     }
                                 </td>
-                                <td class="text-end">@detail.UnitPrice.ToString("N0") đ</td>
-                                <td class="text-end"><strong>@detail.TotalPrice?.ToString("N0") đ</strong></td>
+                                <td class="text-end">@detail.UnitPrice.ToString("N0") VND</td>
+                                <td class="text-end"><strong>@detail.TotalPrice?.ToString("N0") VND</strong></td>
                             </tr>
                         }
                     </tbody>
@@ -283,7 +321,7 @@
                         <tr>
                             <td colspan="2"></td>
                             <td colspan="3"><strong>Grand Total:</strong></td>
-                            <td colspan="3"><strong class="text-danger fs-5">@totalAmount.ToString("N0") đ</strong></td>
+                            <td colspan="3"><strong class="text-danger fs-5">@totalAmount.ToString("N0") VND</strong></td>
                         </tr>
                     </tfoot>
                 </table>

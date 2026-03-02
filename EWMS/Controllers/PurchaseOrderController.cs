@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using EWMS.Services.Interfaces;
@@ -33,7 +33,7 @@ namespace EWMS.Controllers
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             if (warehouseId == 0)
             {
-                TempData["Error"] = "Bạn chưa được phân công vào kho nào.";
+                TempData["Error"] = "You have not been assigned to any warehouse.";
                 return RedirectToAction("Index", "Home");
             }
 
@@ -51,7 +51,7 @@ namespace EWMS.Controllers
 
             if (purchaseOrder == null)
             {
-                TempData["Error"] = "Không tìm thấy đơn mua hàng.";
+                TempData["Error"] = "Purchase order not found.";
                 return RedirectToAction(nameof(Index));
             }
 
@@ -71,7 +71,7 @@ namespace EWMS.Controllers
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             if (warehouseId == 0)
             {
-                TempData["Error"] = "Bạn chưa được phân công vào kho nào.";
+                TempData["Error"] = "You have not been assigned to any warehouse.";
                 return RedirectToAction("Index", "Home");
             }
 
@@ -97,7 +97,7 @@ namespace EWMS.Controllers
 
             if (!ModelState.IsValid || model.Details == null || !model.Details.Any())
             {
-                TempData["Error"] = "Vui lòng nhập đầy đủ thông tin và ít nhất 1 sản phẩm.";
+                TempData["Error"] = "Please enter complete information and at least 1 product.";
 
                 ViewBag.Suppliers = new SelectList(
                     await _supplierService.GetAllSuppliersAsync(),

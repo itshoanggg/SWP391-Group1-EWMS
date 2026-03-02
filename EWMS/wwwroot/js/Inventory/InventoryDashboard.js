@@ -100,21 +100,21 @@ async function updateStockMovement(period = 'week', btn) {
                     labels: data.map(x => x.date),
                     datasets: [
                         {
-                            label: 'Nhập',
+                            label: 'In',
                             data: data.map(x => x.stockIn),
                             backgroundColor: 'rgba(54, 162, 235, 0.6)',
                             borderColor: 'rgba(54, 162, 235, 1)',
                             borderWidth: 1
                         },
                         {
-                            label: 'Xuất',
+                            label: 'Out',
                             data: data.map(x => x.stockOut),
                             backgroundColor: 'rgba(255, 99, 132, 0.6)',
                             borderColor: 'rgba(255, 99, 132, 1)',
                             borderWidth: 1
                         },
                         {
-                            label: 'Tồn',
+                            label: 'Stock',
                             data: data.map(x => x.stock),
                             backgroundColor: 'rgba(75, 192, 192, 0.6)',
                             borderColor: 'rgba(75, 192, 192, 1)',
@@ -173,7 +173,7 @@ async function updateSalesRevenue(period = 'month') {
                     labels: data.map(x => x.date),
                     datasets: [
                         {
-                            label: 'Số đơn',
+                            label: 'Orders',
                             data: data.map(x => x.quantity),
                             yAxisID: 'y',
                             borderColor: 'rgba(54, 162, 235, 1)',
@@ -181,7 +181,7 @@ async function updateSalesRevenue(period = 'month') {
                             tension: 0.4
                         },
                         {
-                            label: 'Doanh thu (triệu)',
+                            label: 'Revenue (M)',
                             data: data.map(x => x.revenue / 1_000_000),
                             yAxisID: 'y1',
                             borderColor: 'rgba(255, 159, 64, 1)',
@@ -198,13 +198,13 @@ async function updateSalesRevenue(period = 'month') {
                         y: {
                             beginAtZero: true,
                             position: 'left',
-                            title: { display: true, text: 'Số đơn' }
+                            title: { display: true, text: 'Orders' }
                         },
                         y1: {
                             beginAtZero: true,
                             position: 'right',
                             grid: { drawOnChartArea: false },
-                            title: { display: true, text: 'Doanh thu (triệu VNĐ)' }
+                            title: { display: true, text: 'Revenue (M VND)' }
                         }
                     }
                 }
@@ -238,7 +238,7 @@ async function loadBusinessTrend() {
                     labels: data.map(x => x.date),
                     datasets: [{
                         data: data.map(x => x.revenue / 1_000_000),
-                        label: 'Doanh thu (triệu)',
+                        label: 'Revenue (M)',
                         tension: 0.4,
                         borderColor: 'rgba(75, 192, 192, 1)',
                         backgroundColor: 'rgba(75, 192, 192, 0.2)',
@@ -251,7 +251,7 @@ async function loadBusinessTrend() {
                     scales: {
                         y: {
                             beginAtZero: true,
-                            ticks: { callback: v => formatNumber(v) + ' triệu' }
+                            ticks: { callback: v => formatNumber(v) + 'M' }
                         }
                     }
                 }
@@ -328,14 +328,14 @@ async function loadRecentActivities() {
         tbody.innerHTML = '';
 
         if (!data.length) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center">Không có dữ liệu</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center">No data available</td></tr>`;
             return;
         }
 
         data.forEach(a => {
             tbody.innerHTML += `
                 <tr>
-                    <td><span class="badge ${a.type === 'Nhập kho' ? 'bg-success' : 'bg-info'}">${a.type}</span></td>
+                    <td><span class="badge ${a.type === 'Stock In' ? 'bg-success' : 'bg-info'}">${a.type}</span></td>
                     <td>${a.description}</td>
                     <td>${a.user ?? 'N/A'}</td>
                     <td>${formatDate(a.date)}</td>
@@ -365,7 +365,7 @@ async function loadLowStockAlerts() {
         list.innerHTML = '';
 
         if (!data.length) {
-            list.innerHTML = `<div class="alert alert-success m-0">✅ Không có cảnh báo</div>`;
+            list.innerHTML = `<div class="alert alert-success m-0">✅ No warnings</div>`;
             return;
         }
 
@@ -407,7 +407,7 @@ async function refreshDashboard() {
 
 document.addEventListener('DOMContentLoaded', () => {
     if (!warehouseId) {
-        alert('Lỗi: Không tìm thấy WarehouseId!');
+        alert('Error: WarehouseId not found!');
         console.error('warehouseId is undefined');
         return;
     }

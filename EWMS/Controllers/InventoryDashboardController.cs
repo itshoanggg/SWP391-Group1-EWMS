@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using EWMS.Services.Interfaces;
 
@@ -28,7 +28,7 @@ namespace EWMS.Controllers
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             if (warehouseId == 0)
             {
-                TempData["Error"] = "Bạn chưa được phân công vào kho nào.";
+                TempData["Error"] = "You have not been assigned to any warehouse.";
                 return RedirectToAction("Index", "Home");
             }
 

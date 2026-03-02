@@ -8,7 +8,7 @@
         <h2><i class="fas fa-chart-line"></i> Inventory Dashboard</h2>
         <div>
             <button class="btn btn-primary" onclick="refreshDashboard()">
-                <i class="fas fa-sync-alt"></i> Làm mới
+                <i class="fas fa-sync-alt"></i> Refresh
             </button>
         </div>
     </div>
@@ -85,11 +85,11 @@
         <div class="col-lg-8 mb-3">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-exchange-alt"></i> Nhập - Xuất - Tồn</h5>
+                    <h5 class="mb-0"><i class="fas fa-exchange-alt"></i> In - Out - Stock</h5>
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary active" onclick="updateStockMovement('week', this)">7 ngày</button>
-                        <button class="btn btn-outline-primary" onclick="updateStockMovement('month', this)">1 tháng</button>
-                        <button class="btn btn-outline-primary" onclick="updateStockMovement('year', this)">1 năm</button>
+                        <button class="btn btn-outline-primary active" onclick="updateStockMovement('week', this)">7 days</button>
+                        <button class="btn btn-outline-primary" onclick="updateStockMovement('month', this)">1 month</button>
+                        <button class="btn btn-outline-primary" onclick="updateStockMovement('year', this)">1 year</button>
                     </div>
                 </div>
                 <div class="card-body">
@@ -101,11 +101,11 @@
         <div class="col-lg-4 mb-3">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-chart-area"></i> Số lượng & Doanh thu</h5>
+                    <h5 class="mb-0"><i class="fas fa-chart-area"></i> Quantity & Revenue</h5>
                     <select class="form-select form-select-sm w-auto" onchange="updateSalesRevenue(this.value)">
-                        <option value="week">1 tuần</option>
-                        <option value="month" selected>1 tháng</option>
-                        <option value="year">1 năm</option>
+                        <option value="week">1 week</option>
+                        <option value="month" selected>1 month</option>
+                        <option value="year">1 year</option>
                     </select>
                 </div>
                 <div class="card-body">
@@ -120,7 +120,7 @@
         <div class="col-lg-8 mb-3">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Xu hướng doanh thu</h5>
+                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Revenue Trend</h5>
                 </div>
                 <div class="card-body">
                     <canvas id="businessTrendChart" height="100"></canvas>
@@ -131,7 +131,7 @@
         <div class="col-lg-4 mb-3">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Tỷ trọng sản phẩm</h5>
+                    <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Product Distribution</h5>
                 </div>
                 <div class="card-body">
                     <canvas id="categoryChart" height="150"></canvas>
@@ -145,23 +145,23 @@
         <div class="col-lg-8 mb-3">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-history"></i> Hoạt động gần đây</h5>
+                    <h5 class="mb-0"><i class="fas fa-history"></i> Recent Activities</h5>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-hover" id="activities-table">
                             <thead>
                                 <tr>
-                                    <th>Loại</th>
-                                    <th>Mô tả</th>
-                                    <th>Người thực hiện</th>
-                                    <th>Thời gian</th>
-                                    <th class="text-end">Giá trị</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th>Performed By</th>
+                                    <th>Time</th>
+                                    <th class="text-end">Value</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="5" class="text-center">Đang tải...</td>
+                                    <td colspan="5" class="text-center">Loading...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -173,11 +173,11 @@
         <div class="col-lg-4 mb-3">
             <div class="card border-danger">
                 <div class="card-header bg-danger text-white">
-                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Cảnh báo sản phẩm</h5>
+                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Product Warnings</h5>
                 </div>
                 <div class="card-body">
                     <div class="list-group" id="low-stock-list">
-                        <div class="text-center">Đang tải...</div>
+                        <div class="text-center">Loading...</div>
                     </div>
                 </div>
             </div>
@@ -187,7 +187,7 @@
 
 @section Scripts {
     <script>
-        // ✅ INJECT WarehouseId từ Controller vào JavaScript
+        // ✅ INJECT WarehouseId from Controller to JavaScript
         window.warehouseId = @ViewBag.WarehouseId;
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>

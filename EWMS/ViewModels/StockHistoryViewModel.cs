@@ -5,10 +5,8 @@ namespace EWMS.ViewModels
 {
     public class StockHistoryViewModel
     {
-        // Reuse existing StockOut list VM for out-history
         public StockOutReceiptListViewModel StockOut { get; set; } = new StockOutReceiptListViewModel();
 
-        // Simple list for stock-in receipts
         public List<StockInReceiptItemViewModel> StockIns { get; set; } = new List<StockInReceiptItemViewModel>();
 
         // Filters

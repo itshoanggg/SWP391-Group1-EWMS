@@ -24,6 +24,9 @@ public partial class SalesOrder
     [StringLength(255)]
     public string? CustomerAddress { get; set; }
 
+    [Column(TypeName = "datetime")]
+    public DateTime ExpectedDeliveryDate { get; set; }
+
     public int CreatedBy { get; set; }
 
     [StringLength(30)]

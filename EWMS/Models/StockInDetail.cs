@@ -6,13 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EWMS.Models;
 
-[Index("StockInId", Name = "IX_StockInDetails_StockInID")]
 public partial class StockInDetail
 {
-    [Key]
-    [Column("StockInDetailID")]
-    public int StockInDetailId { get; set; }
-
+    // Composite Primary Key: (StockInID, ProductID, LocationID)
     [Column("StockInID")]
     public int StockInId { get; set; }
 
@@ -27,7 +23,8 @@ public partial class StockInDetail
     [Column(TypeName = "decimal(18, 2)")]
     public decimal UnitPrice { get; set; }
 
-    [Column(TypeName = "decimal(29, 2)")]
+    [Column(TypeName = "decimal(18, 2)")]
+    [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
     public decimal? TotalPrice { get; set; }
 
     [ForeignKey("LocationId")]

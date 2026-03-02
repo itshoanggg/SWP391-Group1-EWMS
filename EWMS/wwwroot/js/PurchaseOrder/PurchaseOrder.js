@@ -34,7 +34,7 @@ function initializeSearch() {
 
 // Delete purchase order
 async function deletePurchaseOrder(id) {
-    if (!confirm('Bạn có chắc chắn muốn xóa đơn hàng này?')) {
+    if (!confirm('Are you sure you want to delete this order?')) {
         return;
     }
 
@@ -56,7 +56,7 @@ async function deletePurchaseOrder(id) {
         }
     } catch (error) {
         console.error('Error:', error);
-        showAlert('error', 'Có lỗi xảy ra khi xóa đơn hàng');
+        showAlert('error', 'An error occurred while deleting the order');
     }
 }
 
@@ -90,7 +90,7 @@ async function loadProducts(supplierId) {
         const selects = document.querySelectorAll('.product-select');
         selects.forEach(select => {
             const currentValue = select.value;
-            select.innerHTML = '<option value="">-- Chọn sản phẩm --</option>';
+            select.innerHTML = '<option value="">-- Select Product --</option>';
 
             productsData.forEach(product => {
                 const option = document.createElement('option');
@@ -107,7 +107,7 @@ async function loadProducts(supplierId) {
         });
     } catch (error) {
         console.error('Error loading products:', error);
-        alert('Không thể tải danh sách sản phẩm');
+        alert('Failed to load product list');
     }
 }
 
@@ -116,11 +116,29 @@ function updateProduct(select, index) {
     const selectedOption = select.options[select.selectedIndex];
 
     if (selectedOption.value) {
+        // Check for duplicate products
+        const selectedProductId = selectedOption.value;
+        const allSelects = document.querySelectorAll('.product-select');
+        let duplicateCount = 0;
+        
+        allSelects.forEach(s => {
+            if (s.value === selectedProductId) {
+                duplicateCount++;
+            }
+        });
+
+        if (duplicateCount > 1) {
+            showAlert('warning', `⚠️ Product "${selectedOption.text}" already selected! Quantities will be merged when creating the order.`);
+        }
+
         const sku = selectedOption.dataset.sku;
         const costPrice = selectedOption.dataset.costPrice;
 
         row.querySelector('.sku-display').textContent = sku;
-        row.querySelector('.price-input').value = costPrice;
+        
+        // Format price with commas (readonly, auto from product)
+        const priceInput = row.querySelector('.price-input');
+        priceInput.value = formatPrice(costPrice);
 
         calculateTotal(index);
     } else {
@@ -132,13 +150,25 @@ function updateProduct(select, index) {
     updateTotals();
 }
 
+function formatPrice(value) {
+    // Format number with commas
+    if (value) {
+        return parseFloat(value).toLocaleString('en-US');
+    }
+    return '0';
+}
+
 function calculateTotal(index) {
     const row = document.querySelector(`.product-row[data-index="${index}"]`);
     const quantity = parseFloat(row.querySelector('.quantity-input').value) || 0;
-    const price = parseFloat(row.querySelector('.price-input').value) || 0;
+    
+    // Remove dots from formatted price to get numeric value
+    const priceText = row.querySelector('.price-input').value.replace(/[^\d]/g, '');
+    const price = parseFloat(priceText) || 0;
+    
     const total = quantity * price;
 
-    row.querySelector('.total-display').value = total.toLocaleString('vi-VN');
+    row.querySelector('.total-display').value = total.toLocaleString('en-US');
 
     updateTotals();
 }
@@ -147,7 +177,7 @@ function addProductRow() {
     const supplierId = document.getElementById('supplierSelect').value;
 
     if (!supplierId) {
-        alert('Vui lòng chọn nhà cung cấp trước');
+        alert('Please select a supplier first');
         return;
     }
 
@@ -162,7 +192,7 @@ function addProductRow() {
                 </td>
                 <td>
                     <select name="Details[${productIndex}].ProductId" class="form-select product-select" required onchange="updateProduct(this, ${productIndex})">
-                        <option value="">-- Chọn sản phẩm --</option>
+                        <option value="">-- Select Product --</option>
                     </select>
                 </td>
                 <td>
@@ -170,8 +200,8 @@ function addProductRow() {
                            min="1" value="1" required onchange="calculateTotal(${productIndex})">
                 </td>
                 <td>
-                    <input type="number" name="Details[${productIndex}].UnitPrice" class="form-control price-input"
-                           min="0" step="1000" required onchange="calculateTotal(${productIndex})">
+                    <input type="text" name="Details[${productIndex}].UnitPrice" class="form-control price-input"
+                           required readonly>
                 </td>
                 <td>
                     <input type="text" class="form-control total-display" readonly value="0">
@@ -185,7 +215,7 @@ function addProductRow() {
 
     tbody.appendChild(newRow);
 
-    // Load products vào select mới
+    // Load products into new select
     const newSelect = newRow.querySelector('.product-select');
     productsData.forEach(product => {
         const option = document.createElement('option');
@@ -230,7 +260,7 @@ function updateTotals() {
 function clearProductSelects() {
     const selects = document.querySelectorAll('.product-select');
     selects.forEach(select => {
-        select.innerHTML = '<option value="">-- Chọn sản phẩm --</option>';
+        select.innerHTML = '<option value="">-- Select Product --</option>';
     });
     productsData = [];
 }
@@ -241,7 +271,7 @@ function validateCreateForm(event) {
 
     if (!supplierId) {
         event.preventDefault();
-        showAlert('warning', 'Vui lòng chọn nhà cung cấp');
+        showAlert('warning', 'Please select a supplier');
         return false;
     }
 
@@ -252,12 +282,17 @@ function validateCreateForm(event) {
         const productId = row.querySelector('.product-select').value;
         if (productId) {
             hasProduct = true;
+            
+            // Convert formatted price back to number before submit
+            const priceInput = row.querySelector('.price-input');
+            const numericValue = priceInput.value.replace(/[^\d]/g, '');
+            priceInput.value = numericValue;
         }
     });
 
     if (!hasProduct) {
         event.preventDefault();
-        showAlert('warning', 'Vui lòng thêm ít nhất 1 sản phẩm');
+        showAlert('warning', 'Please add at least 1 product');
         return false;
     }
 
@@ -268,9 +303,9 @@ function validateCreateForm(event) {
    DETAILS PAGE FUNCTIONS
 ========================================================= */
 
-// Mark as delivered (thay thế updateStatus)
+// Mark as delivered (replaces updateStatus)
 async function markAsDelivered(purchaseOrderId) {
-    if (!confirm('Xác nhận hàng đã về kho?')) {
+    if (!confirm('Confirm goods have arrived at warehouse?')) {
         return;
     }
 
@@ -292,7 +327,7 @@ async function markAsDelivered(purchaseOrderId) {
         }
     } catch (error) {
         console.error('Error:', error);
-        showAlert('error', 'Có lỗi xảy ra khi cập nhật trạng thái');
+        showAlert('error', 'An error occurred while updating status');
     }
 }
 
@@ -386,7 +421,7 @@ window.PurchaseOrderModule = {
 };
 
 async function cancelPurchaseOrder(id) {
-    if (!confirm('Bạn có chắc muốn hủy đơn hàng này?')) {
+    if (!confirm('Are you sure you want to cancel this order?')) {
         return;
     }
 
@@ -407,6 +442,6 @@ async function cancelPurchaseOrder(id) {
             alert(result.message);
         }
     } catch (error) {
-        alert('Có lỗi xảy ra');
+        alert('An error occurred');
     }
 }

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using EWMS.Services.Interfaces;
@@ -30,7 +30,7 @@ namespace EWMS.Controllers
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             if (warehouseId == 0)
             {
-                TempData["Error"] = "Bạn chưa được phân công vào kho nào.";
+                TempData["Error"] = "You have not been assigned to any warehouse.";
                 return RedirectToAction("Index", "Home");
             }
 
@@ -48,7 +48,7 @@ namespace EWMS.Controllers
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             if (warehouseId == 0)
             {
-                TempData["Error"] = "Bạn chưa được phân công vào kho nào.";
+                TempData["Error"] = "You have not been assigned to any warehouse.";
                 return RedirectToAction("Index", "Home");
             }
 
@@ -65,14 +65,14 @@ namespace EWMS.Controllers
                 var userWarehouseId = await _userService.GetWarehouseIdByUserIdAsync(_userService.GetCurrentUserId());
 
                 if (userWarehouseId != warehouseId)
-                    return Json(new { error = "Bạn không có quyền truy cập kho này" });
+                    return Json(new { error = "You do not have access to this warehouse" });
 
                 var result = await _stockInService.GetPurchaseOrdersForStockInAsync(warehouseId, status, search);
                 return Json(result);
             }
             catch (Exception ex)
             {
-                return Json(new { error = $"Lỗi server: {ex.Message}" });
+                return Json(new { error = $"Server error: {ex.Message}" });
             }
         }
 
@@ -85,14 +85,14 @@ namespace EWMS.Controllers
                 var userWarehouseId = await _userService.GetWarehouseIdByUserIdAsync(_userService.GetCurrentUserId());
 
                 if (userWarehouseId != warehouseId)
-                    return Json(new { error = "Bạn không có quyền truy cập kho này" });
+                    return Json(new { error = "You do not have access to this warehouse" });
 
                 var result = await _stockInService.GetPurchaseOrdersHistoryAsync(warehouseId, search);
                 return Json(result);
             }
             catch (Exception ex)
             {
-                return Json(new { error = $"Lỗi server: {ex.Message}" });
+                return Json(new { error = $"Server error: {ex.Message}" });
             }
         }
 
@@ -106,13 +106,13 @@ namespace EWMS.Controllers
 
             if (purchaseOrder == null)
             {
-                TempData["Error"] = "Không tìm thấy đơn mua hàng.";
+                TempData["Error"] = "Purchase order not found.";
                 return RedirectToAction(nameof(Index));
             }
 
             if (purchaseOrder.Status != "ReadyToReceive" && purchaseOrder.Status != "PartiallyReceived")
             {
-                TempData["Error"] = "Chỉ có thể nhập kho cho đơn hàng sẵn sàng nhận hoặc đã nhận một phần.";
+                TempData["Error"] = "Stock-in only allowed for orders ready to receive or partially received.";
                 return RedirectToAction(nameof(Index));
             }
 
@@ -133,14 +133,14 @@ namespace EWMS.Controllers
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             if (warehouseId == 0)
             {
-                TempData["Error"] = "Bạn chưa được phân công vào kho nào.";
+                TempData["Error"] = "You have not been assigned to any warehouse.";
                 return RedirectToAction("Index", "Home");
             }
 
             var purchaseOrder = await _stockInService.GetPurchaseOrderDetailsAsync(id, warehouseId);
             if (purchaseOrder == null)
             {
-                TempData["Error"] = "Không tìm thấy đơn mua hàng.";
+                TempData["Error"] = "Purchase order not found.";
                 return RedirectToAction(nameof(History));
             }
 
@@ -162,17 +162,18 @@ namespace EWMS.Controllers
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             if (warehouseId == 0)
             {
-                TempData["Error"] = "Bạn chưa được phân công vào kho nào.";
+                TempData["Error"] = "You have not been assigned to any warehouse.";
                 return RedirectToAction("Index", "Home");
             }
 
             var purchaseOrder = await _stockInService.GetPurchaseOrderDetailsAsync(id, warehouseId);
             if (purchaseOrder == null)
             {
-                TempData["Error"] = "Không tìm thấy đơn mua hàng.";
+                TempData["Error"] = "Purchase order not found.";
                 return RedirectToAction(nameof(History));
             }
 
+            // Allow viewing historical orders (Received/Cancelled) in read-only mode
             ViewBag.WarehouseId = warehouseId;
             ViewBag.UserId = userId;
             ViewBag.ReadOnly = true;

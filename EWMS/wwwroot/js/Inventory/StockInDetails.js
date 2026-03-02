@@ -1,4 +1,4 @@
-/* =========================================================
+ï»¿/* =========================================================
    GOODS RECEIPT - MAIN LOGIC (WITH DEBUG)
 ========================================================= */
 
@@ -31,9 +31,11 @@ async function loadPurchaseOrderInfo() {
         document.getElementById('supplier-code').textContent = `NCC-${data.supplierId}`;
         document.getElementById('supplier-phone').textContent = data.supplierPhone || 'N/A';
 
-        if (data.hasStockIn) {
-            alert('Ðon hàng này dã du?c nh?p kho d?!');
-            document.getElementById('btn-confirm').disabled = true;
+        // Only show alert if NOT in read-only mode
+        if (data.hasStockIn && !window.readOnlyMode) {
+            alert('This purchase order has been fully received!');
+            const btnConfirm = document.getElementById('btn-confirm');
+            if (btnConfirm) btnConfirm.disabled = true;
         }
     } catch (error) {
         console.error('Load PO info failed:', error);
@@ -54,14 +56,8 @@ async function loadProducts() {
 
         productsData = data;
 
-        // ? DEBUG - Ki?m tra t?ng s?n ph?m
-        productsData.forEach(p => {
-                orderedQty: p.orderedQty,
-                receivedQty: p.receivedQty,
-                remainingQty: p.remainingQty,
-                willShow: p.remainingQty > 0 ? '? SHOW' : '? HIDE'
-            });
-        });
+        // DEBUG - Check products loaded
+        console.log('Products loaded:', productsData.length);
 
         renderProductsTable();
         updateSummary();
@@ -82,8 +78,9 @@ function renderProductsTable() {
     let hiddenCount = 0;
 
     productsData.forEach((product, index) => {
-        // ?? B? QUA S?N PH?M ÐÃ NH?N Ð?
-        if (product.remainingQty <= 0) {
+        // In ReadOnly mode, show all products (including fully received ones)
+        // In edit mode, skip products with remainingQty <= 0
+        if (!window.readOnlyMode && product.remainingQty <= 0) {
             hiddenCount++;
             return;
         }
@@ -91,45 +88,86 @@ function renderProductsTable() {
         shownCount++;
 
         const rowId = `product-${product.productId}-${index}`;
-
+        
+        // Get allocations for this product (if in ReadOnly mode)
+        const allocations = window.readOnlyMode ? (window.allocationsData?.[product.productId] || []) : [];
+        
         const row = document.createElement('tr');
         row.id = rowId;
-        row.innerHTML = `
-            <td>
-                <div class="sku-badge">${product.sku}</div>
-            </td>
-            <td>
-                <div class="product-name">${product.productName}</div>
-                <small class="text-muted">${product.categoryName}</small>
-            </td>
-            <td>
-                <span class="badge bg-secondary">${formatNumber(product.orderedQty)}</span>
-            </td>
-            <td>
-                <input type="number" 
-                       class="form-control qty-input" 
-                       id="qty-${rowId}"
-                       data-product-id="${product.productId}"
-                       data-row-id="${rowId}"
-                       value="${product.remainingQty}"
-                       min="0"
-                       max="${product.remainingQty}"
-                       onchange="handleQuantityChange(this)">
-            </td>
-            <td>
-                <select class="form-select location-select" 
-                        id="location-${rowId}"
-                        data-product-id="${product.productId}"
-                        data-row-id="${rowId}"
-                        onchange="handleLocationChange(this)">
-                    <option value="">-- Ch?n v? trí --</option>
-                </select>
-                <div class="location-info mt-1" id="location-info-${rowId}"></div>
-            </td>
-        `;
+        
+        if (window.readOnlyMode) {
+            // ReadOnly mode: Display received quantity and locations
+            const locationsList = allocations.map(alloc => 
+                `<div class="mb-1">
+                    <span class="badge bg-info">${alloc.locationCode}</span> 
+                    <span class="text-muted">${alloc.locationName}</span>: 
+                    <strong>${formatNumber(alloc.quantity)}</strong>
+                </div>`
+            ).join('');
+            
+            row.innerHTML = `
+                <td>
+                    <div class="sku-badge">${product.sku}</div>
+                </td>
+                <td>
+                    <div class="product-name">${product.productName}</div>
+                    <small class="text-muted">${product.categoryName}</small>
+                </td>
+                <td>
+                    <span class="badge bg-secondary">${formatNumber(product.orderedQty)}</span>
+                </td>
+                <td>
+                    <span class="badge ${product.receivedQty >= product.orderedQty ? 'bg-success' : 'bg-warning'}">
+                        ${formatNumber(product.receivedQty)}
+                    </span>
+                </td>
+                <td>
+                    ${locationsList || '<span class="text-muted">No allocations</span>'}
+                </td>
+            `;
+        } else {
+            // Edit mode: Show input fields
+            row.innerHTML = `
+                <td>
+                    <div class="sku-badge">${product.sku}</div>
+                </td>
+                <td>
+                    <div class="product-name">${product.productName}</div>
+                    <small class="text-muted">${product.categoryName}</small>
+                </td>
+                <td>
+                    <span class="badge bg-secondary">${formatNumber(product.orderedQty)}</span>
+                </td>
+                <td>
+                    <input type="number" 
+                           class="form-control qty-input" 
+                           id="qty-${rowId}"
+                           data-product-id="${product.productId}"
+                           data-row-id="${rowId}"
+                           value="${product.remainingQty}"
+                           min="0"
+                           max="${product.remainingQty}"
+                           onchange="handleQuantityChange(this)">
+                </td>
+                <td>
+                    <select class="form-select location-select" 
+                            id="location-${rowId}"
+                            data-product-id="${product.productId}"
+                            data-row-id="${rowId}"
+                            onchange="handleLocationChange(this)">
+                        <option value="">-- Select Location --</option>
+                    </select>
+                    <div class="location-info mt-1" id="location-info-${rowId}"></div>
+                </td>
+            `;
+        }
 
         tbody.appendChild(row);
-        loadLocationsForProduct(product.productId, rowId);
+        
+        // Only load locations in edit mode
+        if (!window.readOnlyMode) {
+            loadLocationsForProduct(product.productId, rowId);
+        }
 
         receiptItems.push({
             rowId: rowId,
@@ -145,7 +183,7 @@ function renderProductsTable() {
 
     // DEBUG: console.log removed
 
-    // ? KI?M TRA N?U KHÔNG CÒN S?N PH?M NÀO
+    // ? KI?M TRA N?U KHï¿½NG Cï¿½N S?N PH?M Nï¿½O
     if (receiptItems.length === 0) {
         // DEBUG: console.log removed
         tbody.innerHTML = `
@@ -153,7 +191,7 @@ function renderProductsTable() {
                 <td colspan="6" class="text-center py-4">
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle"></i> 
-                        <strong>Ðon hàng này dã du?c nh?p kho d?y d?!</strong>
+                        <strong>ï¿½on hï¿½ng nï¿½y dï¿½ du?c nh?p kho d?y d?!</strong>
                     </div>
                 </td>
             </tr>
@@ -188,14 +226,14 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
     const select = document.getElementById(`location-${rowId}`);
     if (!select) return;
 
-    select.innerHTML = '<option value="">-- Ch?n v? trí --</option>';
+    select.innerHTML = '<option value="">-- Select Location --</option>';
 
-    // ? Track used locations and their remaining capacity (cho T?T C? products)
+    // Track used locations and their remaining capacity (for ALL products)
     const usedLocations = {};
     
     receiptItems.forEach(item => {
-        // ? Ð?m T?T C? các row khác (b?t k? product) dã dùng location
-        // Vì capacity KHÔNG phân bi?t product: 200 capacity = 200 s?n ph?m b?t k?
+        // ? ï¿½?m T?T C? cï¿½c row khï¿½c (b?t k? product) dï¿½ dï¿½ng location
+        // Vï¿½ capacity KHï¿½NG phï¿½n bi?t product: 200 capacity = 200 s?n ph?m b?t k?
         if (item.locationId && !isNaN(item.locationId) && item.rowId !== rowId) {
             const qtyInput = document.getElementById(`qty-${item.rowId}`);
             const qty = qtyInput ? parseInt(qtyInput.value) || 0 : item.receivedQty;
@@ -212,10 +250,10 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
     locations.forEach(loc => {
         const baseAvailable = loc.maxCapacity - loc.currentStock;
         
-        // ? Tính t?ng s? lu?ng dã du?c phân b? vào location này (T?T C? các rows, bao g?m c? row hi?n t?i)
+        // ? Tï¿½nh t?ng s? lu?ng dï¿½ du?c phï¿½n b? vï¿½o location nï¿½y (T?T C? cï¿½c rows, bao g?m c? row hi?n t?i)
         let totalUsedQty = usedLocations[loc.locationId] || 0;
         
-        // ? Thêm quantity c?a row HI?N T?I n?u nó cung dang ch?n location này
+        // ? Thï¿½m quantity c?a row HI?N T?I n?u nï¿½ cung dang Select location nï¿½y
         const currentItem = receiptItems.find(i => i.rowId === rowId);
         if (currentItem && currentItem.locationId === loc.locationId) {
             const currentQtyInput = document.getElementById(`qty-${rowId}`);
@@ -236,7 +274,7 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
 
         const option = document.createElement('option');
         option.value = loc.locationId;
-        // ? Hi?n th? T?NG s? lu?ng dã dùng (bao g?m c? row hi?n t?i)
+        // Display TOTAL used quantity (including current row)
         option.textContent = `${loc.locationCode} - ${loc.locationName} (${loc.currentStock + totalUsedQty}/${loc.maxCapacity})`;
         option.dataset.available = actualAvailable;
         select.appendChild(option);
@@ -311,7 +349,7 @@ function handleLocationChange(select) {
 
 
     // ? Refresh T?T C? dropdowns khi location changes
-    // Vì capacity KHÔNG phân bi?t product, vi?c ch?n location cho 1 product ?nh hu?ng d?n t?t c?
+    // Vï¿½ capacity KHï¿½NG phï¿½n bi?t product, vi?c Select location cho 1 product ?nh hu?ng d?n t?t c?
     if (oldLocationId !== item.locationId) {
         refreshAllLocationSelects();
     }
@@ -333,8 +371,8 @@ async function checkCapacity(rowId, quantity) {
     const res = await fetch(`/StockIn/CheckLocationCapacity?locationId=${locationId}`);
     const data = await res.json();
 
-    // ? Tính t?ng s? lu?ng ÐÃ ÐU?C PHÂN B? vào location này t? T?T C? các row khác
-    // Capacity KHÔNG phân bi?t product
+    // ? Tï¿½nh t?ng s? lu?ng ï¿½ï¿½ ï¿½U?C PHï¿½N B? vï¿½o location nï¿½y t? T?T C? cï¿½c row khï¿½c
+    // Capacity KHï¿½NG phï¿½n bi?t product
     let allocatedQty = 0;
     
     receiptItems.forEach(item => {
@@ -352,7 +390,7 @@ async function checkCapacity(rowId, quantity) {
         infoDiv.innerHTML = `
             <div class="alert alert-success p-2 mb-0">
                 ${locationText}<br>
-                <b>Còn tr?ng sau nh?p: ${available - quantity}</b>
+                <b>Number After Stockin: ${available - quantity}</b>
             </div>
         `;
         return;
@@ -362,11 +400,11 @@ async function checkCapacity(rowId, quantity) {
     infoDiv.innerHTML = `
         <div class="alert alert-warning p-2 mb-2">
             ${locationText}<br>
-            <b>Ch? ch?a du?c ${available}</b>
+            <b>Can only hold ${available}</b>
         </div>
         <button class="btn btn-sm btn-warning"
             onclick="splitToNewLocation('${rowId}', ${parseInt(select.dataset.productId)}, ${quantity}, ${available})">
-            ? Thêm rack khác cho ${remain}
+            ? Thï¿½m rack khï¿½c cho ${remain}
         </button>
     `;
 }
@@ -419,7 +457,7 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
             <select id="location-${newRowId}" class="form-select"
                     data-row-id="${newRowId}" data-product-id="${productId}"
                     onchange="handleLocationChange(this)">
-                <option value="">-- Ch?n rack khác --</option>
+                <option value="">-- Select rack khï¿½c --</option>
             </select>
             <div id="location-info-${newRowId}" class="mt-1"></div>
         </td>
@@ -495,7 +533,7 @@ function showLocationModal_removed() {
             <td><span class="badge bg-info">${loc.currentStock}</span></td>
             <td>
                 <button class="btn btn-sm btn-success" onclick="selectLocationFromModal('${rowId}', ${loc.locationId})">
-                    <i class="fas fa-check"></i> Ch?n
+                    <i class="fas fa-check"></i> Select
                 </button>
             </td>
         `;
@@ -531,13 +569,13 @@ function updateSummary() {
 
     const statusElem = document.getElementById('receipt-status');
     if (difference === 0) {
-        statusElem.textContent = 'Ð? hàng';
+        statusElem.textContent = 'Enough Items';
         statusElem.className = 'text-success';
     } else if (difference > 0) {
-        statusElem.textContent = `Thi?u ${formatNumber(difference)} s?n ph?m`;
+        statusElem.textContent = `Missing items`;
         statusElem.className = 'text-warning';
     } else {
-        statusElem.textContent = `Th?a ${formatNumber(Math.abs(difference))} s?n ph?m`;
+        statusElem.textContent = `Excess items`;
         statusElem.className = 'text-danger';
     }
 }
@@ -550,16 +588,16 @@ async function confirmStockIn() {
 
     for (const item of receiptItems) {
         if (item.receivedQty > 0 && !item.locationId) {
-            errors.push(`${item.productName}: Chua ch?n v? trí luu kho`);
+            errors.push(`${item.productName}: Chua Select v? trï¿½ luu kho`);
         }
     }
 
     if (errors.length > 0) {
-        alert('Vui lòng ki?m tra:\n\n' + errors.join('\n'));
+        alert('Please check:\n\n' + errors.join('\n'));
         return;
     }
 
-    if (!confirm('Xác nh?n nh?p kho các s?n ph?m này?')) {
+    if (!confirm('Confirm stock-in for these products?')) {
         return;
     }
 
@@ -591,11 +629,11 @@ async function confirmStockIn() {
             alert(result.message);
             window.location.href = '/StockIn/Index';
         } else {
-            alert('L?i: ' + result.error);
+            alert('Error: ' + result.error);
         }
     } catch (error) {
         console.error('Confirm stock in failed:', error);
-        alert('Có l?i x?y ra khi nh?p kho!');
+        alert('An error occurred during stock-in!');
     }
 }
 
@@ -610,7 +648,7 @@ function refreshAllLocationSelects() {
 
         const currentValue = item.locationId;
         
-        // ? Repopulate dropdown v?i updated availability (cho t?t c? products)
+        // Repopulate dropdown with updated availability (for all products)
         populateLocationSelect(item.rowId, locations);
         
         // Restore previously selected value if still exists
@@ -627,11 +665,46 @@ function refreshAllLocationSelects() {
 }
 
 /* =========================================================
+   LOAD ALLOCATIONS (for ReadOnly mode)
+========================================================= */
+async function loadAllocations() {
+    try {
+        const response = await fetch(`/StockIn/GetPurchaseOrderAllocations?purchaseOrderId=${purchaseOrderId}`);
+        const allocations = await response.json();
+        
+        if (allocations.error) {
+            console.error('Error loading allocations:', allocations.error);
+            return {};
+        }
+        
+        // Group allocations by productId
+        const allocationsByProduct = {};
+        allocations.forEach(alloc => {
+            if (!allocationsByProduct[alloc.productId]) {
+                allocationsByProduct[alloc.productId] = [];
+            }
+            allocationsByProduct[alloc.productId].push(alloc);
+        });
+        
+        return allocationsByProduct;
+    } catch (error) {
+        console.error('Load allocations failed:', error);
+        return {};
+    }
+}
+
+/* =========================================================
    INIT
 ========================================================= */
 document.addEventListener('DOMContentLoaded', async () => {
 
     await loadPurchaseOrderInfo();
+    
+    // Load allocations first in ReadOnly mode
+    if (window.readOnlyMode) {
+        window.allocationsData = await loadAllocations();
+    }
+    
     await loadProducts();
 
 });

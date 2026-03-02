@@ -6,15 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EWMS.Models;
 
-[Index("UserId", Name = "IX_UserWarehouses_UserID")]
-[Index("WarehouseId", Name = "IX_UserWarehouses_WarehouseID")]
-[Index("UserId", "WarehouseId", Name = "UQ_User_Warehouse", IsUnique = true)]
 public partial class UserWarehouse
 {
-    [Key]
-    [Column("UserWarehouseID")]
-    public int UserWarehouseId { get; set; }
-
+    // Composite Primary Key: (UserID, WarehouseID)
     [Column("UserID")]
     public int UserId { get; set; }
 

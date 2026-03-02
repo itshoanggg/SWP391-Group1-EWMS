@@ -41,7 +41,7 @@ async function loadRacks() {
 
         racksData = data;
 
-        // Auto select rack từ URL hoặc rack đầu tiên
+        // Auto select rack from URL or first rack
         if (racksData.length > 0) {
             const rackToSelect = racksData.find(r => r.rack === selectedRack)
                 ? selectedRack
@@ -76,7 +76,7 @@ async function loadProducts(locationId) {
         container.innerHTML = `
             <div class="text-center py-5">
                 <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Đang tải...</span>
+                    <span class="visually-hidden">Loading...</span>
                 </div>
             </div>`;
 
@@ -96,11 +96,11 @@ async function loadProducts(locationId) {
 
 /* =========================================================
    RENDER NAV - RACK & LOCATION
-   Stock.js render locations vào nav khi đang ở trang Stock
+   Stock.js render locations to nav when on Stock page
 ========================================================= */
 
 function renderNavLocations(rack) {
-    // Tìm container location của rack trong nav (được tạo bởi _Layout.cshtml)
+    // Find rack's location container in nav (created by _Layout.cshtml)
     const locContainer = document.getElementById(`nav-loc-container-${rack}`);
     if (!locContainer) return;
 
@@ -109,7 +109,7 @@ function renderNavLocations(rack) {
     if (locationsData.length === 0) {
         locContainer.innerHTML = `
             <div class="submenu-location-item" style="opacity:0.5; cursor:default;">
-                Không có vị trí
+                No locations
             </div>`;
         locContainer.style.display = 'block';
         return;
@@ -133,7 +133,7 @@ function renderNavLocations(rack) {
         `;
         a.addEventListener('click', function (e) {
             e.preventDefault();
-            // Bỏ active tất cả location
+            // Remove active from all locations
             document.querySelectorAll('.submenu-location-item').forEach(el => el.classList.remove('active'));
             a.classList.add('active');
             selectLocation(location.locationId, location.locationCode, rack);
@@ -142,7 +142,7 @@ function renderNavLocations(rack) {
         locContainer.appendChild(a);
     });
 
-    // Hiện container + xoay chevron
+    // Show container + rotate chevron
     locContainer.style.display = 'block';
     const chevron = document.getElementById(`nav-chevron-${rack}`);
     if (chevron) chevron.style.transform = 'rotate(180deg)';
@@ -193,11 +193,11 @@ function renderProducts() {
                         </small>
                     </div>
                     <div class="col-md-3">
-                        <small class="text-muted d-block">Số lượng tồn</small>
+                        <small class="text-muted d-block">Stock Quantity</small>
                         <h4 class="mb-0 text-success">${formatNumber(product.quantity)}</h4>
                     </div>
                     <div class="col-md-4">
-                        <small class="text-muted d-block">Cập nhật lần cuối</small>
+                        <small class="text-muted d-block">Last Updated</small>
                         <small>${formatDate(product.lastUpdated)}</small>
                     </div>
                 </div>
@@ -216,7 +216,7 @@ async function selectRack(rack, autoSelectFirstLocation = false) {
     const isAlreadyOpen = locContainer && locContainer.style.display !== 'none'
         && locContainer.innerHTML.trim() !== '';
 
-    // Toggle đóng nếu đang mở và không phải auto select
+    // Toggle close if currently open and not auto select
     if (isAlreadyOpen && !autoSelectFirstLocation) {
         locContainer.style.display = 'none';
         const chevron = document.getElementById(`nav-chevron-${rack}`);
@@ -224,7 +224,7 @@ async function selectRack(rack, autoSelectFirstLocation = false) {
         return;
     }
 
-    // Đóng tất cả rack khác
+    // Close all other racks
     racksData.forEach(r => {
         if (r.rack !== rack) {
             const otherLoc = document.getElementById(`nav-loc-container-${r.rack}`);
@@ -242,14 +242,14 @@ async function selectRack(rack, autoSelectFirstLocation = false) {
     document.getElementById('header-rack').textContent = rack;
     document.getElementById('header-location').textContent = '--';
 
-    // Load locations → tự render vào nav qua renderNavLocations()
+    // Load locations -> auto render to nav via renderNavLocations()
     await loadLocations(rack);
 
-    // Auto select location đầu tiên
+    // Auto select first location
     if (autoSelectFirstLocation && locationsData.length > 0) {
         const firstLoc = locationsData[0];
 
-        // Highlight location đầu tiên trong nav
+        // Highlight first location in nav
         document.querySelectorAll('.submenu-location-item').forEach(el => el.classList.remove('active'));
         const firstLocLink = document.getElementById(`nav-loc-${firstLoc.locationId}`);
         if (firstLocLink) firstLocLink.classList.add('active');
@@ -285,7 +285,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (!warehouseId || warehouseId === 0) {
         console.error('ERROR: warehouseId is not defined!');
-        alert('Lỗi: Không xác định được kho!');
+        alert('Error: Cannot determine warehouse!');
         return;
     }
 
