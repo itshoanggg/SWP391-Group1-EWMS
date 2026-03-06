@@ -1,6 +1,7 @@
 ﻿@model EWMS.ViewModels.EditUserViewModel
 @{
     ViewData["Title"] = "Edit User";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
     var roles = ViewBag.Roles as List<EWMS.Models.Role> ?? new();
     var warehouses = ViewBag.Warehouses as List<EWMS.Models.Warehouse> ?? new();
     var selected = Model.WarehouseIds ?? new List<int>();

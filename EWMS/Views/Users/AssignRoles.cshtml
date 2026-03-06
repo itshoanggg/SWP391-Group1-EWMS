@@ -1,6 +1,7 @@
 ﻿@model EWMS.ViewModels.AssignRoleViewModel
 @{
     ViewData["Title"] = "Assign Role";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
     var roles = ViewBag.Roles as List<EWMS.Models.Role> ?? new();
 }
 
