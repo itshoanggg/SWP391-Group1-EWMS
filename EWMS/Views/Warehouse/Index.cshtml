@@ -1,0 +1,328 @@
+@model EWMS.ViewModels.WarehouseListViewModel
+
+@{
+    ViewData["Title"] = "Warehouse Management";
+    Layout = "~/Views/Shared/_LayoutWarehouseManager.cshtml";
+}
+
+<div class="page-header">
+    <h1>Warehouses</h1>
+    <p>Manage electronic warehouses and storage locations</p>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form asp-action="Index" method="get" class="d-flex gap-2 align-items-center">
+            <div class="search-wrap flex-grow-1" style="max-width: 300px;">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" value="@Model.SearchQuery" placeholder="Search warehouses..." />
+            </div>
+            <button type="submit" class="btn btn-outline-primary">
+                <i class="bi bi-funnel"></i> Filter
+            </button>
+            @if (!string.IsNullOrEmpty(Model.SearchQuery))
+            {
+                <a asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Clear
+                </a>
+            }
+            <div class="ms-auto">
+                <button type="button" class="btn btn-primary" onclick="openAddWarehouseModal()">
+                    <i class="bi bi-plus-circle"></i> Add Warehouse
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.Warehouses.Any())
+{
+    <div class="grid-3">
+        @foreach (var warehouse in Model.Warehouses)
+        {
+            var pct = warehouse.UsagePercentage;
+            var fillClass = pct >= 85 ? "crit" : pct >= 60 ? "warn" : "";
+            var pctColor = pct >= 85 ? "color:var(--danger);" : pct >= 60 ? "color:var(--warn);" : "color:var(--muted);";
+
+            <a asp-action="Details" asp-route-id="@warehouse.WarehouseId" class="wh-card">
+                <div class="wh-code">
+                    @warehouse.WarehouseCode &nbsp;&middot;&nbsp; prefix: <strong style="color:var(--navy-mid);font-family:'JetBrains Mono',monospace;">@warehouse.Prefix-</strong>
+                </div>
+                <div class="wh-name">@warehouse.WarehouseName</div>
+                <div class="wh-addr">@warehouse.Address</div>
+                <div class="wh-stats">
+                    <div class="wh-stat">
+                        <div class="wh-stat-val">@warehouse.LocationCount</div>
+                        <div class="wh-stat-lbl">Locations</div>
+                    </div>
+                    <div class="wh-stat">
+                        <div class="wh-stat-val">@warehouse.TotalUsed</div>
+                        <div class="wh-stat-lbl">Used</div>
+                    </div>
+                    <div class="wh-stat">
+                        <div class="wh-stat-val">@warehouse.TotalCapacity</div>
+                        <div class="wh-stat-lbl">Capacity</div>
+                    </div>
+                </div>
+                <div class="prog-wrap">
+                    <div class="prog-fill @fillClass" style="width:@pct%"></div>
+                </div>
+                <div class="prog-label">
+                    <span>@warehouse.TotalUsed / @warehouse.TotalCapacity units</span>
+                    <span style="font-weight:700;@pctColor">@pct%</span>
+                </div>
+            </a>
+        }
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-search="@Model.SearchQuery" asp-route-page="@(Model.Page - 1)">Previous</a>
+                </li>
+                @for (int i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.Page ? "active" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-search="@Model.SearchQuery" asp-route-page="@i">@i</a>
+                    </li>
+                }
+                <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-search="@Model.SearchQuery" asp-route-page="@(Model.Page + 1)">Next</a>
+                </li>
+            </ul>
+        </nav>
+    }
+}
+else
+{
+    <div class="empty">
+        <div class="empty-icon">
+            <i class="bi bi-building" style="font-size: 3rem;"></i>
+        </div>
+        <p>No warehouses found.</p>
+        @if (!string.IsNullOrEmpty(Model.SearchQuery))
+        {
+            <a asp-action="Index" class="btn btn-outline-primary mt-2">Clear Filter</a>
+        }
+    </div>
+}
+
+<!-- Add Warehouse Modal -->
+<div class="modal fade" id="addWarehouseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Warehouse</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="addWarehouseForm" asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                    <div class="section-label mb-3" style="font-size:0.85rem;font-weight:700;color:var(--navy);border-left:3px solid var(--blue);padding-left:8px;">
+                        Warehouse Information
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="modalWarehouseName" class="form-label">
+                            Warehouse Name <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="modalWarehouseName" name="WarehouseName" required maxlength="100" placeholder="e.g., Hue City Warehouse" />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="modalAddress" class="form-label">
+                                    Address <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="modalAddress" name="Address" required maxlength="255" placeholder="Street, District, City/Province" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="modalPrefix" class="form-label">
+                                    Warehouse Prefix <span class="text-danger">*</span>
+                                    <small class="text-muted">- for location codes</small>
+                                </label>
+                                <input type="text" class="form-control" id="modalPrefix" name="Prefix" required maxlength="5" pattern="[A-Z]{2,5}" style="font-family:'Courier New',monospace;text-transform:uppercase;" placeholder="e.g., HUE" />
+                                <small class="form-text text-muted">2-4 uppercase letters. Will auto-fill location codes below.</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4" />
+
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="section-label mb-0" style="font-size:0.85rem;font-weight:700;color:var(--navy);border-left:3px solid var(--blue);padding-left:8px;">
+                            Add Locations Now <small class="text-muted" style="font-weight:400;">(optional)</small>
+                        </div>
+                    </div>
+
+                    <div class="col-headers" style="display:grid;grid-template-columns:1.3fr 1.1fr 0.85fr 0.75fr 28px;gap:8px;padding:0 12px 6px;font-size:0.65rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;">
+                        <span>Location Code</span>
+                        <span>Name</span>
+                        <span>Rack</span>
+                        <span>Capacity</span>
+                        <span></span>
+                    </div>
+
+                    <div id="modalLocationsContainer" class="loc-rows mb-2" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+                        <!-- Location rows will be added here -->
+                    </div>
+
+                    <button type="button" class="add-loc-row-btn" id="modalAddLocationBtn" style="display:flex;align-items:center;gap:6px;background:none;border:1.5px dashed var(--border);color:var(--text-muted);border-radius:8px;padding:9px 14px;cursor:pointer;font-size:0.8rem;font-weight:600;width:100%;justify-content:center;transition:all 0.2s;font-family:inherit;">
+                        <i class="bi bi-plus-circle"></i> Add Location Row
+                    </button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Warehouse</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/Warehouse/warehouse.css" />
+}
+
+@section Scripts {
+    <script>
+        let modalLocationRowCount = 0;
+
+        function openAddWarehouseModal() {
+            // Clear previous data
+            document.getElementById('modalWarehouseName').value = '';
+            document.getElementById('modalAddress').value = '';
+            document.getElementById('modalPrefix').value = '';
+            document.getElementById('modalLocationsContainer').innerHTML = '';
+            modalLocationRowCount = 0;
+            
+            var modal = new bootstrap.Modal(document.getElementById('addWarehouseModal'));
+            modal.show();
+        }
+
+        // Auto-generate prefix from warehouse name
+        document.getElementById('modalWarehouseName')?.addEventListener('input', function() {
+            var prefixInput = document.getElementById('modalPrefix');
+            if (prefixInput.value) return; // Don't override if user already typed
+
+            var words = this.value.trim().split(/\s+/);
+            var prefix = '';
+            
+            if (words.length >= 2) {
+                prefix = (words[0][0] || '') + (words[1][0] || '');
+            } else if (words.length === 1 && words[0].length >= 3) {
+                prefix = words[0].substring(0, 3);
+            } else if (words.length === 1) {
+                prefix = words[0];
+            }
+            
+            prefixInput.value = prefix.toUpperCase();
+            updateAllModalLocationPrefixes();
+        });
+
+        // Ensure uppercase for prefix
+        document.getElementById('modalPrefix')?.addEventListener('input', function() {
+            this.value = this.value.toUpperCase().replace(/[^A-Z]/g, '');
+            updateAllModalLocationPrefixes();
+        });
+
+        function updateAllModalLocationPrefixes() {
+            const prefix = document.getElementById('modalPrefix').value || '??';
+            document.querySelectorAll('.modal-loc-prefix').forEach(span => {
+                span.textContent = prefix + '-';
+            });
+        }
+
+        document.getElementById('modalAddLocationBtn')?.addEventListener('click', function() {
+            modalLocationRowCount++;
+            const prefix = document.getElementById('modalPrefix').value || '??';
+            const rowId = 'modalLocRow' + modalLocationRowCount;
+            
+            const row = document.createElement('div');
+            row.className = 'loc-row';
+            row.id = rowId;
+            row.style.cssText = 'display:grid;grid-template-columns:1.3fr 1.1fr 0.85fr 0.75fr 28px;gap:8px;align-items:end;background:#f7fafc;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;';
+            row.innerHTML = `
+                <div class="form-group" style="margin-bottom:0;">
+                    <div style="display:flex;">
+                        <span class="modal-loc-prefix" style="background:#e3f2fd;border:1px solid var(--blue);border-right:none;
+                            border-radius:6px 0 0 6px;padding:7px 8px;font-family:'Courier New',monospace;
+                            font-size:0.8rem;color:var(--navy);font-weight:700;white-space:nowrap;">${prefix}-</span>
+                        <input type="text" name="Locations[${modalLocationRowCount - 1}].LocationCode" class="form-control modal-loc-suffix" 
+                            placeholder="A1-01" data-row="${rowId}"
+                            style="border-radius:0 6px 6px 0;border-left:none;font-family:'Courier New',monospace;font-size:0.82rem;padding:7px 10px;" />
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <input type="text" name="Locations[${modalLocationRowCount - 1}].LocationName" class="form-control auto-filled modal-loc-name" 
+                        placeholder="Rack A1 Slot 01" data-row="${rowId}" style="font-size:0.82rem;padding:7px 10px;" />
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <input type="text" name="Locations[${modalLocationRowCount - 1}].Rack" class="form-control auto-filled modal-loc-rack" 
+                        placeholder="A1" data-row="${rowId}" style="font-size:0.82rem;padding:7px 10px;" />
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <input type="number" name="Locations[${modalLocationRowCount - 1}].Capacity" class="form-control" 
+                        placeholder="200" min="1" style="font-size:0.82rem;padding:7px 10px;" />
+                </div>
+                <button type="button" class="rm-btn" onclick="document.getElementById('${rowId}').remove()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:4px 6px;border-radius:6px;transition:all 0.2s;height:34px;align-self:flex-end;">
+                    <i class="bi bi-x"></i>
+                </button>
+            `;
+            
+            document.getElementById('modalLocationsContainer').appendChild(row);
+            
+            // Add event listeners for auto-fill
+            const suffixInput = row.querySelector('.modal-loc-suffix');
+            const nameInput = row.querySelector('.modal-loc-name');
+            const rackInput = row.querySelector('.modal-loc-rack');
+            
+            suffixInput.addEventListener('input', function() {
+                autoFillModalLocation(this.value, nameInput, rackInput);
+            });
+            
+            nameInput.addEventListener('input', function() {
+                this.dataset.edited = 'true';
+            });
+            
+            rackInput.addEventListener('input', function() {
+                this.dataset.edited = 'true';
+            });
+        });
+
+        function autoFillModalLocation(suffix, nameInput, rackInput) {
+            const parts = suffix.trim().split('-');
+            const rack = parts[0] || '';
+            const slot = parts[1] || '';
+            
+            if (!rackInput.dataset.edited && rack) {
+                rackInput.value = rack;
+            }
+            
+            if (!nameInput.dataset.edited && rack && slot) {
+                nameInput.value = `Rack ${rack} Slot ${slot}`;
+            }
+        }
+    </script>
+}
