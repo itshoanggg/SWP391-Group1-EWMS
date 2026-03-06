@@ -1,0 +1,169 @@
+@model EWMS.ViewModels.CreateProductViewModel
+
+@{
+    ViewData["Title"] = "Add New Product";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+
+<div class="page-header">
+    <h1>Add New Product</h1>
+    <p>Create a new product in the catalog</p>
+</div>
+
+<div style="display: flex; gap: 12px; margin-bottom: 22px;">
+    <a asp-action="Index" class="btn btn-outline btn-sm">
+        <i class="bi bi-arrow-left"></i> Back to List
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5>
+            <i class="bi bi-plus-circle" style="color: var(--success);"></i>
+            Product Information
+        </h5>
+    </div>
+    <div class="card-body">
+        <form asp-action="Create" method="post" onsubmit="return validateProductForm()">
+            @Html.AntiForgeryToken()
+            
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="form-grid">
+                <!-- Product Name -->
+                <div class="form-group full">
+                    <label asp-for="ProductName"></label>
+                    <input asp-for="ProductName" class="form-control" placeholder="e.g. Dell XPS 15 9530 Laptop" />
+                    <span asp-validation-for="ProductName" class="text-danger"></span>
+                </div>
+
+                <!-- Category -->
+                <div class="form-group">
+                    <label asp-for="CategoryId"></label>
+                    <select asp-for="CategoryId" class="form-control" id="CategoryId" onchange="onCategoryChange()">
+                        <option value="">— Select Category —</option>
+                        @foreach (var category in Model.Categories)
+                        {
+                            <option value="@category.CategoryId" 
+                                    data-supplier="@category.SupplierName" 
+                                    data-markup="@category.SuggestedMarkupPercent">
+                                @category.CategoryName
+                            </option>
+                        }
+                    </select>
+                    <span asp-validation-for="CategoryId" class="text-danger"></span>
+                </div>
+
+                <!-- Supplier (Auto-filled from Category) -->
+                <div class="form-group">
+                    <label>Supplier</label>
+                    <input type="text" id="supplier-display" class="form-control" readonly placeholder="Supplier" />
+                </div>
+
+                <!-- Unit -->
+                <div class="form-group">
+                    <label asp-for="Unit"></label>
+                    <input asp-for="Unit" type="text" class="form-control" value="Piece" readonly style="background: #f8fafc; color: var(--text-muted);" />
+                    <span asp-validation-for="Unit" class="text-danger"></span>
+                </div>
+
+                <div class="form-group"></div>
+
+                <!-- Cost Price -->
+                <div class="form-group">
+                    <label asp-for="CostPrice"></label>
+                    <input asp-for="CostPrice" type="text" class="form-control" id="CostPrice" placeholder="0" 
+                           oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
+                    <span asp-validation-for="CostPrice" class="text-danger"></span>
+                    <span class="form-hint">Enter amount in VND (e.g., 10000000 for 10 million)</span>
+                </div>
+
+                <!-- Selling Price with Auto button -->
+                <div class="form-group">
+                    <label asp-for="SellingPrice"></label>
+                    <div class="sell-input-row">
+                        <input asp-for="SellingPrice" type="text" class="form-control" id="SellingPrice" placeholder="Auto-calculated or enter manually" 
+                               oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
+                        <span class="sell-auto-badge" id="auto-markup-btn" title="Re-apply suggested markup">
+                            <i class="bi bi-magic"></i> Auto
+                        </span>
+                    </div>
+                    <span asp-validation-for="SellingPrice" class="text-danger"></span>
+                </div>
+
+                <!-- Markup Suggestion Box -->
+                <div class="form-group full">
+                    <div class="markup-box">
+                        <div class="markup-box-title">
+                            <i class="bi bi-percent"></i> Suggested Markup by Category
+                        </div>
+                        <div class="markup-chips">
+                            <div class="markup-chip selected" data-percent="25" onclick="selectMarkup(this, 25)">
+                                +25% <small>Standard</small>
+                            </div>
+                            <div class="markup-chip" data-percent="30" onclick="selectMarkup(this, 30)">
+                                +30% <small>Common</small>
+                            </div>
+                            <div class="markup-chip" data-percent="20" onclick="selectMarkup(this, 20)">
+                                +20% <small>Competitive</small>
+                            </div>
+                            <div class="markup-chip" data-percent="35" onclick="selectMarkup(this, 35)">
+                                +35% <small>High-end</small>
+                            </div>
+                            <div class="markup-chip" data-percent="custom" onclick="selectMarkup(this, 'custom')">
+                                Custom % <small>manual</small>
+                            </div>
+                        </div>
+                        <div id="custom-markup-row" style="display: none; margin-top: 10px;">
+                            <input type="number" id="custom-markup-input" class="form-control" placeholder="Enter markup %" style="width: 160px;" />
+                        </div>
+                        <div style="margin-top: 8px; font-size: 0.75rem; color: #4a5568;" id="markup-hint">
+                            Selling = Cost × (1 + 25%) — typical for electronics
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Price Preview -->
+                <div class="form-group full">
+                    <label>Price Preview</label>
+                    <div class="price-preview">
+                        <div class="pv-item">
+                            <span class="pv-label">Cost</span>
+                            <span class="pv-val" id="prev-cost">0 ₫</span>
+                        </div>
+                        <div class="pv-item">
+                            <span class="pv-label">Sell</span>
+                            <span class="pv-val" id="prev-sell">0 ₫</span>
+                        </div>
+                        <div class="pv-item">
+                            <span class="pv-label">Margin</span>
+                            <span class="pv-val margin-val" id="prev-margin">0%</span>
+                        </div>
+                        <div class="pv-item">
+                            <span class="pv-label">Profit/unit</span>
+                            <span class="pv-val margin-val" id="prev-profit">0 ₫</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="section-divider" />
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <a asp-action="Index" class="btn btn-outline">Cancel</a>
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-lg"></i> Create Product
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/product.css" asp-append-version="true" />
+}
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script src="~/js/product.js" asp-append-version="true"></script>
+}
