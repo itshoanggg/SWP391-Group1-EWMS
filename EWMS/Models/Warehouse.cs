@@ -21,6 +21,14 @@ public partial class Warehouse
     [Column(TypeName = "datetime")]
     public DateTime? CreatedAt { get; set; }
 
+    [StringLength(10)]
+    [NotMapped]
+    public string? Prefix { get; set; }
+
+    [StringLength(20)]
+    [NotMapped]
+    public string? WarehouseCode { get; set; }
+
     [InverseProperty("Warehouse")]
     public virtual ICollection<Location> Locations { get; set; } = new List<Location>();
 

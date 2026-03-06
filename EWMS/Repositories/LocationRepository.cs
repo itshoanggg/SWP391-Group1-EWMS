@@ -84,5 +84,73 @@ namespace EWMS.Repositories
 
             return inventory?.Quantity ?? 0;
         }
+
+        // Warehouse Manager specific methods
+        public async Task<(List<Location> Locations, int TotalCount)> GetLocationsPagedAsync(
+            int page,
+            int pageSize,
+            string? searchQuery,
+            int? warehouseId)
+        {
+            var query = _context.Locations
+                .Include(l => l.Warehouse)
+                .Include(l => l.Inventories)
+                .AsQueryable();
+
+            if (warehouseId.HasValue && warehouseId > 0)
+            {
+                query = query.Where(l => l.WarehouseId == warehouseId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                searchQuery = searchQuery.ToLower();
+                query = query.Where(l =>
+                    l.LocationCode.ToLower().Contains(searchQuery) ||
+                    (l.LocationName != null && l.LocationName.ToLower().Contains(searchQuery)));
+            }
+
+            var totalCount = await query.CountAsync();
+
+            var locations = await query
+                .OrderBy(l => l.LocationCode)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (locations, totalCount);
+        }
+
+        public async Task<Location?> GetLocationWithInventoryAsync(int locationId)
+        {
+            return await _context.Locations
+                .Include(l => l.Warehouse)
+                .Include(l => l.Inventories)
+                    .ThenInclude(i => i.Product)
+                        .ThenInclude(p => p.Category)
+                .FirstOrDefaultAsync(l => l.LocationId == locationId);
+        }
+
+        public async Task<bool> LocationCodeExistsAsync(string locationCode, int warehouseId, int? excludeLocationId = null)
+        {
+            var query = _context.Locations
+                .Where(l => l.LocationCode == locationCode && l.WarehouseId == warehouseId);
+
+            if (excludeLocationId.HasValue)
+            {
+                query = query.Where(l => l.LocationId != excludeLocationId.Value);
+            }
+
+            return await query.AnyAsync();
+        }
+
+        public async Task<int> GetLocationUsedCapacityAsync(int locationId)
+        {
+            var inventories = await _context.Inventories
+                .Where(i => i.LocationId == locationId)
+                .ToListAsync();
+
+            return inventories.Sum(i => i.Quantity ?? 0);
+        }
     }
 }
