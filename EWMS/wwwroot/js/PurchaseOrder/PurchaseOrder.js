@@ -74,11 +74,25 @@ async function loadSupplierInfo() {
         return;
     }
 
-    document.getElementById('supplierInfo').style.display = 'block';
-    document.getElementById('supplierCode').value = 'NCC-' + supplierId;
+    try {
+        // Fetch supplier info from API
+        const response = await fetch(`/PurchaseOrder/GetSupplierInfo?supplierId=${supplierId}`);
+        const data = await response.json();
 
-    // Load products by supplier
-    await loadProducts(supplierId);
+        if (data.success) {
+            document.getElementById('supplierInfo').style.display = 'block';
+            document.getElementById('supplierCode').value = 'NCC-' + String(supplierId).padStart(3, '0');
+            document.getElementById('supplierPhone').value = data.phone;
+        } else {
+            document.getElementById('supplierInfo').style.display = 'none';
+        }
+
+        // Load products by supplier
+        await loadProducts(supplierId);
+    } catch (error) {
+        console.error('Error loading supplier info:', error);
+        alert('Failed to load supplier information');
+    }
 }
 
 async function loadProducts(supplierId) {

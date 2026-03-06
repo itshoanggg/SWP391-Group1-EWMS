@@ -121,7 +121,7 @@
                                 @Model.ExpectedReceivingDate.ToString("dd/MM/yyyy")
                                 @if (Model.Status == "ReadyToReceive" || Model.Status == "PartiallyReceived" || Model.Status == "Received")
                                 {
-                                    <span class="badge bg-success">Ready/Arrived</span>
+                                    <span class="badge bg-success">Ready</span>
                                 }
                                 else if (Model.Status == "Cancelled")
                                 {
@@ -150,8 +150,8 @@
                             @{
                                 var statusBadge = Model.Status switch
                                 {
-                                    "Pending" => "badge bg-warning text-dark",
-                                    "Approved" => "badge bg-info",
+                                    "Ordered" => "badge bg-warning text-dark",
+                                    "ReadyToReceived" => "badge bg-info",
                                     "PartiallyReceived" => "badge bg-primary",
                                     "Received" => "badge bg-success",
                                     "Cancelled" => "badge bg-danger",
@@ -159,8 +159,8 @@
                                 };
                                 var statusText = Model.Status switch
                                 {
-                                    "Pending" => "Pending Approval",
-                                    "Approved" => "Approved",
+                                    "Ordered" => "Ordered",
+                                    "ReadyToReceived" => "Ready To Received",
                                     "PartiallyReceived" => "Partially Received",
                                     "Received" => "Fully Received",
                                     "Cancelled" => "Cancelled",

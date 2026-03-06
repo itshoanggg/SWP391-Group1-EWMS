@@ -161,6 +161,25 @@ namespace EWMS.Controllers
             return Json(products);
         }
 
+        // API: Get Supplier Info
+        [HttpGet]
+        public async Task<IActionResult> GetSupplierInfo(int supplierId)
+        {
+            var supplier = await _supplierService.GetSupplierByIdAsync(supplierId);
+            if (supplier == null)
+                return Json(new { success = false });
+
+            return Json(new
+            {
+                success = true,
+                supplierId = supplier.SupplierId,
+                supplierName = supplier.SupplierName,
+                phone = supplier.Phone ?? "N/A",
+                email = supplier.Email ?? "N/A",
+                address = supplier.Address ?? "N/A"
+            });
+        }
+
         // DELETE: PurchaseOrder/Delete/5
         [HttpPost]
         public async Task<IActionResult> Delete(int id)
