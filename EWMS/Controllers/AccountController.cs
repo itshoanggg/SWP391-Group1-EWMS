@@ -132,7 +132,7 @@ namespace EWMS.Controllers
                 return RedirectToAction("Index", "StockIn");
 
             if (role.Contains("warehouse"))
-                return RedirectToAction("Index", "StockIn");
+                return RedirectToAction("Index", "Warehouse");
 
 
             // Fallback - redirect to User Management for unrecognized roles
