@@ -68,7 +68,7 @@ namespace EWMS.Repositories
                 .Include(pod => pod.PurchaseOrder)
                 .Where(pod => pod.ProductId == productId
                     && pod.PurchaseOrder.WarehouseId == warehouseId
-                    && pod.PurchaseOrder.Status == "Approved"
+                    && pod.PurchaseOrder.Status == "Ordered"
                     && pod.PurchaseOrder.CreatedAt < beforeDate
                     && !_context.StockInReceipts.Any(sir => sir.PurchaseOrderId == pod.PurchaseOrderId))
                 .SumAsync(pod => pod.Quantity);

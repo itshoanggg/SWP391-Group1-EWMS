@@ -71,8 +71,6 @@
                                     "ReadyToReceive" => "badge bg-info",
                                     "Received" => "badge bg-success",
                                     "Cancelled" => "badge bg-danger",
-                                    "Pending" => "badge bg-warning text-dark",
-                                    "Approved" => "badge bg-info",
                                     _ => "badge bg-secondary"
                                 };
                                 var statusText = po.Status switch
@@ -81,8 +79,6 @@
                                     "ReadyToReceive" => "Ready to Receive",
                                     "Received" => "Received",
                                     "Cancelled" => "Cancelled",
-                                    "Pending" => "Pending Approval",
-                                    "Approved" => "Approved",
                                     _ => po.Status
                                 };
 

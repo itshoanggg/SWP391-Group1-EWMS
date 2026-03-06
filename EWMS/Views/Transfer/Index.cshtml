@@ -6,12 +6,12 @@
 
 <style>
     .transfer-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 15px;
-        padding: 30px;
-        margin-bottom: 30px;
+        background: linear-gradient(180deg, #2c3e50, #34495e);
         color: white;
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 15px rgba(44, 62, 80, 0.35);
     }
     .transfer-header h2 {
         margin: 0;
@@ -20,8 +20,8 @@
     }
     .btn-create-transfer {
         background: white;
-        color: #667eea;
-        border: none;
+        color: #2c3e50;
+        border: 2px solid white;
         padding: 12px 30px;
         border-radius: 8px;
         font-weight: 600;
@@ -29,9 +29,10 @@
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
     .btn-create-transfer:hover {
+        background: rgba(255, 255, 255, 0.9);
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-        color: #667eea;
+        color: #2c3e50;
     }
     .transfer-card {
         background: white;
@@ -47,9 +48,9 @@
         transition: all 0.3s ease;
     }
     .search-box:focus {
-        border-color: #667eea;
+        border-color: #2c3e50;
         outline: none;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.1);
     }
     .status-badge {
         padding: 6px 12px;
@@ -76,17 +77,17 @@
         color: #856404;
     }
     .btn-details {
-        color: #667eea;
+        color: #2c3e50;
         font-weight: 600;
         text-decoration: none;
         padding: 6px 16px;
         border-radius: 6px;
         transition: all 0.2s ease;
-        border: 1px solid #667eea;
+        border: 1px solid #2c3e50;
         display: inline-block;
     }
     .btn-details:hover {
-        background: #667eea;
+        background: #2c3e50;
         color: white;
         text-decoration: none;
     }
@@ -146,7 +147,7 @@
                     <td>@t.FromWarehouse?.WarehouseName</td>
                     <td>@t.ToWarehouse?.WarehouseName</td>
                     <td><span class="badge bg-secondary">@t.TransferType</span></td>
-                    <td>@t.RequestedByNavigation?.FullName ?? t.RequestedBy.ToString()</td>
+                    <td>@(t.RequestedByNavigation?.FullName ?? t.RequestedBy.ToString())</td>
                     <td><small class="text-muted">@t.RequestedDate?.ToString("dd/MM/yyyy HH:mm")</small></td>
                     <td>
                         <span class="status-badge @statusClass">@t.Status</span>

@@ -371,8 +371,6 @@ async function checkCapacity(rowId, quantity) {
     const res = await fetch(`/StockIn/CheckLocationCapacity?locationId=${locationId}`);
     const data = await res.json();
 
-    // ? T�nh t?ng s? lu?ng �� �U?C PH�N B? v�o location n�y t? T?T C? c�c row kh�c
-    // Capacity KH�NG ph�n bi?t product
     let allocatedQty = 0;
     
     receiptItems.forEach(item => {
@@ -404,7 +402,7 @@ async function checkCapacity(rowId, quantity) {
         </div>
         <button class="btn btn-sm btn-warning"
             onclick="splitToNewLocation('${rowId}', ${parseInt(select.dataset.productId)}, ${quantity}, ${available})">
-            ? Th�m rack kh�c cho ${remain}
+            ? Add to another rack cho ${remain}
         </button>
     `;
 }
