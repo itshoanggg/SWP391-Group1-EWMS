@@ -1,0 +1,137 @@
+@model EWMS.ViewModels.EditLocationViewModel
+
+@{
+    ViewData["Title"] = "Edit Location";
+    Layout = "~/Views/Shared/_LayoutWarehouseManager.cshtml";
+}
+
+<div class="breadcrumb">
+    <a asp-action="Index">Warehouses</a>
+    <span class="sep">&gt;</span>
+    <a asp-action="LocationList">Locations</a>
+    <span class="sep">&gt;</span>
+    <a asp-action="LocationDetails" asp-route-id="@Model.LocationId">@Model.LocationCode</a>
+    <span class="sep">&gt;</span>
+    <span>Edit</span>
+</div>
+
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <div class="card-header">
+        <h3 class="mb-0">Edit Location</h3>
+    </div>
+    <div class="card-body">
+        <form asp-action="EditLocation" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="LocationId" />
+            <input type="hidden" asp-for="WarehouseId" />
+            <input type="hidden" asp-for="CurrentUsed" />
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+            <div class="row">
+                <div class="col-md-7">
+                    <div class="mb-3">
+                        <label asp-for="LocationCode" class="form-label">
+                            Location Code <span class="req">*</span>
+                        </label>
+                        <input asp-for="LocationCode" class="form-control" style="font-family:'Courier New',monospace;" />
+                        <span asp-validation-for="LocationCode" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div class="mb-3">
+                        <label asp-for="Rack" class="form-label">
+                            Rack <span class="req">*</span>
+                        </label>
+                        <input asp-for="Rack" class="form-control" />
+                        <span asp-validation-for="Rack" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="LocationName" class="form-label">
+                    Location Name
+                </label>
+                <input asp-for="LocationName" class="form-control" />
+                <span asp-validation-for="LocationName" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Capacity" class="form-label">
+                    Capacity (units) <span class="req">*</span>
+                </label>
+                <input asp-for="Capacity" class="form-control" type="number" min="1" />
+                <div class="form-hint">Currently using @Model.CurrentUsed units. Capacity cannot be less than this.</div>
+                <span asp-validation-for="Capacity" class="text-danger"></span>
+            </div>
+
+            <hr class="my-4" />
+
+            <div class="d-flex gap-2 justify-content-between">
+                <button type="button" class="btn btn-danger" onclick="confirmDelete()">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+                <div class="d-flex gap-2">
+                    <a asp-action="LocationDetails" asp-route-id="@Model.LocationId" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Save
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Form -->
+<form id="deleteForm" method="post" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/Warehouse/warehouse.css" />
+}
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-exclamation-triangle-fill"></i> Confirm Delete
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete location <strong>@Model.LocationCode</strong>?</p>
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-info-circle"></i> <strong>Note:</strong> Cannot delete locations with inventory!
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                        <i class="bi bi-trash"></i> Delete Location
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function confirmDelete() {
+            var modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            modal.show();
+        }
+        
+        document.getElementById('confirmDeleteBtn')?.addEventListener('click', function() {
+            var form = document.getElementById('deleteForm');
+            form.action = '/Warehouse/DeleteLocation/@Model.LocationId';
+            form.submit();
+        });
+    </script>
+}
