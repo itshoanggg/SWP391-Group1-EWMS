@@ -1,145 +1,268 @@
-@model List<EWMS.ViewModels.ProductListViewModel>
+@model EWMS.ViewModels.ProductListViewModel
+
 @{
-    ViewData["Title"] = "Product Information";
+    ViewData["Title"] = "Product Management";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
 }
 
-<style>
-    .product-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 15px;
-        padding: 30px;
-        margin-bottom: 30px;
-        color: white;
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-    }
-    .product-header h2 {
-        margin: 0;
-        font-weight: 600;
-        font-size: 28px;
-    }
-    .product-card {
-        background: white;
-        border-radius: 15px;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
-        overflow: hidden;
-    }
-    .search-box {
-        padding: 12px 15px;
-        border: 2px solid #e0e0e0;
-        border-radius: 8px;
-        font-size: 14px;
-        transition: all 0.3s ease;
-    }
-    .search-box:focus {
-        border-color: #667eea;
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-    .btn-details {
-        color: #667eea;
-        font-weight: 600;
-        text-decoration: none;
-        padding: 6px 16px;
-        border-radius: 6px;
-        transition: all 0.2s ease;
-        border: 1px solid #667eea;
-        display: inline-block;
-    }
-    .btn-details:hover {
-        background: #667eea;
-        color: white;
-        text-decoration: none;
-    }
-    .table th {
-        background: #f8f9fa;
-        font-weight: 600;
-        color: #495057;
-        border-bottom: 2px solid #dee2e6;
-    }
-    .table tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-</style>
-
-<div class="product-header">
-    <div>
-        <h2><i class="bi bi-box-seam me-2"></i>Product Information</h2>
-        <p class="mb-0 mt-2" style="opacity: 0.9;">View detailed product information for accurate storage decisions</p>
-    </div>
+<div class="page-header">
+    <h1>Product Management</h1>
+    <p>Manage product catalog and pricing</p>
 </div>
 
 @if (TempData["SuccessMessage"] != null)
 {
-    <div class="alert alert-success mb-4">
-        <i class="bi bi-check-circle me-2"></i>@TempData["SuccessMessage"]
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 }
 
-<div class="mb-4">
-    <input id="productSearch" type="search" placeholder="Search by product name, category, or unit..." class="search-box w-100" style="max-width: 500px;" />
-</div>
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
 
-<div class="product-card">
-    <table id="productTable" class="table table-hover mb-0">
-        <thead>
-            <tr>
-                <th><i class="bi bi-hash me-2"></i>ID</th>
-                <th><i class="bi bi-box-seam me-2"></i>Product Name</th>
-                <th><i class="bi bi-tag me-2"></i>Category</th>
-                <th><i class="bi bi-rulers me-2"></i>Unit</th>
-                <th><i class="bi bi-cash-coin me-2"></i>Cost Price</th>
-                <th><i class="bi bi-currency-dollar me-2"></i>Selling Price</th>
-                <th><i class="bi bi-gear me-2"></i>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @if (Model == null || !Model.Any())
+<div class="card">
+    <div class="card-header">
+        <h5>
+            <i class="bi bi-list-ul" style="color: var(--blue);"></i>
+            Product List
+        </h5>
+        <div class="d-flex align-items-center gap-2">
+            @if (User.IsInRole("Admin"))
             {
-                <tr>
-                    <td colspan="7" class="text-center text-muted py-4">
-                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                        No products found
-                    </td>
-                </tr>
+                <a asp-action="Create" class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-lg"></i> Add Product
+                </a>
             }
-            else
-            {
-                @foreach (var product in Model)
+        </div>
+    </div>
+
+    <div class="table-controls">
+        <form asp-action="Index" method="get" class="d-flex gap-2 align-items-center w-100 flex-wrap">
+            <div class="search-box">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" value="@Model.SearchTerm" 
+                       placeholder="Search by name, category..." />
+            </div>
+
+            <select name="categoryId" class="filter-select">
+                <option value="">All Categories</option>
+                @{
+                    var categories = ViewBag.Categories as List<EWMS.Models.ProductCategory>;
+                    if (categories != null)
+                    {
+                        foreach (var cat in categories)
+                        {
+                            <option value="@cat.CategoryId" selected="@(Model.FilterCategoryId == cat.CategoryId ? "selected" : null)">
+                                @cat.CategoryName
+                            </option>
+                        }
+                    }
+                }
+            </select>
+
+            <select name="supplierId" class="filter-select">
+                <option value="">All Suppliers</option>
+                @{
+                    var suppliers = ViewBag.Suppliers as List<EWMS.Models.Supplier>;
+                    if (suppliers != null)
+                    {
+                        foreach (var sup in suppliers)
+                        {
+                            <option value="@sup.SupplierId" selected="@(Model.FilterSupplierId == sup.SupplierId ? "selected" : null)">
+                                @sup.SupplierName
+                            </option>
+                        }
+                    }
+                }
+            </select>
+
+            <button type="submit" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-funnel"></i> Filter
+            </button>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-x-circle"></i> Reset
+            </a>
+
+            <input type="hidden" name="page" value="1" />
+        </form>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Product ID</th>
+                    <th>Product</th>
+                    <th>Category</th>
+                    <th>Supplier</th>
+                    <th>Unit</th>
+                    <th>Cost Price</th>
+                    <th>Selling Price</th>
+                    <th>Margin</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Products.Any())
+                {
+                    @foreach (var product in Model.Products)
+                    {
+                        <tr>
+                            <td style="color: var(--text-muted); font-size: 0.78rem; font-family: 'Courier New', monospace;">PRD-@product.ProductId.ToString("D4")</td>
+                            <td>
+                                <div class="product-name">@product.ProductName</div>
+                            </td>
+                            <td>
+                                <span class="badge badge-blue">@product.CategoryName</span>
+                            </td>
+                            <td style="font-size: 0.82rem; color: var(--text-muted);">
+                                @(product.SupplierName ?? "N/A")
+                            </td>
+                            <td style="font-size: 0.82rem;">@product.Unit</td>
+                            <td>
+                                <span class="price cost">@product.CostPrice.ToString("N0") ₫</span>
+                            </td>
+                            <td>
+                                <span class="price sell">@product.SellingPrice.ToString("N0") ₫</span>
+                            </td>
+                            <td>
+                                <span class="profit-pill">+@product.ProfitMargin.ToString("F1")%</span>
+                            </td>
+                            <td>
+                                <div style="display: flex; gap: 5px;">
+                                    <a asp-action="Details" asp-route-id="@product.ProductId" 
+                                       class="btn btn-outline btn-sm btn-icon" title="View Details">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    @if (User.IsInRole("Admin"))
+                                    {
+                                        <a asp-action="Edit" asp-route-id="@product.ProductId" 
+                                           class="btn btn-warning btn-sm btn-icon" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-danger btn-sm btn-icon" title="Delete"
+                                                onclick="openDeleteModal(@product.ProductId, '@product.ProductName')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
                 {
                     <tr>
-                        <td><strong>@product.ProductId</strong></td>
-                        <td>@product.ProductName</td>
-                        <td><span class="badge bg-info">@product.CategoryName</span></td>
-                        <td>@product.Unit</td>
-                        <td>@product.CostPrice.ToString("N2") VND</td>
-                        <td>@product.SellingPrice.ToString("N2") VND</td>
-                        <td>
-                            <a class="btn-details" asp-action="Details" asp-route-id="@product.ProductId">
-                                <i class="bi bi-eye me-1"></i>Details
-                            </a>
+                        <td colspan="9">
+                            <div class="empty-state">
+                                <i class="bi bi-search"></i>
+                                <p>No products found</p>
+                            </div>
                         </td>
                     </tr>
                 }
-            }
-        </tbody>
-    </table>
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <nav aria-label="Page navigation" class="mt-3">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index" 
+                       asp-route-page="@(Model.Page - 1)"
+                       asp-route-search="@Model.SearchTerm"
+                       asp-route-categoryId="@Model.FilterCategoryId"
+                       asp-route-supplierId="@Model.FilterSupplierId">
+                        <i class="bi bi-chevron-left"></i> Previous
+                    </a>
+                </li>
+
+                @for (int i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.Page ? "active" : "")">
+                        <a class="page-link" asp-action="Index" 
+                           asp-route-page="@i"
+                           asp-route-search="@Model.SearchTerm"
+                           asp-route-categoryId="@Model.FilterCategoryId"
+                           asp-route-supplierId="@Model.FilterSupplierId">
+                            @i
+                        </a>
+                    </li>
+                }
+
+                <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index" 
+                       asp-route-page="@(Model.Page + 1)"
+                       asp-route-search="@Model.SearchTerm"
+                       asp-route-categoryId="@Model.FilterCategoryId"
+                       asp-route-supplierId="@Model.FilterSupplierId">
+                        Next <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    }
+
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/product.css" asp-append-version="true" />
+}
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background: #fff5f5; border-bottom: 1px solid #fed7d7;">
+                <h5 class="modal-title" id="deleteModalLabel" style="color: var(--danger); font-weight: 700;">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Confirm Delete
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div style="display: flex; gap: 14px; align-items: flex-start;">
+                    <div style="width: 46px; height: 46px; background: #fff5f5; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;">
+                        <i class="bi bi-exclamation-triangle" style="color: var(--danger);"></i>
+                    </div>
+                    <div>
+                        <p style="font-weight: 600; margin-bottom: 6px; font-size: 1rem;">
+                            Delete "<span id="deleteProductName"></span>"?
+                        </p>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">
+                            This will permanently remove the product. Make sure there is no inventory or active purchase orders linked to it.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border);">
+                <button type="button" class="btn btn-outline" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="post" style="display: inline;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
+    <script src="~/js/product.js" asp-append-version="true"></script>
     <script>
-        (function () {
-            const input = document.getElementById('productSearch');
-            const table = document.getElementById('productTable');
-            if (!input || !table) return;
-
-            input.addEventListener('input', function () {
-                const q = this.value.trim().toLowerCase();
-                const rows = table.tBodies[0].rows;
-                for (let i = 0; i < rows.length; i++) {
-                    const rowText = rows[i].innerText.toLowerCase();
-                    rows[i].style.display = rowText.indexOf(q) > -1 ? '' : 'none';
-                }
-            });
-        })();
+        function openDeleteModal(productId, productName) {
+            document.getElementById('deleteProductName').textContent = productName;
+            document.getElementById('deleteForm').action = '/Product/Delete/' + productId;
+            var deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            deleteModal.show();
+        }
     </script>
 }
