@@ -117,7 +117,7 @@ namespace EWMS.Controllers
 
             // Admin - redirect to User Management
             if (role.Contains("admin"))
-                return RedirectToAction("Index", "Users");
+                return RedirectToAction("Index", "Product");
 
             // Sales team
             if (role.Contains("sale"))
