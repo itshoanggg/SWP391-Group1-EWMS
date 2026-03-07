@@ -37,6 +37,12 @@ public partial class Location
     [InverseProperty("Location")]
     public virtual ICollection<StockOutDetail> StockOutDetails { get; set; } = new List<StockOutDetail>();
 
+    [InverseProperty("FromLocation")]
+    public virtual ICollection<TransferRequest> TransferRequestFromLocations { get; set; } = new List<TransferRequest>();
+
+    [InverseProperty("ToLocation")]
+    public virtual ICollection<TransferRequest> TransferRequestToLocations { get; set; } = new List<TransferRequest>();
+
     [ForeignKey("WarehouseId")]
     [InverseProperty("Locations")]
     public virtual Warehouse Warehouse { get; set; } = null!;

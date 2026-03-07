@@ -154,16 +154,7 @@ namespace EWMS.Controllers
             if (user == null)
                 return NotFound();
 
-            // username change allowed if unique
-            if (!string.Equals(user.Username, model.Username, StringComparison.OrdinalIgnoreCase))
-            {
-                if (await _db.Users.AnyAsync(u => u.Username == model.Username && u.UserId != model.UserId))
-                {
-                    ModelState.AddModelError(nameof(model.Username), "Username already exists.");
-                    return View(model);
-                }
-                user.Username = model.Username;
-            }
+            // username change is NOT allowed after creation. Ignore model.Username
 
             user.FullName = model.FullName;
             user.Email = model.Email;

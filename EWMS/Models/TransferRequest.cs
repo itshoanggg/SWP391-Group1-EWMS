@@ -18,6 +18,12 @@ public partial class TransferRequest
     [Column("ToWarehouseID")]
     public int ToWarehouseId { get; set; }
 
+    [Column("FromLocationID")]
+    public int? FromLocationId { get; set; }
+
+    [Column("ToLocationID")]
+    public int? ToLocationId { get; set; }
+
     [StringLength(30)]
     public string TransferType { get; set; } = null!;
 
@@ -58,6 +64,14 @@ public partial class TransferRequest
     [ForeignKey("ToWarehouseId")]
     [InverseProperty("TransferRequestToWarehouses")]
     public virtual Warehouse ToWarehouse { get; set; } = null!;
+
+    [ForeignKey("FromLocationId")]
+    [InverseProperty("TransferRequestFromLocations")]
+    public virtual Location? FromLocation { get; set; }
+
+    [ForeignKey("ToLocationId")]
+    [InverseProperty("TransferRequestToLocations")]
+    public virtual Location? ToLocation { get; set; }
 
     [InverseProperty("Transfer")]
     public virtual ICollection<TransferDetail> TransferDetails { get; set; } = new List<TransferDetail>();

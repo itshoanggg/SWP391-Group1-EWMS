@@ -31,6 +31,13 @@ namespace EWMS.Services
             return await _db.Warehouses.ToListAsync();
         }
 
+        public async Task<List<Location>> GetLocationsByWarehouseAsync(int warehouseId)
+        {
+            return await _db.Locations
+                .Where(l => l.WarehouseId == warehouseId)
+                .ToListAsync();
+        }
+
         public async Task<List<Product>> GetProductsAsync()
         {
             return await _db.Products.ToListAsync();
@@ -56,15 +63,27 @@ namespace EWMS.Services
                 throw new InvalidOperationException("Product not found.");
             }
 
-            // Check inventory availability at source warehouse
-            var totalAvailable = await _db.Inventories
-                .Include(i => i.Location)
-                .Where(i => i.ProductId == productId && i.Location.WarehouseId == request.FromWarehouseId)
-                .SumAsync(i => i.Quantity ?? 0);
+            // Check inventory availability
+            int totalAvailable = 0;
+            if (request.TransferType == "Internal" && request.FromLocationId.HasValue)
+            {
+                // Internal transfer checks specific location
+                totalAvailable = await _db.Inventories
+                    .Where(i => i.ProductId == productId && i.LocationId == request.FromLocationId.Value)
+                    .SumAsync(i => i.Quantity ?? 0);
+            }
+            else
+            {
+                // Regular transfer checks whole warehouse
+                totalAvailable = await _db.Inventories
+                    .Include(i => i.Location)
+                    .Where(i => i.ProductId == productId && i.Location.WarehouseId == request.FromWarehouseId)
+                    .SumAsync(i => i.Quantity ?? 0);
+            }
 
             if (totalAvailable < quantity)
             {
-                throw new InvalidOperationException($"Insufficient inventory. Available: {totalAvailable}, Requested: {quantity}");
+                throw new InvalidOperationException($"Insufficient inventory{(request.TransferType == "Internal" ? " at selected location" : "")}. Available: {totalAvailable}, Requested: {quantity}");
             }
 
             // Create transfer request
@@ -127,7 +146,7 @@ namespace EWMS.Services
             transfer.Status = "Rejected";
             transfer.ApprovedBy = rejectedBy;
             transfer.ApprovedDate = DateTime.Now;
-            
+
             if (!string.IsNullOrEmpty(rejectionReason))
             {
                 transfer.Reason = (transfer.Reason ?? "") + " | Rejection Reason: " + rejectionReason;

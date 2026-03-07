@@ -28,6 +28,7 @@ namespace EWMS.ViewModels
     {
         [Required]
         [StringLength(50)]
+        [RegularExpression(@"^[a-zA-Z0-9_]+$", ErrorMessage = "Tên đăng nhập chỉ được chứa các ký tự chữ cái, số và dấu gạch dưới, không bao gồm khoảng trắng hoặc ký tự đặc biệt.")]
         public string Username { get; set; } = string.Empty;
 
         [StringLength(255)]
@@ -40,6 +41,7 @@ namespace EWMS.ViewModels
         public string? Email { get; set; }
 
         [StringLength(20)]
+        [RegularExpression(@"^0\d{9,10}$", ErrorMessage = "Số điện thoại không hợp lệ. Vui lòng bắt đầu bằng số 0 và có từ 10-11 chữ số.")]
         public string? Phone { get; set; }
 
         [Required]

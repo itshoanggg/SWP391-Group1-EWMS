@@ -39,7 +39,7 @@ namespace EWMS.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(int FromWarehouseId, int ToWarehouseId, string TransferType, int ProductID, int Quantity, string? Reason)
+        public async Task<IActionResult> Create(int FromWarehouseId, int ToWarehouseId, int? FromLocationId, int? ToLocationId, string TransferType, int ProductID, int Quantity, string? Reason)
         {
             // Clear model state for navigation properties
             ModelState.Remove("FromWarehouse");
@@ -65,12 +65,47 @@ namespace EWMS.Controllers
             }
 
             // Validation: Check same warehouse
-            if (FromWarehouseId == ToWarehouseId)
+            if (FromWarehouseId == ToWarehouseId && TransferType != "Internal")
             {
-                ModelState.AddModelError("", "Kho nguồn và kho đích phải khác nhau.");
+                ModelState.AddModelError("", "Kho nguồn và kho đích phải khác nhau (ngoại trừ chuyển đổi nội bộ).");
                 ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
                 ViewBag.Products = await _transferService.GetProductsAsync();
                 return View();
+            }
+
+            if (TransferType == "Internal")
+            {
+                if (FromWarehouseId != ToWarehouseId)
+                {
+                    ModelState.AddModelError("", "Loại chuyển nội bộ yêu cầu phải cùng một kho.");
+                    ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
+                    ViewBag.Products = await _transferService.GetProductsAsync();
+                    return View();
+                }
+
+                if (!FromLocationId.HasValue || FromLocationId.Value == 0)
+                {
+                    ModelState.AddModelError("", "Vui lòng chọn kệ nguồn cho chuyển nội bộ.");
+                    ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
+                    ViewBag.Products = await _transferService.GetProductsAsync();
+                    return View();
+                }
+
+                if (!ToLocationId.HasValue || ToLocationId.Value == 0)
+                {
+                    ModelState.AddModelError("", "Vui lòng chọn kệ đích cho chuyển nội bộ.");
+                    ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
+                    ViewBag.Products = await _transferService.GetProductsAsync();
+                    return View();
+                }
+
+                if (FromLocationId == ToLocationId)
+                {
+                    ModelState.AddModelError("", "Kệ nguồn và kệ đích phải khác nhau.");
+                    ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
+                    ViewBag.Products = await _transferService.GetProductsAsync();
+                    return View();
+                }
             }
 
             // Validation: Check transfer type
@@ -118,6 +153,8 @@ namespace EWMS.Controllers
                     FromWarehouseId = FromWarehouseId,
                     ToWarehouseId = ToWarehouseId,
                     TransferType = TransferType,
+                    FromLocationId = FromLocationId,
+                    ToLocationId = ToLocationId,
                     Reason = Reason
                 };
 
@@ -195,6 +232,13 @@ namespace EWMS.Controllers
                 TempData["ErrorMessage"] = $"Error rejecting transfer: {ex.Message}";
                 return RedirectToAction(nameof(Details), new { id });
             }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetLocationsByWarehouse(int warehouseId)
+        {
+            var locations = await _transferService.GetLocationsByWarehouseAsync(warehouseId);
+            return Json(locations);
         }
     }
 }

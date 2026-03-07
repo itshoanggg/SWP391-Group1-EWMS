@@ -86,7 +86,7 @@
         <div class="row mb-4">
             <div class="col-md-6">
                 <label class="form-label"><i class="bi bi-box-arrow-right me-2"></i>Kho Nguồn</label>
-                <select name="FromWarehouseId" class="form-select" required>
+                <select name="FromWarehouseId" id="FromWarehouseId" class="form-select" required onchange="loadFromLocations()">
                     <option value="">-- Chọn kho nguồn --</option>
                     @foreach (var w in warehouses)
                     {
@@ -97,7 +97,7 @@
 
             <div class="col-md-6">
                 <label class="form-label"><i class="bi bi-box-arrow-in-down me-2"></i>Kho Đích</label>
-                <select name="ToWarehouseId" class="form-select" required>
+                <select name="ToWarehouseId" id="ToWarehouseId" class="form-select" required onchange="loadToLocations()">
                     <option value="">-- Chọn kho đích --</option>
                     @foreach (var w in warehouses)
                     {
@@ -107,12 +107,28 @@
             </div>
         </div>
 
+        <div class="row mb-4 location-row" style="display: none;">
+            <div class="col-md-6">
+                <label class="form-label"><i class="bi bi-list-nested me-2"></i>Từ Kệ (Kho Nguồn)</label>
+                <select name="FromLocationId" id="FromLocationId" class="form-select">
+                    <option value="">-- Chọn kệ nguồn --</option>
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label"><i class="bi bi-list-nested me-2"></i>Đến Kệ (Kho Đích)</label>
+                <select name="ToLocationId" id="ToLocationId" class="form-select">
+                    <option value="">-- Chọn kệ đích --</option>
+                </select>
+            </div>
+        </div>
+
         <div class="row mb-4">
             <div class="col-md-6">
                 <label class="form-label"><i class="bi bi-tag me-2"></i>Loại Chuyển Kho</label>
-                <select name="TransferType" class="form-select" required>
+                <select name="TransferType" id="TransferType" class="form-select" required onchange="toggleLocationFields()">
                     <option value="">-- Chọn loại --</option>
-                    <option value="Internal">Chuyển Nội Bộ</option>
+                    <option value="Internal">Chuyển Nội Bộ (Rack to Rack)</option>
                     <option value="Return">Trả Hàng</option>
                     <option value="Damage">Hàng Hỏng</option>
                 </select>
@@ -150,3 +166,59 @@
         </div>
     </form>
 </div>
+
+@section Scripts {
+    <script>
+        function toggleLocationFields() {
+            const type = $('#TransferType').val();
+            if (type === 'Internal') {
+                $('.location-row').show();
+            } else {
+                $('.location-row').hide();
+                $('#FromLocationId').val('');
+                $('#ToLocationId').val('');
+            }
+            // If Internal, FromWarehouseId should be same as ToWarehouseId ideally, but validation handles it on POST
+        }
+
+        function loadFromLocations() {
+            const warehouseId = $('#FromWarehouseId').val();
+            const $dropdown = $('#FromLocationId');
+            $dropdown.empty().append('<option value="">-- Chọn kệ nguồn --</option>');
+            
+            if (warehouseId) {
+                $.get('/Transfer/GetLocationsByWarehouse?warehouseId=' + warehouseId, function (data) {
+                    $.each(data, function (i, item) {
+                        $dropdown.append($('<option>', {
+                            value: item.locationId,
+                            text: item.locationCode + (item.rack ? ' - ' + item.rack : '')
+                        }));
+                    });
+                });
+            }
+        }
+
+        function loadToLocations() {
+            const warehouseId = $('#ToWarehouseId').val();
+            const $dropdown = $('#ToLocationId');
+            $dropdown.empty().append('<option value="">-- Chọn kệ đích --</option>');
+            
+            if (warehouseId) {
+                $.get('/Transfer/GetLocationsByWarehouse?warehouseId=' + warehouseId, function (data) {
+                    $.each(data, function (i, item) {
+                        $dropdown.append($('<option>', {
+                            value: item.locationId,
+                            text: item.locationCode + (item.rack ? ' - ' + item.rack : '')
+                        }));
+                    });
+                });
+            }
+        }
+
+        $(document).ready(function() {
+            toggleLocationFields();
+            loadFromLocations();
+            loadToLocations();
+        });
+    </script>
+}

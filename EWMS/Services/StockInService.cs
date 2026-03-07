@@ -360,7 +360,7 @@ namespace EWMS.Services
                 {
                     PurchaseOrderId = po.PurchaseOrderId,
                     SupplierName = po.Supplier.SupplierName,
-                    ExpectedReceivingDate = po.ExpectedReceivingDate,
+                    ExpectedReceivingDate = po.CreatedAt,
                     TotalItems = totalItems,
                     ReceivedItems = receivedItems,
                     RemainingItems = totalItems - receivedItems,
