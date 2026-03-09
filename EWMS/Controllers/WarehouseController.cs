@@ -222,16 +222,11 @@ public class WarehouseController : Controller
         return View(viewModel);
     }
 
-    // POST: Warehouse/EditLocation/5
+    // POST: Warehouse/EditLocation
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> EditLocation(int id, EditLocationViewModel model)
+    public async Task<IActionResult> EditLocation(EditLocationViewModel model)
     {
-        if (id != model.LocationId)
-        {
-            return BadRequest();
-        }
-
         if (!ModelState.IsValid)
         {
             return View(model);
