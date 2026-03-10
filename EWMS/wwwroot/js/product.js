@@ -1,16 +1,9 @@
-// Product Management JavaScript - Markup Calculation & Validation
+// Product Management JavaScript - Simple Auto-calculation
 
-// Category markup suggestions (based on Vietnamese electronics retail margins)
-const categoryMarkupDefaults = {
-    1: { percent: 25, description: 'Laptops: typical 20-30% markup (Dell standard margin)' },
-    2: { percent: 21, description: 'Smartphones: Apple-controlled margin ~20-22%' },
-    3: { percent: 44, description: 'Audio: Sony accessories ~40-50% margin' },
-    4: { percent: 41, description: 'Monitors: Samsung displays ~35-45% markup' },
-    5: { percent: 56, description: 'Accessories: Logitech peripherals ~50-60% markup' }
-};
+// Fixed markup percentage (30%)
+const DEFAULT_MARKUP = 30;
 
-// Active state
-let activeMarkup = 25;
+// Track if user manually changed selling price
 let manualSellPrice = false;
 
 // Format currency (Vietnamese Dong)
@@ -22,19 +15,15 @@ function formatCurrency(value) {
     }).format(value);
 }
 
-// Calculate margin percentage
-function calculateMargin(cost, sell) {
-    if (sell <= 0) return 0;
-    return ((sell - cost) / sell * 100).toFixed(1);
+// Calculate markup percentage
+function calculateMarkup(cost, sell) {
+    if (cost <= 0) return 0;
+    return ((sell - cost) / cost * 100).toFixed(1);
 }
 
-// Get selected markup percentage
+// Get markup percentage (always use default)
 function getSelectedMarkup() {
-    const customInput = document.getElementById('custom-markup-input');
-    if (customInput && customInput.style.display !== 'none') {
-        return parseFloat(customInput.value) || 0;
-    }
-    return activeMarkup;
+    return DEFAULT_MARKUP;
 }
 
 // Apply markup to cost price
@@ -45,16 +34,15 @@ function applyMarkup() {
     if (!costInput || !sellInput) return;
 
     const cost = getNumericValue(costInput);
-    const markup = getSelectedMarkup();
+    const markup = DEFAULT_MARKUP;
 
-    if (cost > 0 && markup > 0) {
+    if (cost > 0) {
         const suggestedSell = Math.round(cost * (1 + markup / 100));
-        sellInput.value = suggestedSell.toLocaleString('en-US');
+        sellInput.value = suggestedSell;
         manualSellPrice = false;
     }
 
     updatePreview();
-    updateMarkupHint();
 }
 
 // Handle cost price change
@@ -90,112 +78,45 @@ function updatePreview() {
 
     if (prevCost) prevCost.textContent = formatCurrency(cost);
     if (prevSell) prevSell.textContent = formatCurrency(sell);
-    if (prevMargin) prevMargin.textContent = calculateMargin(cost, sell) + '%';
+    if (prevMargin) prevMargin.textContent = calculateMarkup(cost, sell) + '%';
     if (prevProfit) prevProfit.textContent = formatCurrency(Math.max(0, sell - cost));
 }
 
-// Select markup chip
-function selectMarkup(chip, percent) {
-    // Remove active class from all chips
-    document.querySelectorAll('.markup-chip').forEach(c => c.classList.remove('selected'));
-    
-    // Add active class to clicked chip
-    chip.classList.add('selected');
 
-    const customRow = document.getElementById('custom-markup-row');
-    
-    if (percent === 'custom') {
-        // Show custom input
-        if (customRow) customRow.style.display = 'block';
-    } else {
-        // Hide custom input and set markup
-        if (customRow) customRow.style.display = 'none';
-        activeMarkup = percent;
-        manualSellPrice = false;
-        applyMarkup();
-    }
-}
-
-// Update markup hint text
-function updateMarkupHint() {
-    const hint = document.getElementById('markup-hint');
-    if (!hint) return;
-
-    const cost = parseFloat(document.getElementById('CostPrice')?.value) || 0;
-    const markup = getSelectedMarkup();
-    const multiplier = (1 + markup / 100).toFixed(2);
-
-    hint.textContent = `Selling = Cost × (1 + ${markup}%) = ${formatCurrency(cost)} × ${multiplier}`;
-}
-
-// Handle category change
+// Handle category change (simplified - just update supplier display)
 function onCategoryChange() {
     const categorySelect = document.getElementById('CategoryId');
     if (!categorySelect) return;
 
     const categoryId = parseInt(categorySelect.value);
     
+    // Return early if no category selected
+    if (!categoryId) {
+        const supplierInput = document.getElementById('supplier-display');
+        if (supplierInput) {
+            supplierInput.value = '';
+        }
+        return;
+    }
+    
     // Fetch category details via AJAX
     fetch(`/Product/GetCategoryDetails?categoryId=${categoryId}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             // Update supplier display
             const supplierInput = document.getElementById('supplier-display');
             if (supplierInput) {
                 supplierInput.value = data.supplierName || 'N/A';
             }
-
-            // Update markup suggestion
-            if (data.suggestedMarkup) {
-                preselectChip(data.suggestedMarkup);
-                activeMarkup = data.suggestedMarkup;
-                
-                // Update hint
-                const hint = document.getElementById('markup-hint');
-                if (hint) {
-                    const description = categoryMarkupDefaults[categoryId]?.description || 
-                                      `Suggested markup for this category: ${data.suggestedMarkup}%`;
-                    hint.textContent = description;
-                }
-
-                // Apply new markup if not manually set
-                if (!manualSellPrice) {
-                    applyMarkup();
-                }
-            }
         })
         .catch(error => {
             console.error('Error fetching category details:', error);
         });
-}
-
-// Preselect markup chip based on percentage
-function preselectChip(percent) {
-    const chips = document.querySelectorAll('.markup-chip');
-    let found = false;
-
-    chips.forEach(chip => {
-        chip.classList.remove('selected');
-        const chipPercent = parseInt(chip.dataset.percent);
-        
-        if (chipPercent === percent) {
-            chip.classList.add('selected');
-            found = true;
-            activeMarkup = percent;
-        }
-    });
-
-    // If exact match not found, select custom
-    if (!found) {
-        const customChip = document.querySelector('.markup-chip[data-percent="custom"]');
-        if (customChip) {
-            customChip.classList.add('selected');
-            const customRow = document.getElementById('custom-markup-row');
-            const customInput = document.getElementById('custom-markup-input');
-            if (customRow) customRow.style.display = 'block';
-            if (customInput) customInput.value = percent;
-        }
-    }
 }
 
 // Format number input with thousand separators
@@ -222,8 +143,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const costInput = document.getElementById('CostPrice');
     const sellInput = document.getElementById('SellingPrice');
     const categorySelect = document.getElementById('CategoryId');
-    const autoButton = document.getElementById('auto-markup-btn');
-    const customInput = document.getElementById('custom-markup-input');
 
     if (costInput) {
         costInput.addEventListener('input', onCostChange);
@@ -240,21 +159,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (categorySelect.value) {
             onCategoryChange();
         }
-    }
-
-    if (autoButton) {
-        autoButton.addEventListener('click', function(e) {
-            e.preventDefault();
-            manualSellPrice = false;
-            applyMarkup();
-        });
-    }
-
-    if (customInput) {
-        customInput.addEventListener('input', function() {
-            activeMarkup = parseFloat(this.value) || 0;
-            applyMarkup();
-        });
     }
 
     // Initial preview update

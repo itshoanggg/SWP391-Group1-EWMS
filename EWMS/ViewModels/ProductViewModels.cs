@@ -27,7 +27,7 @@ namespace EWMS.ViewModels
         public string Unit { get; set; } = null!;
         public decimal CostPrice { get; set; }
         public decimal SellingPrice { get; set; }
-        public decimal ProfitMargin => SellingPrice > 0 ? ((SellingPrice - CostPrice) / SellingPrice * 100) : 0;
+        public decimal ProfitMargin => CostPrice > 0 ? ((SellingPrice - CostPrice) / CostPrice * 100) : 0;
     }
 
     // Details view
@@ -41,7 +41,7 @@ namespace EWMS.ViewModels
         public string Unit { get; set; } = null!;
         public decimal CostPrice { get; set; }
         public decimal SellingPrice { get; set; }
-        public decimal ProfitMargin => SellingPrice > 0 ? ((SellingPrice - CostPrice) / SellingPrice * 100) : 0;
+        public decimal ProfitMargin => CostPrice > 0 ? ((SellingPrice - CostPrice) / CostPrice * 100) : 0;
         public decimal ProfitPerUnit => SellingPrice - CostPrice;
         public List<WarehouseInventoryViewModel> InventoryByWarehouse { get; set; } = new List<WarehouseInventoryViewModel>();
         public int TotalInventory { get; set; }

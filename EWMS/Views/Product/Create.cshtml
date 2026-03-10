@@ -75,53 +75,17 @@
                     <input asp-for="CostPrice" type="text" class="form-control" id="CostPrice" placeholder="0" 
                            oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
                     <span asp-validation-for="CostPrice" class="text-danger"></span>
-                    <span class="form-hint">Enter amount in VND (e.g., 10000000 for 10 million)</span>
                 </div>
 
-                <!-- Selling Price with Auto button -->
+                <!-- Selling Price -->
                 <div class="form-group">
                     <label asp-for="SellingPrice"></label>
-                    <div class="sell-input-row">
-                        <input asp-for="SellingPrice" type="text" class="form-control" id="SellingPrice" placeholder="Auto-calculated or enter manually" 
-                               oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
-                        <span class="sell-auto-badge" id="auto-markup-btn" title="Re-apply suggested markup">
-                            <i class="bi bi-magic"></i> Auto
-                        </span>
-                    </div>
+                    <input asp-for="SellingPrice" type="text" class="form-control" id="SellingPrice" placeholder="Auto-calculated or enter manually" 
+                           oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
                     <span asp-validation-for="SellingPrice" class="text-danger"></span>
                 </div>
 
-                <!-- Markup Suggestion Box -->
-                <div class="form-group full">
-                    <div class="markup-box">
-                        <div class="markup-box-title">
-                            <i class="bi bi-percent"></i> Suggested Markup by Category
-                        </div>
-                        <div class="markup-chips">
-                            <div class="markup-chip selected" data-percent="25" onclick="selectMarkup(this, 25)">
-                                +25% <small>Standard</small>
-                            </div>
-                            <div class="markup-chip" data-percent="30" onclick="selectMarkup(this, 30)">
-                                +30% <small>Common</small>
-                            </div>
-                            <div class="markup-chip" data-percent="20" onclick="selectMarkup(this, 20)">
-                                +20% <small>Competitive</small>
-                            </div>
-                            <div class="markup-chip" data-percent="35" onclick="selectMarkup(this, 35)">
-                                +35% <small>High-end</small>
-                            </div>
-                            <div class="markup-chip" data-percent="custom" onclick="selectMarkup(this, 'custom')">
-                                Custom % <small>manual</small>
-                            </div>
-                        </div>
-                        <div id="custom-markup-row" style="display: none; margin-top: 10px;">
-                            <input type="number" id="custom-markup-input" class="form-control" placeholder="Enter markup %" style="width: 160px;" />
-                        </div>
-                        <div style="margin-top: 8px; font-size: 0.75rem; color: #4a5568;" id="markup-hint">
-                            Selling = Cost × (1 + 25%) — typical for electronics
-                        </div>
-                    </div>
-                </div>
+                <div class="form-group"></div>
 
                 <!-- Price Preview -->
                 <div class="form-group full">
@@ -136,7 +100,7 @@
                             <span class="pv-val" id="prev-sell">0 ₫</span>
                         </div>
                         <div class="pv-item">
-                            <span class="pv-label">Margin</span>
+                            <span class="pv-label">Markup</span>
                             <span class="pv-val margin-val" id="prev-margin">0%</span>
                         </div>
                         <div class="pv-item">

@@ -27,74 +27,70 @@
 }
 
 <div class="card">
-    <div class="card-header">
-        <h5>
-            <i class="bi bi-list-ul" style="color: var(--blue);"></i>
-            Product List
-        </h5>
+    <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <h3 class="mb-0">Product List</h3>
         <div class="d-flex align-items-center gap-2">
             @if (User.IsInRole("Admin"))
             {
-                <a asp-action="Create" class="btn btn-primary btn-sm">
-                    <i class="bi bi-plus-lg"></i> Add Product
+                <a asp-action="Create" class="btn btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add Product
                 </a>
             }
         </div>
-    </div>
-
-    <div class="table-controls">
-        <form asp-action="Index" method="get" class="d-flex gap-2 align-items-center w-100 flex-wrap">
-            <div class="search-box">
-                <i class="bi bi-search"></i>
-                <input type="text" name="search" value="@Model.SearchTerm" 
-                       placeholder="Search by name, category..." />
+        <form asp-action="Index" method="get" class="w-100 mt-2">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <input type="text" name="search" value="@Model.SearchTerm" class="form-control" placeholder="Search by name, category..." />
+                </div>
+                <div class="col-md-2">
+                    <select name="categoryId" class="form-select">
+                        <option value="">All Categories</option>
+                        @{
+                            var categories = ViewBag.Categories as List<EWMS.Models.ProductCategory>;
+                            if (categories != null)
+                            {
+                                foreach (var cat in categories)
+                                {
+                                    <option value="@cat.CategoryId" selected="@(Model.FilterCategoryId == cat.CategoryId ? "selected" : null)">
+                                        @cat.CategoryName
+                                    </option>
+                                }
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="supplierId" class="form-select">
+                        <option value="">All Suppliers</option>
+                        @{
+                            var suppliers = ViewBag.Suppliers as List<EWMS.Models.Supplier>;
+                            if (suppliers != null)
+                            {
+                                foreach (var sup in suppliers)
+                                {
+                                    <option value="@sup.SupplierId" selected="@(Model.FilterSupplierId == sup.SupplierId ? "selected" : null)">
+                                        @sup.SupplierName
+                                    </option>
+                                }
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-outline-primary">Filter</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
+                </div>
             </div>
-
-            <select name="categoryId" class="filter-select">
-                <option value="">All Categories</option>
-                @{
-                    var categories = ViewBag.Categories as List<EWMS.Models.ProductCategory>;
-                    if (categories != null)
-                    {
-                        foreach (var cat in categories)
-                        {
-                            <option value="@cat.CategoryId" selected="@(Model.FilterCategoryId == cat.CategoryId ? "selected" : null)">
-                                @cat.CategoryName
-                            </option>
-                        }
-                    }
-                }
-            </select>
-
-            <select name="supplierId" class="filter-select">
-                <option value="">All Suppliers</option>
-                @{
-                    var suppliers = ViewBag.Suppliers as List<EWMS.Models.Supplier>;
-                    if (suppliers != null)
-                    {
-                        foreach (var sup in suppliers)
-                        {
-                            <option value="@sup.SupplierId" selected="@(Model.FilterSupplierId == sup.SupplierId ? "selected" : null)">
-                                @sup.SupplierName
-                            </option>
-                        }
-                    }
-                }
-            </select>
-
-            <button type="submit" class="btn btn-outline-primary btn-sm">
-                <i class="bi bi-funnel"></i> Filter
-            </button>
-            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-x-circle"></i> Reset
-            </a>
-
             <input type="hidden" name="page" value="1" />
         </form>
     </div>
 
     <div class="table-container">
-        <table>
+        <table class="table table-hover">
             <thead>
                 <tr>
                     <th>Product ID</th>
@@ -104,7 +100,6 @@
                     <th>Unit</th>
                     <th>Cost Price</th>
                     <th>Selling Price</th>
-                    <th>Margin</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -114,44 +109,31 @@
                     @foreach (var product in Model.Products)
                     {
                         <tr>
-                            <td style="color: var(--text-muted); font-size: 0.78rem; font-family: 'Courier New', monospace;">PRD-@product.ProductId.ToString("D4")</td>
+                            <td><strong>PRD-@product.ProductId.ToString("D4")</strong></td>
+                            <td>@product.ProductName</td>
                             <td>
-                                <div class="product-name">@product.ProductName</div>
+                                <span class="badge badge-pending">@product.CategoryName</span>
                             </td>
                             <td>
-                                <span class="badge badge-blue">@product.CategoryName</span>
-                            </td>
-                            <td style="font-size: 0.82rem; color: var(--text-muted);">
                                 @(product.SupplierName ?? "N/A")
                             </td>
-                            <td style="font-size: 0.82rem;">@product.Unit</td>
+                            <td>@product.Unit</td>
+                            <td>@product.CostPrice.ToString("N0") ₫</td>
+                            <td><strong>@product.SellingPrice.ToString("N0") ₫</strong></td>
                             <td>
-                                <span class="price cost">@product.CostPrice.ToString("N0") ₫</span>
-                            </td>
-                            <td>
-                                <span class="price sell">@product.SellingPrice.ToString("N0") ₫</span>
-                            </td>
-                            <td>
-                                <span class="profit-pill">+@product.ProfitMargin.ToString("F1")%</span>
-                            </td>
-                            <td>
-                                <div style="display: flex; gap: 5px;">
-                                    <a asp-action="Details" asp-route-id="@product.ProductId" 
-                                       class="btn btn-outline btn-sm btn-icon" title="View Details">
-                                        <i class="bi bi-eye"></i>
+                                <a asp-action="Details" asp-route-id="@product.ProductId" class="btn btn-primary btn-sm">
+                                    View Details
+                                </a>
+                                @if (User.IsInRole("Admin"))
+                                {
+                                    <a asp-action="Edit" asp-route-id="@product.ProductId" class="btn btn-warning btn-sm">
+                                        Edit
                                     </a>
-                                    @if (User.IsInRole("Admin"))
-                                    {
-                                        <a asp-action="Edit" asp-route-id="@product.ProductId" 
-                                           class="btn btn-warning btn-sm btn-icon" title="Edit">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                        <button type="button" class="btn btn-danger btn-sm btn-icon" title="Delete"
-                                                onclick="openDeleteModal(@product.ProductId, '@product.ProductName')">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    }
-                                </div>
+                                    <button type="button" class="btn btn-danger btn-sm"
+                                            onclick="openDeleteModal(@product.ProductId, '@product.ProductName')">
+                                        Delete
+                                    </button>
+                                }
                             </td>
                         </tr>
                     }
@@ -159,12 +141,7 @@
                 else
                 {
                     <tr>
-                        <td colspan="9">
-                            <div class="empty-state">
-                                <i class="bi bi-search"></i>
-                                <p>No products found</p>
-                            </div>
-                        </td>
+                        <td colspan="8" class="text-center">No products found</td>
                     </tr>
                 }
             </tbody>
@@ -214,7 +191,7 @@
 </div>
 
 @section Styles {
-    <link rel="stylesheet" href="~/css/product.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/salesorder.css" />
 }
 
 <!-- Delete Confirmation Modal -->
