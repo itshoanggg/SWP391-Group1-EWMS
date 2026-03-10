@@ -1,0 +1,199 @@
+@model EWMS.ViewModels.InternalTransferViewModel
+@{
+    ViewData["Title"] = "Chuyển Kho Nội Bộ";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .transfer-header {
+        background: linear-gradient(180deg, #2c3e50, #34495e);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 15px rgba(44, 62, 80, 0.35);
+    }
+</style>
+
+<div class="transfer-header">
+    <h2><i class="bi bi-arrow-left-right me-2"></i>Chuyển Kho Nội Bộ</h2>
+    <p class="mb-0 mt-2" style="opacity: 0.9;">Chuyển sản phẩm giữa các vị trí trong cùng kho</p>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success mt-3 mb-4">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger mt-3 mb-4">
+        <i class="bi bi-exclamation-triangle me-2"></i>@TempData["Error"]
+    </div>
+}
+@if (ViewData.ModelState.ErrorCount > 0)
+{
+    <div class="alert alert-danger mb-4">
+        @Html.ValidationSummary(false, "", new { @class = "text-danger mb-0" })
+    </div>
+}
+
+<div class="card shadow-sm">
+    <div class="card-body p-4">
+        <form asp-action="InternalTransfer" method="post" id="transferForm">
+            @Html.AntiForgeryToken()
+            <div class="row mb-4">
+                <div class="col-md-6 border-end">
+                    <h5 class="text-primary mb-3"><i class="bi bi-box-arrow-right me-2"></i>Nguồn</h5>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Chọn Rack (*)</label>
+                        <select asp-for="FromRack" class="form-select" id="fromRack" required>
+                            <option value="">-- Chọn Rack --</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Chọn Vị Trí (*)</label>
+                        <select asp-for="FromLocationId" class="form-select" id="fromLocation" required>
+                            <option value="">-- Chọn Vị Trí --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <h5 class="text-success mb-3"><i class="bi bi-box-arrow-in-right me-2"></i>Đích</h5>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Chọn Rack (*)</label>
+                        <select asp-for="ToRack" class="form-select" id="toRack" required>
+                            <option value="">-- Chọn Rack --</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Chọn Vị Trí (*)</label>
+                        <select asp-for="ToLocationId" class="form-select" id="toLocation" required>
+                            <option value="">-- Chọn Vị Trí --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4 bg-light p-3 rounded">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Chọn Sản Phẩm (*)</label>
+                        <select asp-for="ProductId" class="form-select" id="productId" required>
+                            <option value="">-- Chọn Vị Trí Nguồn Trước --</option>
+                        </select>
+                        <small class="text-muted" id="availableStock">Số lượng khả dụng: 0</small>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Số Lượng Chuyển (*)</label>
+                        <input asp-for="Quantity" type="number" class="form-control" min="1" required />
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Lý Do / Ghi Chú</label>
+                        <textarea asp-for="Reason" class="form-control" rows="2"
+                            placeholder="Lý do chuyển kho..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-end">
+                <a asp-action="Index" class="btn btn-secondary px-4"><i class="bi bi-x-circle me-1"></i>Hủy</a>
+                <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save me-1"></i>Chuyển Kho</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        $(document).ready(function () {
+            const warehouseId = @ViewBag.WarehouseId;
+            let currentProducts = [];
+
+            // Load Racks
+            $.get(`/Stock/GetRacks?warehouseId=${warehouseId}`, function (data) {
+                if (data && !data.error) {
+                    data.forEach(function (r) {
+                        $('#fromRack').append(`<option value="${r.rack}">${r.rack}</option>`);
+                        $('#toRack').append(`<option value="${r.rack}">${r.rack}</option>`);
+                    });
+                }
+            });
+
+            // Load From Locations when From Rack changes
+            $('#fromRack').change(function () {
+                const rack = $(this).val();
+                $('#fromLocation').html('<option value="">-- Chọn Vị Trí --</option>');
+                $('#productId').html('<option value="">-- Chọn Vị Trí Nguồn Trước --</option>');
+                $('#availableStock').text('Số lượng khả dụng: 0');
+
+                if (rack) {
+                    $.get(`/Stock/GetLocationsByRack?warehouseId=${warehouseId}&rack=${rack}`, function (data) {
+                        if (data && !data.error) {
+                            data.forEach(function (l) {
+                                $('#fromLocation').append(`<option value="${l.locationId}">${l.locationCode} (${l.locationName || 'N/A'})</option>`);
+                            });
+                        }
+                    });
+                }
+            });
+
+            // Load To Locations when To Rack changes
+            $('#toRack').change(function () {
+                const rack = $(this).val();
+                $('#toLocation').html('<option value="">-- Chọn Vị Trí --</option>');
+
+                if (rack) {
+                    $.get(`/Stock/GetLocationsByRack?warehouseId=${warehouseId}&rack=${rack}`, function (data) {
+                        if (data && !data.error) {
+                            data.forEach(function (l) {
+                                $('#toLocation').append(`<option value="${l.locationId}">${l.locationCode} (${l.locationName || 'N/A'})</option>`);
+                            });
+                        }
+                    });
+                }
+            });
+
+            // Load Products when From Location changes
+            $('#fromLocation').change(function () {
+                const locationId = $(this).val();
+                $('#productId').html('<option value="">-- Chọn Sản Phẩm --</option>');
+                $('#availableStock').text('Số lượng khả dụng: 0');
+                currentProducts = [];
+
+                if (locationId) {
+                    $.get(`/Stock/GetProductsByLocation?locationId=${locationId}`, function (data) {
+                        if (data && !data.error) {
+                            currentProducts = data;
+                            data.forEach(function (p) {
+                                $('#productId').append(`<option value="${p.productId}">${p.sku} - ${p.productName} (SL: ${p.quantity})</option>`);
+                            });
+                        }
+                    });
+                }
+            });
+
+            // Update available stock based on selected product
+            $('#productId').change(function () {
+                const pId = $(this).val();
+                if (pId) {
+                    const prod = currentProducts.find(p => p.productId == pId);
+                    if (prod) {
+                        $('#availableStock').text(`Số lượng khả dụng: ${prod.quantity}`);
+                        $('#Quantity').attr('max', prod.quantity);
+                    }
+                } else {
+                    $('#availableStock').text('Số lượng khả dụng: 0');
+                    $('#Quantity').removeAttr('max');
+                }
+            });
+        });
+    </script>
+}
