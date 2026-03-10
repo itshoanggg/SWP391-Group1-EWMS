@@ -42,7 +42,11 @@
                 <label class="form-label">Role</label>
                 <select asp-for="RoleId" class="form-select">
                     <option value="">-- Select role --</option>
-                    @foreach (var r in roles) { <option value="@r.RoleId" selected="@(Model.RoleId==r.RoleId? "selected": null)">@r.RoleName</option> }
+                    @foreach (var r in roles)
+                    {
+                        <option value="@r.RoleId"
+                            selected="@(Model.RoleId==r.RoleId? "selected": null)">@r.RoleName</option>
+                    }
                 </select>
             </div>
 
@@ -52,7 +56,8 @@
                     @foreach (var w in warehouses)
                     {
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="WarehouseIds" value="@w.WarehouseId" id="w_@w.WarehouseId" @(selected.Contains(w.WarehouseId) ? "checked" : "") />
+                            <input class="form-check-input" type="checkbox" name="WarehouseIds" value="@w.WarehouseId"
+                                id="w_@w.WarehouseId" @(selected.Contains(w.WarehouseId) ? "checked" : "") />
                             <label class="form-check-label" for="w_@w.WarehouseId">@w.WarehouseName</label>
                         </div>
                     }
@@ -74,4 +79,33 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        $(document).ready(function () {
+            function updateWarehouseCheckboxes() {
+                var selectedRoleId = $('#RoleId').val();
+                if (!selectedRoleId) return;
+
+                var selectedRoleText = $('#RoleId option:selected').text();
+                var isManager = selectedRoleText === 'Admin' || selectedRoleText === 'Warehouse Manager';
+
+                if (!isManager) {
+                    var checkedCount = $('input[name="WarehouseIds"]:checked').length;
+
+                    if (checkedCount >= 1) {
+                        $('input[name="WarehouseIds"]:not(:checked)').prop('disabled', true);
+                    } else {
+                        $('input[name="WarehouseIds"]').prop('disabled', false);
+                    }
+                } else {
+                    $('input[name="WarehouseIds"]').prop('disabled', false);
+                }
+            }
+
+            $('#RoleId').change(updateWarehouseCheckboxes);
+            $('input[name="WarehouseIds"]').change(updateWarehouseCheckboxes);
+
+            // Initial run on load
+            updateWarehouseCheckboxes();
+        });
+    </script>
 }
