@@ -95,5 +95,74 @@ namespace EWMS.Services
                 UtilizationRate = utilizationRate
             };
         }
+
+        public async Task<bool> PerformInternalTransferAsync(int warehouseId, int fromLocationId, int toLocationId, int productId, int quantity, int userId, string? reason)
+        {
+            var dbContext = _unitOfWork.Inventories.Context;
+            using var transaction = await dbContext.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Verify source inventory
+                var sourceInventory = await dbContext.Inventories
+                    .FirstOrDefaultAsync(i => i.LocationId == fromLocationId && i.ProductId == productId);
+
+                if (sourceInventory == null || sourceInventory.Quantity < quantity)
+                    throw new Exception("Sản phẩm không đủ số lượng tại vị trí nguồn.");
+
+                // Validate locations belong to warehouse
+                var fromLocation = await dbContext.Locations.FirstOrDefaultAsync(l => l.LocationId == fromLocationId && l.WarehouseId == warehouseId);
+                var toLocation = await dbContext.Locations.FirstOrDefaultAsync(l => l.LocationId == toLocationId && l.WarehouseId == warehouseId);
+
+                if (fromLocation == null || toLocation == null)
+                    throw new Exception("Vị trí không hợp lệ hoặc không thuộc kho hiện tại.");
+
+                // Deduct from source
+                sourceInventory.Quantity -= quantity;
+                sourceInventory.LastUpdated = DateTime.Now;
+
+                // Add to destination
+                var destInventory = await dbContext.Inventories
+                    .FirstOrDefaultAsync(i => i.LocationId == toLocationId && i.ProductId == productId);
+
+                if (destInventory != null)
+                {
+                    destInventory.Quantity = (destInventory.Quantity ?? 0) + quantity;
+                    destInventory.LastUpdated = DateTime.Now;
+                }
+                else
+                {
+                    destInventory = new Models.Inventory
+                    {
+                        LocationId = toLocationId,
+                        ProductId = productId,
+                        Quantity = quantity,
+                        LastUpdated = DateTime.Now
+                    };
+                    dbContext.Inventories.Add(destInventory);
+                }
+
+                // Log Activity
+                var log = new Models.ActivityLog
+                {
+                    UserId = userId,
+                    Action = "Internal Transfer",
+                    TableName = "Inventory",
+                    RecordId = sourceInventory.InventoryId,
+                    Description = $"Transferred {quantity} of product {productId} from {fromLocation.Rack}-{fromLocation.LocationCode} to {toLocation.Rack}-{toLocation.LocationCode}. Reason: {reason}",
+                    CreatedAt = DateTime.Now
+                };
+                dbContext.ActivityLogs.Add(log);
+
+                await dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return true;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
     }
 }

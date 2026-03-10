@@ -133,5 +133,70 @@ namespace EWMS.Controllers
                 return Json(new { error = ex.Message });
             }
         }
+        // GET: Stock/InternalTransfer
+        [HttpGet]
+        public async Task<IActionResult> InternalTransfer()
+        {
+            var userId = _userService.GetCurrentUserId();
+            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            if (warehouseId == 0)
+            {
+                TempData["Error"] = "Cần phân công kho cho tài khoản của bạn trước khi thực hiện chuyển kho nội bộ.";
+                return RedirectToAction("Index", "Home");
+            }
+            ViewBag.WarehouseId = warehouseId;
+            return View(new ViewModels.InternalTransferViewModel());
+        }
+
+        // POST: Stock/InternalTransfer
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> InternalTransfer(ViewModels.InternalTransferViewModel model)
+        {
+            var userId = _userService.GetCurrentUserId();
+            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            if (warehouseId == 0)
+            {
+                TempData["Error"] = "Cần phân công kho cho tài khoản của bạn trước khi thực hiện chuyển kho nội bộ.";
+                return RedirectToAction("Index", "Home");
+            }
+            ViewBag.WarehouseId = warehouseId;
+
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            if (model.FromLocationId == model.ToLocationId)
+            {
+                ModelState.AddModelError("", "Vị trí nguồn và đích phải khác nhau.");
+                return View(model);
+            }
+
+            try
+            {
+                var success = await _stockService.PerformInternalTransferAsync(
+                    warehouseId,
+                    model.FromLocationId,
+                    model.ToLocationId,
+                    model.ProductId,
+                    model.Quantity,
+                    userId,
+                    model.Reason
+                );
+
+                if (success)
+                {
+                    TempData["Success"] = "Chuyển kho nội bộ thành công.";
+                    return RedirectToAction(nameof(InternalTransfer));
+                }
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("", ex.Message);
+            }
+
+            return View(model);
+        }
     }
 }
