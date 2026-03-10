@@ -16,7 +16,8 @@
             @foreach (var w in Model.AvailableWarehouses)
             {
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="SelectedWarehouseIds" value="@w.WarehouseId" id="w_@w.WarehouseId" @(Model.SelectedWarehouseIds.Contains(w.WarehouseId) ? "checked" : "") />
+                    <input class="form-check-input" type="checkbox" name="SelectedWarehouseIds" value="@w.WarehouseId"
+                        id="w_@w.WarehouseId" @(Model.SelectedWarehouseIds.Contains(w.WarehouseId) ? "checked" : "") />
                     <label class="form-check-label" for="w_@w.WarehouseId">@w.WarehouseName</label>
                 </div>
             }
@@ -28,3 +29,28 @@
         <button type="submit" class="btn btn-primary">Save</button>
     </div>
 </form>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            var isManager = @((ViewBag.IsManager ?? false).ToString().ToLower());
+
+            function updateWarehouseCheckboxes() {
+                if (!isManager) {
+                    var checkedCount = $('input[name="SelectedWarehouseIds"]:checked').length;
+
+                    if (checkedCount >= 1) {
+                        $('input[name="SelectedWarehouseIds"]:not(:checked)').prop('disabled', true);
+                    } else {
+                        $('input[name="SelectedWarehouseIds"]').prop('disabled', false);
+                    }
+                }
+            }
+
+            $('input[name="SelectedWarehouseIds"]').change(updateWarehouseCheckboxes);
+
+            // Initial run on load
+            updateWarehouseCheckboxes();
+        });
+    </script>
+}

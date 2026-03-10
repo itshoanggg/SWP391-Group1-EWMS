@@ -15,33 +15,41 @@
         color: white;
         box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
     }
+
     .page-header h2 {
         margin: 0;
         font-weight: 600;
         font-size: 26px;
     }
+
     .form-card {
         background: white;
         border-radius: 15px;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
         padding: 35px;
     }
+
     .form-label {
         font-weight: 600;
         color: #495057;
         margin-bottom: 8px;
         font-size: 14px;
     }
-    .form-control, .form-select {
+
+    .form-control,
+    .form-select {
         border: 2px solid #e9ecef;
         border-radius: 8px;
         padding: 10px 15px;
         transition: all 0.3s ease;
     }
-    .form-control:focus, .form-select:focus {
+
+    .form-control:focus,
+    .form-select:focus {
         border-color: #667eea;
         box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
     }
+
     .warehouses-container {
         max-height: 220px;
         overflow-y: auto;
@@ -50,19 +58,23 @@
         padding: 15px;
         background: #f8f9fa;
     }
+
     .form-check {
         padding: 8px 12px;
         margin-bottom: 5px;
         border-radius: 6px;
         transition: background 0.2s ease;
     }
+
     .form-check:hover {
         background: #e9ecef;
     }
+
     .form-check-input:checked {
         background-color: #667eea;
         border-color: #667eea;
     }
+
     .btn-cancel {
         background: #f8f9fa;
         color: #495057;
@@ -72,11 +84,13 @@
         font-weight: 600;
         transition: all 0.3s ease;
     }
+
     .btn-cancel:hover {
         background: #e9ecef;
         border-color: #adb5bd;
         color: #495057;
     }
+
     .btn-create {
         background: #667eea;
         color: white;
@@ -86,19 +100,23 @@
         font-weight: 600;
         transition: all 0.3s ease;
     }
+
     .btn-create:hover {
         background: #5568d3;
         border-color: #5568d3;
         color: white;
     }
+
     .section-divider {
         background: #dee2e6;
         height: 1px;
         margin: 25px 0;
     }
+
     .input-icon {
         position: relative;
     }
+
     .input-icon i {
         position: absolute;
         left: 15px;
@@ -106,9 +124,11 @@
         transform: translateY(-50%);
         color: #adb5bd;
     }
+
     .input-icon .form-control {
         padding-left: 45px;
     }
+
     .password-hint {
         font-size: 12px;
         color: #6c757d;
@@ -117,6 +137,7 @@
         align-items: center;
         gap: 5px;
     }
+
     .active-switch {
         background: #e9ecef;
         padding: 15px;
@@ -138,7 +159,7 @@
         <div class="row">
             <div class="col-md-6">
                 <h5 class="mb-3"><i class="fas fa-user-circle me-2" style="color: #667eea;"></i>Account Information</h5>
-                
+
                 <div class="mb-3">
                     <label class="form-label"><i class="fas fa-user me-2"></i>Username</label>
                     <input asp-for="Username" class="form-control" placeholder="Enter username" />
@@ -147,7 +168,8 @@
 
                 <div class="mb-3">
                     <label class="form-label"><i class="fas fa-key me-2"></i>Password</label>
-                    <input asp-for="Password" type="password" class="form-control" placeholder="Leave blank for default (123456)" />
+                    <input asp-for="Password" type="password" class="form-control"
+                        placeholder="Leave blank for default (123456)" />
                     <div class="password-hint">
                         <i class="fas fa-info-circle"></i>
                         <span>Default password will be set if left empty</span>
@@ -194,7 +216,8 @@
                             @foreach (var w in warehouses)
                             {
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="WarehouseIds" value="@w.WarehouseId" id="w_@w.WarehouseId" />
+                                    <input class="form-check-input" type="checkbox" name="WarehouseIds" value="@w.WarehouseId"
+                                        id="w_@w.WarehouseId" />
                                     <label class="form-check-label" for="w_@w.WarehouseId">
                                         <i class="fas fa-building me-2" style="color: #667eea;"></i>@w.WarehouseName
                                     </label>
@@ -235,4 +258,33 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        $(document).ready(function () {
+            function updateWarehouseCheckboxes() {
+                var selectedRoleId = $('#RoleId').val();
+                if (!selectedRoleId) return;
+
+                var selectedRoleText = $('#RoleId option:selected').text();
+                var isManager = selectedRoleText === 'Admin' || selectedRoleText === 'Warehouse Manager';
+
+                if (!isManager) {
+                    var checkedCount = $('input[name="WarehouseIds"]:checked').length;
+
+                    if (checkedCount >= 1) {
+                        $('input[name="WarehouseIds"]:not(:checked)').prop('disabled', true);
+                    } else {
+                        $('input[name="WarehouseIds"]').prop('disabled', false);
+                    }
+                } else {
+                    $('input[name="WarehouseIds"]').prop('disabled', false);
+                }
+            }
+
+            $('#RoleId').change(updateWarehouseCheckboxes);
+            $('input[name="WarehouseIds"]').change(updateWarehouseCheckboxes);
+
+            // Initial run on load
+            updateWarehouseCheckboxes();
+        });
+    </script>
 }

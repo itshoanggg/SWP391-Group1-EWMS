@@ -74,6 +74,15 @@ namespace EWMS.Controllers
                 return View(model);
             }
 
+            // check warehouse restriction for non-managers
+            var role = await _db.Roles.FindAsync(model.RoleId);
+            bool isManager = role?.RoleName == "Admin" || role?.RoleName == "Warehouse Manager";
+            if (!isManager && model.WarehouseIds != null && model.WarehouseIds.Count > 1)
+            {
+                ModelState.AddModelError("WarehouseIds", "Non-manager roles can only be assigned to a maximum of 1 warehouse.");
+                return View(model);
+            }
+
             var user = new User
             {
                 Username = model.Username,
@@ -146,6 +155,15 @@ namespace EWMS.Controllers
 
             if (!ModelState.IsValid)
                 return View(model);
+
+            // check warehouse restriction for non-managers
+            var role = await _db.Roles.FindAsync(model.RoleId);
+            bool isManager = role?.RoleName == "Admin" || role?.RoleName == "Warehouse Manager";
+            if (!isManager && model.WarehouseIds != null && model.WarehouseIds.Count > 1)
+            {
+                ModelState.AddModelError("WarehouseIds", "Non-manager roles can only be assigned to a maximum of 1 warehouse.");
+                return View(model);
+            }
 
             var user = await _db.Users
                 .Include(u => u.UserWarehouses)
@@ -269,9 +287,12 @@ namespace EWMS.Controllers
         {
             var user = await _db.Users
                 .Include(u => u.UserWarehouses)
+                .Include(u => u.Role)
                 .SingleOrDefaultAsync(u => u.UserId == id);
 
             if (user == null) return NotFound();
+
+            ViewBag.IsManager = user.Role?.RoleName == "Admin" || user.Role?.RoleName == "Warehouse Manager";
 
             var warehouses = await _db.Warehouses.OrderBy(w => w.WarehouseName).ToListAsync();
             var model = new AssignDepartmentsViewModel
@@ -297,8 +318,18 @@ namespace EWMS.Controllers
                 return View(model);
             }
 
-            var user = await _db.Users.Include(u => u.UserWarehouses).SingleOrDefaultAsync(u => u.UserId == model.UserId);
+            var user = await _db.Users.Include(u => u.UserWarehouses).Include(u => u.Role).SingleOrDefaultAsync(u => u.UserId == model.UserId);
             if (user == null) return NotFound();
+
+            // check warehouse restriction for non-managers
+            bool isManager = user.Role?.RoleName == "Admin" || user.Role?.RoleName == "Warehouse Manager";
+            if (!isManager && model.SelectedWarehouseIds != null && model.SelectedWarehouseIds.Count > 1)
+            {
+                ModelState.AddModelError("SelectedWarehouseIds", "Non-manager roles can only be assigned to a maximum of 1 warehouse.");
+                model.AvailableWarehouses = (await _db.Warehouses.OrderBy(w => w.WarehouseName).ToListAsync())
+                    .Select(w => new WarehouseSelectItem { WarehouseId = w.WarehouseId, WarehouseName = w.WarehouseName }).ToList();
+                return View(model);
+            }
 
             // remove all existing
             _db.UserWarehouses.RemoveRange(user.UserWarehouses);
