@@ -19,5 +19,53 @@ namespace EWMS.Repositories
             
             return warehouse;
         }
+
+        public async Task<(List<Warehouse> Warehouses, int TotalCount)> GetWarehousesPagedAsync(
+            int page, 
+            int pageSize, 
+            string? searchQuery)
+        {
+            var query = _context.Warehouses
+                .Include(w => w.Locations)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                searchQuery = searchQuery.ToLower();
+                query = query.Where(w => 
+                    w.WarehouseName.ToLower().Contains(searchQuery) ||
+                    (w.Address != null && w.Address.ToLower().Contains(searchQuery)));
+            }
+
+            var totalCount = await query.CountAsync();
+
+            var warehouses = await query
+                .OrderBy(w => w.WarehouseId)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (warehouses, totalCount);
+        }
+
+        public async Task<Warehouse?> GetWarehouseWithLocationsAsync(int warehouseId)
+        {
+            return await _context.Warehouses
+                .Include(w => w.Locations)
+                    .ThenInclude(l => l.Inventories)
+                .FirstOrDefaultAsync(w => w.WarehouseId == warehouseId);
+        }
+
+        public async Task<bool> WarehouseExistsAsync(int warehouseId)
+        {
+            return await _context.Warehouses.AnyAsync(w => w.WarehouseId == warehouseId);
+        }
+
+        public async Task<List<Warehouse>> GetAllWarehousesAsync()
+        {
+            return await _context.Warehouses
+                .OrderBy(w => w.WarehouseName)
+                .ToListAsync();
+        }
     }
 }

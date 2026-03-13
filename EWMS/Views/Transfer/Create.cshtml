@@ -71,13 +71,13 @@
 
 @if (ViewData.ModelState.ErrorCount > 0)
 {
-    <div class="alert alert-danger mb-4">
-        <i class="bi bi-exclamation-circle me-2"></i>
-        <strong>Error:</strong> Please check the information.
-        <div class="mb-0 mt-2">
+        <div class="alert alert-danger mb-4">
+            <i class="bi bi-exclamation-circle me-2"></i>
+            <strong>Error:</strong> Please check the information.
+            <div class="mb-0 mt-2">
             @Html.ValidationSummary(false, "", new { @class = "text-danger" })
+            </div>
         </div>
-    </div>
 }
 
 <div class="form-card">
@@ -91,7 +91,7 @@
                     <option value="">-- Select Source Warehouse --</option>
                     @foreach (var w in warehouses)
                     {
-                        <option value="@w.WarehouseId">@w.WarehouseName</option>
+                            <option value="@w.WarehouseId">@w.WarehouseName</option>
                     }
                 </select>
             </div>
@@ -102,7 +102,7 @@
                     <option value="">-- Select Destination Warehouse --</option>
                     @foreach (var w in warehouses)
                     {
-                        <option value="@w.WarehouseId">@w.WarehouseName</option>
+                            <option value="@w.WarehouseId">@w.WarehouseName</option>
                     }
                 </select>
             </div>
@@ -113,7 +113,6 @@
                 <label class="form-label"><i class="bi bi-tag me-2"></i>Transfer Type</label>
                 <select name="TransferType" class="form-select" required>
                     <option value="">-- Select Type --</option>
-                    <option value="Internal">Internal Transfer</option>
                     <option value="Return">Return</option>
                     <option value="Damage">Damaged Goods</option>
                 </select>
@@ -125,7 +124,7 @@
                     <option value="">-- Select Product --</option>
                     @foreach (var p in products)
                     {
-                        <option value="@p.ProductId">@p.ProductName</option>
+                            <option value="@p.ProductId">@p.ProductName</option>
                     }
                 </select>
             </div>

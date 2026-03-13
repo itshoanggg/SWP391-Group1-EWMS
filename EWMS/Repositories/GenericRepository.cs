@@ -57,5 +57,10 @@ namespace EWMS.Repositories
         {
             return await _dbSet.AnyAsync(predicate);
         }
+
+        public virtual async Task SaveAsync()
+        {
+            await _context.SaveChangesAsync();
+        }
     }
 }

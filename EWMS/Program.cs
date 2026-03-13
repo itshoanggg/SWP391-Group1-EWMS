@@ -51,14 +51,20 @@ namespace EWMS
 
             // Register Master Repositories/Services (Sales/StockOut/InventoryCheck)
             builder.Services.AddScoped<EWMS.Repositories.IInventoryRepository, InventoryRepository>();
+            builder.Services.AddScoped<EWMS.Repositories.Interfaces.IInventoryRepository, InventoryRepository>();
             builder.Services.AddScoped<ISalesOrderRepository, SalesOrderRepository>();
             builder.Services.AddScoped<EWMS.Repositories.IProductRepository, ProductRepository>();
+            builder.Services.AddScoped<EWMS.Repositories.Interfaces.IProductRepository, ProductRepository>();
             builder.Services.AddScoped<IStockOutReceiptRepository, StockOutReceiptRepository>();
             builder.Services.AddScoped<EWMS.Repositories.ILocationRepository, LocationRepository>();
+            builder.Services.AddScoped<EWMS.Repositories.Interfaces.ILocationRepository, LocationRepository>();
+            builder.Services.AddScoped<EWMS.Repositories.Interfaces.IWarehouseRepository, WarehouseRepository>();
             builder.Services.AddScoped<IWarehouseRepository, WarehouseRepository>();
+            builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
             builder.Services.AddScoped<IInventoryCheckService, InventoryCheckService>();
             builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
             builder.Services.AddScoped<IStockOutReceiptService, StockOutReceiptService>();
+            builder.Services.AddScoped<IWarehouseService, WarehouseService>();
 
             // Register Unit of Work and legacy-style services that depend on it
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();

@@ -1,0 +1,76 @@
+@model EWMS.ViewModels.EditWarehouseViewModel
+
+@{
+    ViewData["Title"] = "Edit Warehouse";
+    Layout = "~/Views/Shared/_LayoutWarehouseManager.cshtml";
+}
+
+<div class="breadcrumb">
+    <a asp-action="Index">Warehouses</a>
+    <span class="sep">&gt;</span>
+    <a asp-action="Details" asp-route-id="@Model.WarehouseId">Details</a>
+    <span class="sep">&gt;</span>
+    <span>Edit</span>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="mb-0">Edit Warehouse Information</h3>
+    </div>
+    <div class="card-body">
+        <form asp-action="Edit" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="WarehouseId" />
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="WarehouseName" class="form-label">
+                    Warehouse Name <span class="req">*</span>
+                </label>
+                <input asp-for="WarehouseName" class="form-control" />
+                <span asp-validation-for="WarehouseName" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Address" class="form-label">
+                    Address <span class="req">*</span>
+                </label>
+                <input asp-for="Address" class="form-control" />
+                <span asp-validation-for="Address" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Prefix" class="form-label">
+                    Warehouse Prefix
+                </label>
+                <input asp-for="Prefix" class="form-control" style="font-family:'Courier New',monospace;text-transform:uppercase;" />
+                <div class="form-hint">Do not change prefix if locations already use the old code.</div>
+                <span asp-validation-for="Prefix" class="text-danger"></span>
+            </div>
+
+            <hr class="my-4" />
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Save Changes
+                </button>
+                <a asp-action="Details" asp-route-id="@Model.WarehouseId" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/Warehouse/warehouse.css" />
+}
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        document.getElementById('Prefix').addEventListener('input', function() {
+            this.value = this.value.toUpperCase().replace(/[^A-Z]/g, '');
+        });
+    </script>
+}

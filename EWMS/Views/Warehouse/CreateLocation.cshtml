@@ -1,0 +1,168 @@
+@model EWMS.ViewModels.CreateLocationViewModel
+
+@{
+    ViewData["Title"] = "Add Location";
+    Layout = "~/Views/Shared/_LayoutWarehouseManager.cshtml";
+}
+
+<div class="breadcrumb">
+    <a asp-action="Index">Warehouses</a>
+    <span class="sep">&gt;</span>
+    <a asp-action="LocationList">Locations</a>
+    <span class="sep">&gt;</span>
+    <span>Create New</span>
+</div>
+
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <div class="card-header">
+        <h3 class="mb-0">Add New Location</h3>
+    </div>
+    <div class="card-body">
+        <form asp-action="CreateLocation" method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="WarehouseId" class="form-label">
+                    Warehouse <span class="req">*</span>
+                </label>
+                <select asp-for="WarehouseId" class="form-select" id="warehouseSelect">
+                    <option value="">-- Select Warehouse --</option>
+                    @foreach (var wh in Model.Warehouses)
+                    {
+                        <option value="@wh.WarehouseId">@wh.WarehouseName</option>
+                    }
+                </select>
+                <span asp-validation-for="WarehouseId" class="text-danger"></span>
+            </div>
+
+            <div class="row">
+                <div class="col-md-7">
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Location Code <span class="req">*</span>
+                            <small class="text-muted">- prefix auto-filled</small>
+                        </label>
+                        <div style="display:flex;">
+                            <span id="prefixSpan" style="background:#e3f2fd;border:1px solid var(--blue);border-right:none;
+                                border-radius:6px 0 0 6px;padding:10px;font-family:'Courier New',monospace;
+                                font-size:0.9rem;color:var(--navy);font-weight:700;white-space:nowrap;min-width:52px;text-align:center;">??-</span>
+                            <input asp-for="LocationCode" class="form-control" id="suffixInput" placeholder="A1-01"
+                                style="border-radius:0 6px 6px 0;border-left:none;font-family:'Courier New',monospace;" />
+                        </div>
+                        <div class="form-hint" id="previewHint" style="color:var(--navy);font-weight:600;font-family:'Courier New',monospace;min-height:16px;"></div>
+                        <span asp-validation-for="LocationCode" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div class="mb-3">
+                        <label asp-for="Rack" class="form-label">
+                            Rack <span class="req">*</span>
+                            <small class="text-muted">- auto-filled</small>
+                        </label>
+                        <input asp-for="Rack" class="form-control auto-filled" id="rackInput" placeholder="A1" />
+                        <span asp-validation-for="Rack" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-7">
+                    <div class="mb-3">
+                        <label asp-for="LocationName" class="form-label">
+                            Location Name
+                            <small class="text-muted">- auto-filled</small>
+                        </label>
+                        <input asp-for="LocationName" class="form-control auto-filled" id="nameInput" placeholder="Rack A1 Slot 01" />
+                        <span asp-validation-for="LocationName" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div class="mb-3">
+                        <label asp-for="Capacity" class="form-label">
+                            Capacity (units) <span class="req">*</span>
+                        </label>
+                        <input asp-for="Capacity" class="form-control" type="number" placeholder="200" min="1" />
+                        <span asp-validation-for="Capacity" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-4" />
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Add Location
+                </button>
+                <a asp-action="LocationList" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/Warehouse/warehouse.css" />
+}
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        let nameEdited = false;
+        let rackEdited = false;
+
+        // When warehouse changes, fetch prefix
+        document.getElementById('warehouseSelect').addEventListener('change', async function() {
+            const warehouseId = this.value;
+            const prefixSpan = document.getElementById('prefixSpan');
+            
+            if (!warehouseId) {
+                prefixSpan.textContent = '??-';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/Warehouse/GetWarehousePrefix?warehouseId=${warehouseId}`);
+                const data = await response.json();
+                prefixSpan.textContent = (data.prefix || '??') + '-';
+            } catch (error) {
+                console.error('Error fetching prefix:', error);
+                prefixSpan.textContent = '??-';
+            }
+        });
+
+        // Auto-fill location details from suffix
+        document.getElementById('suffixInput').addEventListener('input', function() {
+            const suffix = this.value.trim();
+            const prefix = document.getElementById('prefixSpan').textContent;
+            const previewHint = document.getElementById('previewHint');
+            const rackInput = document.getElementById('rackInput');
+            const nameInput = document.getElementById('nameInput');
+
+            // Update preview
+            previewHint.textContent = suffix ? `→ ${prefix}${suffix}` : '';
+
+            // Auto-fill rack and name
+            const parts = suffix.split('-');
+            const rack = parts[0] || '';
+            const slot = parts[1] || '';
+
+            if (!rackEdited && rack) {
+                rackInput.value = rack;
+            }
+
+            if (!nameEdited && rack && slot) {
+                nameInput.value = `Rack ${rack} Slot ${slot}`;
+            }
+        });
+
+        document.getElementById('nameInput').addEventListener('input', function() {
+            nameEdited = true;
+        });
+
+        document.getElementById('rackInput').addEventListener('input', function() {
+            rackEdited = true;
+        });
+    </script>
+}

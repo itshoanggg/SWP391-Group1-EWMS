@@ -9,5 +9,9 @@ namespace EWMS.Repositories
         Task<Location?> GetLocationByIdAsync(int locationId);
         Task<List<LocationInventoryDto>> GetLocationInventoryByProductAsync(int warehouseId, int productId);
         Task<int> GetAvailableQuantityAsync(int productId, int locationId);
+        Task<(List<Location> Locations, int TotalCount)> GetLocationsPagedAsync(int page, int pageSize, string? searchQuery, int? warehouseId);
+        Task<Location?> GetLocationWithInventoryAsync(int locationId);
+        Task<bool> LocationCodeExistsAsync(string locationCode, int warehouseId, int? excludeLocationId = null);
+        Task<int> GetLocationUsedCapacityAsync(int locationId);
     }
 }

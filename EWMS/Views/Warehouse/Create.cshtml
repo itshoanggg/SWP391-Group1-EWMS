@@ -1,0 +1,205 @@
+@model EWMS.ViewModels.CreateWarehouseViewModel
+
+@{
+    ViewData["Title"] = "Create Warehouse";
+    Layout = "~/Views/Shared/_LayoutWarehouseManager.cshtml";
+}
+
+<div class="breadcrumb">
+    <a asp-action="Index">Warehouses</a>
+    <span class="sep">&gt;</span>
+    <span>Create New</span>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="mb-0">Add New Warehouse</h3>
+    </div>
+    <div class="card-body">
+        <form asp-action="Create" method="post" id="createWarehouseForm">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="WarehouseName" class="form-label">
+                    Warehouse Name <span class="req">*</span>
+                </label>
+                <input asp-for="WarehouseName" class="form-control" placeholder="e.g., Hue City Warehouse" id="warehouseName" />
+                <span asp-validation-for="WarehouseName" class="text-danger"></span>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label asp-for="Address" class="form-label">
+                            Address <span class="req">*</span>
+                        </label>
+                        <input asp-for="Address" class="form-control" placeholder="Street, District, City/Province" />
+                        <span asp-validation-for="Address" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label asp-for="Prefix" class="form-label">
+                            Warehouse Prefix <span class="req">*</span>
+                            <small class="text-muted">- for location codes</small>
+                        </label>
+                        <input asp-for="Prefix" class="form-control" placeholder="e.g., HUE" maxlength="5" 
+                               style="font-family:'Courier New',monospace;text-transform:uppercase;" id="prefixInput" />
+                        <div class="form-hint">2-4 uppercase letters. Will auto-fill location codes below.</div>
+                        <span asp-validation-for="Prefix" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-4" />
+
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h5 class="mb-0">
+                    Add Locations Now <small class="text-muted">(optional)</small>
+                </h5>
+            </div>
+
+            <div class="col-headers">
+                <span>Location Code</span>
+                <span>Name</span>
+                <span>Rack</span>
+                <span>Capacity</span>
+                <span></span>
+            </div>
+
+            <div id="locationsContainer" class="loc-rows mb-2">
+                <!-- Location rows will be added here -->
+            </div>
+
+            <button type="button" class="add-loc-row-btn" id="addLocationBtn">
+                <i class="bi bi-plus-circle"></i> Add Location Row
+            </button>
+
+            <hr class="my-4" />
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Create Warehouse
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/Warehouse/warehouse.css" />
+}
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        let locationRowCount = 0;
+
+        // Auto-generate prefix from warehouse name
+        document.getElementById('warehouseName').addEventListener('input', function() {
+            const prefixInput = document.getElementById('prefixInput');
+            if (prefixInput.value) return; // Don't override if user already typed
+
+            const words = this.value.trim().split(/\s+/);
+            let prefix = '';
+            
+            if (words.length >= 2) {
+                prefix = (words[0][0] || '') + (words[1][0] || '');
+            } else if (words.length === 1 && words[0].length >= 3) {
+                prefix = words[0].substring(0, 3);
+            } else if (words.length === 1) {
+                prefix = words[0];
+            }
+            
+            prefixInput.value = prefix.toUpperCase();
+            updateAllLocationPrefixes();
+        });
+
+        // Update prefixes when prefix input changes
+        document.getElementById('prefixInput').addEventListener('input', function() {
+            this.value = this.value.toUpperCase().replace(/[^A-Z]/g, '');
+            updateAllLocationPrefixes();
+        });
+
+        function updateAllLocationPrefixes() {
+            const prefix = document.getElementById('prefixInput').value || '??';
+            document.querySelectorAll('.loc-prefix').forEach(span => {
+                span.textContent = prefix + '-';
+            });
+        }
+
+        document.getElementById('addLocationBtn').addEventListener('click', function() {
+            locationRowCount++;
+            const prefix = document.getElementById('prefixInput').value || '??';
+            const rowId = 'locRow' + locationRowCount;
+            
+            const row = document.createElement('div');
+            row.className = 'loc-row';
+            row.id = rowId;
+            row.innerHTML = `
+                <div class="form-group">
+                    <div style="display:flex;">
+                        <span class="loc-prefix" style="background:#e8f0f8;border:1.5px solid var(--accent2);border-right:none;
+                            border-radius:8px 0 0 8px;padding:7px 8px;font-family:'JetBrains Mono',monospace;
+                            font-size:0.8rem;color:var(--navy-dark);font-weight:700;white-space:nowrap;">${prefix}-</span>
+                        <input type="text" name="Locations[${locationRowCount - 1}].LocationCode" class="form-control loc-suffix" 
+                            placeholder="A1-01" data-row="${rowId}"
+                            style="border-radius:0 8px 8px 0;border-left:none;font-family:'JetBrains Mono',monospace;font-size:0.82rem;padding:7px 10px;" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <input type="text" name="Locations[${locationRowCount - 1}].LocationName" class="form-control auto-filled loc-name" 
+                        placeholder="Rack A1 Slot 01" data-row="${rowId}" style="font-size:0.82rem;padding:7px 10px;" />
+                </div>
+                <div class="form-group">
+                    <input type="text" name="Locations[${locationRowCount - 1}].Rack" class="form-control auto-filled loc-rack" 
+                        placeholder="A1" data-row="${rowId}" style="font-size:0.82rem;padding:7px 10px;" />
+                </div>
+                <div class="form-group">
+                    <input type="number" name="Locations[${locationRowCount - 1}].Capacity" class="form-control" 
+                        placeholder="200" min="1" style="font-size:0.82rem;padding:7px 10px;" />
+                </div>
+                <button type="button" class="rm-btn" onclick="document.getElementById('${rowId}').remove()">
+                    <i class="bi bi-x"></i>
+                </button>
+            `;
+            
+            document.getElementById('locationsContainer').appendChild(row);
+            
+            // Add event listeners for auto-fill
+            const suffixInput = row.querySelector('.loc-suffix');
+            const nameInput = row.querySelector('.loc-name');
+            const rackInput = row.querySelector('.loc-rack');
+            
+            suffixInput.addEventListener('input', function() {
+                autoFillLocation(this.value, nameInput, rackInput);
+            });
+            
+            nameInput.addEventListener('input', function() {
+                this.dataset.edited = 'true';
+            });
+            
+            rackInput.addEventListener('input', function() {
+                this.dataset.edited = 'true';
+            });
+        });
+
+        function autoFillLocation(suffix, nameInput, rackInput) {
+            const parts = suffix.trim().split('-');
+            const rack = parts[0] || '';
+            const slot = parts[1] || '';
+            
+            if (!rackInput.dataset.edited) {
+                rackInput.value = rack;
+            }
+            
+            if (!nameInput.dataset.edited && rack && slot) {
+                nameInput.value = `Rack ${rack} Slot ${slot}`;
+            }
+        }
+    </script>
+}
