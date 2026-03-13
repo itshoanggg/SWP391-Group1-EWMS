@@ -31,7 +31,7 @@
     <!-- Info Alert -->
     <div class="alert alert-info alert-dismissible fade show" role="alert">
         <i class="fas fa-info-circle"></i>
-        <strong>Guide:</strong> Stock-in is only available for orders with status <span class="badge bg-success">Ready To Receive</span> or <span class="badge bg-primary">Partially Received</span>
+        <strong>Guide:</strong> Click <strong>View</strong> to see order details and enter receipt date before proceeding to Stock-In
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
@@ -44,9 +44,7 @@
                     <select class="form-select" id="filter-status">
                         <option value="">All</option>
                         <option value="Ordered">Ordered</option>
-                        <option value="ReadyToReceive">Ready To Receive</option>
                         <option value="PartiallyReceived">Partially Received</option>
-                        
                     </select>
                 </div>
                 <div class="col-md-6">
@@ -124,6 +122,68 @@
                         <!-- Pagination will be rendered here by JavaScript -->
                     </div>
                 </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Ordered status -->
+<div class="modal fade" id="orderedPoModal" tabindex="-1" aria-labelledby="orderedPoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="orderedPoModalLabel"><i class="fas fa-clipboard-list me-2"></i>Purchase Order Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="ordered-po-info" class="mb-3">
+                    <!-- Filled by JS: PO number, supplier, expected date, total amount -->
+                </div>
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm table-striped align-middle" id="ordered-po-products">
+                        <thead>
+                            <tr>
+                                <th style="width: 12%">SKU</th>
+                                <th style="width: 40%">Product</th>
+                                <th class="text-end" style="width: 12%">Qty</th>
+                                <th class="text-end" style="width: 18%">Unit Price</th>
+                                <th class="text-end" style="width: 18%">Line Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5" class="text-center py-3 text-muted">
+                                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                    Loading...
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="4" class="text-end">Total:</th>
+                                <th class="text-end" id="ordered-po-total">0</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div class="row g-3 align-items-center">
+                    <div class="col-auto">
+                        <label for="receipt-date-input" class="col-form-label"><i class="far fa-calendar-alt me-1"></i>Receipt Date <span class="text-danger">*</span></label>
+                    </div>
+                    <div class="col-auto">
+                        <input type="date" class="form-control" id="receipt-date-input" required />
+                    </div>
+                    <div class="col-auto">
+                        <span id="receipt-date-hint" class="form-text text-muted">Please select a receipt date to proceed.</span>
+                    </div>
+                </div>
+                <input type="hidden" id="ordered-po-id" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="btn-proceed-stockin" class="btn btn-primary" disabled>
+                    <i class="fas fa-box-open me-1"></i> Proceed to Stock-In
+                </button>
             </div>
         </div>
     </div>
