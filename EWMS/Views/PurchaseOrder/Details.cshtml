@@ -57,15 +57,6 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
-    else if (Model.Status == "ReadyToReceive")
-    {
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fas fa-check-circle"></i>
-            <strong>Status:</strong>
-            <span>Goods ready to receive. Expected date reached.</span>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    }
     else if (Model.Status == "PartiallyReceived")
     {
         <div class="alert alert-warning alert-dismissible fade show" role="alert">
@@ -119,7 +110,7 @@
                             <label class="text-muted">Expected Receiving Date:</label>
                             <p class="fw-bold">
                                 @Model.ExpectedReceivingDate.ToString("dd/MM/yyyy")
-                                @if (Model.Status == "ReadyToReceive" || Model.Status == "PartiallyReceived" || Model.Status == "Received")
+                                @if (Model.Status == "PartiallyReceived" || Model.Status == "Received")
                                 {
                                     <span class="badge bg-success">Ready</span>
                                 }
@@ -151,7 +142,6 @@
                                 var statusBadge = Model.Status switch
                                 {
                                     "Ordered" => "badge bg-warning text-dark",
-                                    "ReadyToReceived" => "badge bg-info",
                                     "PartiallyReceived" => "badge bg-primary",
                                     "Received" => "badge bg-success",
                                     "Cancelled" => "badge bg-danger",
@@ -160,7 +150,6 @@
                                 var statusText = Model.Status switch
                                 {
                                     "Ordered" => "Ordered",
-                                    "ReadyToReceived" => "Ready To Received",
                                     "PartiallyReceived" => "Partially Received",
                                     "Received" => "Fully Received",
                                     "Cancelled" => "Cancelled",

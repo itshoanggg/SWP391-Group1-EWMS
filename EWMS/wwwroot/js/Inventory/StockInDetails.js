@@ -12,6 +12,53 @@ function formatNumber(value) {
 }
 
 /* =========================================================
+   MODAL HELPERS
+========================================================= */
+function showAlert(message, type = 'info', title = null) {
+    const modal = new bootstrap.Modal(document.getElementById('alertModal'));
+    const header = document.getElementById('alertModalHeader');
+    const icon = document.getElementById('alertModalIcon');
+    const titleElement = document.getElementById('alertModalTitle');
+    const body = document.getElementById('alertModalBody');
+    
+    // Set colors based on type
+    const types = {
+        'success': { bg: 'bg-success text-white', icon: 'fa-check-circle', title: 'Success' },
+        'error': { bg: 'bg-danger text-white', icon: 'fa-exclamation-circle', title: 'Error' },
+        'warning': { bg: 'bg-warning text-white', icon: 'fa-exclamation-triangle', title: 'Warning' },
+        'info': { bg: 'bg-info text-white', icon: 'fa-info-circle', title: 'Information' }
+    };
+    
+    const config = types[type] || types['info'];
+    header.className = `modal-header ${config.bg}`;
+    icon.className = `fas ${config.icon} me-2`;
+    titleElement.textContent = title || config.title;
+    body.innerHTML = message.replace(/\n/g, '<br>');
+    
+    modal.show();
+}
+
+function showConfirm(message, onConfirm) {
+    const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+    const body = document.getElementById('confirmModalBody');
+    const okBtn = document.getElementById('confirmModalOkBtn');
+    
+    body.innerHTML = message.replace(/\n/g, '<br>');
+    
+    // Remove old event listeners
+    const newOkBtn = okBtn.cloneNode(true);
+    okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+    
+    // Add new event listener
+    newOkBtn.addEventListener('click', () => {
+        modal.hide();
+        if (onConfirm) onConfirm();
+    });
+    
+    modal.show();
+}
+
+/* =========================================================
    LOAD DATA
 ========================================================= */
 async function loadPurchaseOrderInfo() {
@@ -33,7 +80,7 @@ async function loadPurchaseOrderInfo() {
 
         // Only show alert if NOT in read-only mode
         if (data.hasStockIn && !window.readOnlyMode) {
-            alert('This purchase order has been fully received!');
+            showAlert('This purchase order has been fully received!', 'info', 'Purchase Order Status');
             const btnConfirm = document.getElementById('btn-confirm');
             if (btnConfirm) btnConfirm.disabled = true;
         }
@@ -191,7 +238,7 @@ function renderProductsTable() {
                 <td colspan="6" class="text-center py-4">
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle"></i> 
-                        <strong>�on h�ng n�y d� du?c nh?p kho d?y d?!</strong>
+                        <strong>This purchase order has been fully received!</strong>
                     </div>
                 </td>
             </tr>
@@ -402,7 +449,7 @@ async function checkCapacity(rowId, quantity) {
         </div>
         <button class="btn btn-sm btn-warning"
             onclick="splitToNewLocation('${rowId}', ${parseInt(select.dataset.productId)}, ${quantity}, ${available})">
-            ? Add to another rack cho ${remain}
+            ➕ Add to another location for ${remain} items
         </button>
     `;
 }
@@ -455,7 +502,7 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
             <select id="location-${newRowId}" class="form-select"
                     data-row-id="${newRowId}" data-product-id="${productId}"
                     onchange="handleLocationChange(this)">
-                <option value="">-- Select rack kh�c --</option>
+                <option value="">-- Select another location --</option>
             </select>
             <div id="location-info-${newRowId}" class="mt-1"></div>
         </td>
@@ -584,21 +631,68 @@ function updateSummary() {
 async function confirmStockIn() {
     const errors = [];
 
+    // Check if there are excess items
+    const totalOrdered = productsData.reduce((sum, p) => sum + p.remainingQty, 0);
+    const totalReceived = receiptItems.reduce((sum, item) => sum + item.receivedQty, 0);
+    
+    if (totalReceived > totalOrdered) {
+        showAlert(
+            `<strong>You have entered MORE items than ordered.</strong><br><br>` +
+            `<div class="row">
+                <div class="col-6 text-end"><strong>Ordered:</strong></div>
+                <div class="col-6">${formatNumber(totalOrdered)}</div>
+                <div class="col-6 text-end"><strong>Received:</strong></div>
+                <div class="col-6">${formatNumber(totalReceived)}</div>
+                <div class="col-6 text-end"><strong>Excess:</strong></div>
+                <div class="col-6 text-danger"><strong>${formatNumber(totalReceived - totalOrdered)}</strong></div>
+            </div><br>` +
+            'Please adjust the quantities to match or be less than the order.',
+            'error',
+            'Cannot Confirm Stock-In'
+        );
+        return;
+    }
+
     for (const item of receiptItems) {
         if (item.receivedQty > 0 && !item.locationId) {
-            errors.push(`${item.productName}: Chua Select v? tr� luu kho`);
+            errors.push(`${item.productName}: Please select a storage location`);
+        }
+        
+        // Check each product individually
+        const product = productsData.find(p => p.productId === item.productId);
+        if (product) {
+            const productTotalReceived = receiptItems
+                .filter(ri => ri.productId === item.productId)
+                .reduce((sum, ri) => sum + ri.receivedQty, 0);
+            
+            if (productTotalReceived > product.remainingQty) {
+                errors.push(`${item.productName}: Received quantity (${formatNumber(productTotalReceived)}) exceeds remaining order quantity (${formatNumber(product.remainingQty)})`);
+            }
         }
     }
 
     if (errors.length > 0) {
-        alert('Please check:\n\n' + errors.join('\n'));
+        showAlert(
+            '<strong>Please check the following issues:</strong><br><br>' +
+            '<ul class="text-start mb-0">' +
+            errors.map(err => `<li>${err}</li>`).join('') +
+            '</ul>',
+            'warning',
+            'Validation Error'
+        );
         return;
     }
 
-    if (!confirm('Confirm stock-in for these products?')) {
-        return;
-    }
+    showConfirm(
+        '<strong>Are you sure you want to confirm stock-in for these products?</strong><br><br>' +
+        'This action cannot be undone.',
+        async () => {
+            await performStockIn();
+        }
+    );
+}
 
+async function performStockIn() {
     const requestData = {
         purchaseOrderId: purchaseOrderId,
         warehouseId: warehouseId,
@@ -624,14 +718,31 @@ async function confirmStockIn() {
         const result = await response.json();
 
         if (result.success) {
-            alert(result.message);
-            window.location.href = '/StockIn/Index';
+            showAlert(
+                `<div class="text-center">
+                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i><br>
+                    <strong>${result.message}</strong>
+                </div>`,
+                'success',
+                'Stock-In Successful'
+            );
+            setTimeout(() => {
+                window.location.href = '/StockIn/Index';
+            }, 2000);
         } else {
-            alert('Error: ' + result.error);
+            showAlert(
+                `<strong>Failed to confirm stock-in:</strong><br><br>${result.error}`,
+                'error',
+                'Error'
+            );
         }
     } catch (error) {
         console.error('Confirm stock in failed:', error);
-        alert('An error occurred during stock-in!');
+        showAlert(
+            '<strong>An error occurred during stock-in!</strong><br><br>Please try again or contact support.',
+            'error',
+            'System Error'
+        );
     }
 }
 

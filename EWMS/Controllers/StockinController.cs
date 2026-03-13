@@ -110,9 +110,10 @@ namespace EWMS.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            if (purchaseOrder.Status != "ReadyToReceive" && purchaseOrder.Status != "PartiallyReceived")
+            // Allow entering Stock-In details for Ordered (popup on UI validates receipt date is today)
+            if (purchaseOrder.Status != "PartiallyReceived" && purchaseOrder.Status != "Ordered")
             {
-                TempData["Error"] = "Stock-in only allowed for orders ready to receive or partially received.";
+                TempData["Error"] = "Stock-in only allowed for orders ready to receive, partially received, or ordered.";
                 return RedirectToAction(nameof(Index));
             }
 
