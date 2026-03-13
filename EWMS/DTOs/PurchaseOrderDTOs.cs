@@ -23,6 +23,8 @@ namespace EWMS.DTOs
         public string? SupplierPhone { get; set; }
         public string CreatedBy { get; set; } = string.Empty;
         public DateTime? CreatedAt { get; set; }
+        public DateTime? ExpectedReceivingDate { get; set; }
+        public string Status { get; set; } = string.Empty;
         public bool HasStockIn { get; set; }
     }
 
@@ -32,6 +34,7 @@ namespace EWMS.DTOs
         public string Sku { get; set; } = string.Empty;
         public string ProductName { get; set; } = string.Empty;
         public string CategoryName { get; set; } = string.Empty;
+        public int Quantity { get; set; }
         public int OrderedQty { get; set; }
         public int ReceivedQty { get; set; }
         public int RemainingQty { get; set; }

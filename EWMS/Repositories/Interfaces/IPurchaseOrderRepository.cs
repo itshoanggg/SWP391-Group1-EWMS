@@ -6,6 +6,5 @@ namespace EWMS.Repositories.Interfaces
     {
         Task<IEnumerable<PurchaseOrder>> GetByWarehouseIdAsync(int warehouseId, string? status = null);
         Task<PurchaseOrder?> GetByIdWithDetailsAsync(int id, int warehouseId);
-        Task UpdateToReadyToReceiveAsync(int warehouseId);
     }
 }
