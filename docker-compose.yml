@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: ewms_rabbitmq
+    ports:
+      - "5672:5672"    # AMQP port
+      - "15672:15672"  # Management UI port
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - ewms_network
+
+  # Uncomment below if you want to run SQL Server in Docker too
+  # sqlserver:
+  #   image: mcr.microsoft.com/mssql/server:2022-latest
+  #   container_name: ewms_sqlserver
+  #   ports:
+  #     - "1433:1433"
+  #   environment:
+  #     SA_PASSWORD: "YourStrong@Password123"
+  #     ACCEPT_EULA: "Y"
+  #   volumes:
+  #     - sqlserver_data:/var/opt/mssql
+  #   networks:
+  #     - ewms_network
+
+volumes:
+  rabbitmq_data:
+  # sqlserver_data:
+
+networks:
+  ewms_network:
+    driver: bridge
