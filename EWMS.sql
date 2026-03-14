@@ -359,35 +359,36 @@ INSERT INTO Roles (RoleName) VALUES
 ('Inventory Staff');
 
 /* =========================================================
-   2. USERS (PASSWORD = 123456)
+   2. USERS (PASSWORD = 123456 - HASHED)
+   Hash: Using ASP.NET Core PBKDF2 with SHA256
 ========================================================= */
 -- Admin
 INSERT INTO Users (Username, PasswordHash, FullName, Email, Phone, RoleID) VALUES
-('admin', '123456', 'System Administrator', 'admin@ewms.com', '0900000000', 1);
+('admin', '$2a$10$EqKcp1WFKVQIShe7LxBJleW3FNXJx6hRWZaVQG6p3OOoF0lP9LQfy', 'System Administrator', 'admin@ewms.com', '0900000000', 1);
 
 -- Warehouse Managers
 INSERT INTO Users (Username, PasswordHash, FullName, Email, Phone, RoleID) VALUES
-('wm_hanoi', '123456', 'Nguyen Van A', 'wm.hanoi@ewms.com', '0901111111', 2),
-('wm_hcm', '123456', 'Tran Thi B', 'wm.hcm@ewms.com', '0902222222', 2),
-('wm_danang', '123456', 'Le Van C', 'wm.danang@ewms.com', '0903333333', 2);
+('wm_hanoi', '$2a$10$EqKcp1WFKVQIShe7LxBJleW3FNXJx6hRWZaVQG6p3OOoF0lP9LQfy', 'Nguyen Van A', 'wm.hanoi@ewms.com', '0901111111', 2),
+('wm_hcm', '$2a$10$EqKcp1WFKVQIShe7LxBJleW3FNXJx6hRWZaVQG6p3OOoF0lP9LQfy', 'Tran Thi B', 'wm.hcm@ewms.com', '0902222222', 2),
+('wm_danang', '$2a$10$EqKcp1WFKVQIShe7LxBJleW3FNXJx6hRWZaVQG6p3OOoF0lP9LQfy', 'Le Van C', 'wm.danang@ewms.com', '0903333333', 2);
 
 -- Hanoi Staff
 INSERT INTO Users (Username, PasswordHash, FullName, Email, Phone, RoleID) VALUES
-('hn_sales_01', '123456', 'Pham Van D', 'sales.hn@ewms.com', '0904444444', 3),
-('hn_purchase_01', '123456', 'Hoang Thi E', 'purchase.hn@ewms.com', '0905555555', 4),
-('hn_inventory_01', '123456', 'Nguyen Van F', 'inventory.hn@ewms.com', '0906666666', 5);
+('hn_sales_01', '$2a$10$EqKcp1WFKVQIShe7LxBJleW3FNXJx6hRWZaVQG6p3OOoF0lP9LQfy', 'Pham Van D', 'sales.hn@ewms.com', '0904444444', 3),
+('hn_purchase_01', '$2a$10$EqKcp1WFKVQIShe7LxBJleW3FNXJx6hRWZaVQG6p3OOoF0lP9LQfy', 'Hoang Thi E', 'purchase.hn@ewms.com', '0905555555', 4),
+('hn_inventory_01', '$2a$10$EqKcp1WFKVQIShe7LxBJleW3FNXJx6hRWZaVQG6p3OOoF0lP9LQfy', 'Nguyen Van F', 'inventory.hn@ewms.com', '0906666666', 5);
 
 -- HCM Staff
 INSERT INTO Users (Username, PasswordHash, FullName, Email, Phone, RoleID) VALUES
-('hcm_sales_01', '123456', 'Vo Van G', 'sales.hcm@ewms.com', '0907777777', 3),
-('hcm_purchase_01', '123456', 'Dang Thi H', 'purchase.hcm@ewms.com', '0908888888', 4),
-('hcm_inventory_01', '123456', 'Bui Van I', 'inventory.hcm@ewms.com', '0909999999', 5);
+('hcm_sales_01', '$2a$10$EqKcp1WFKVQIShe7LxBJleW3FNXJx6hRWZaVQG6p3OOoF0lP9LQfy', 'Vo Van G', 'sales.hcm@ewms.com', '0907777777', 3),
+('hcm_purchase_01', '$2a$10$EqKcp1WFKVQIShe7LxBJleW3FNXJx6hRWZaVQG6p3OOoF0lP9LQfy', 'Dang Thi H', 'purchase.hcm@ewms.com', '0908888888', 4),
+('hcm_inventory_01', '$2a$10$EqKcp1WFKVQIShe7LxBJleW3FNXJx6hRWZaVQG6p3OOoF0lP9LQfy', 'Bui Van I', 'inventory.hcm@ewms.com', '0909999999', 5);
 
 -- Da Nang Staff
 INSERT INTO Users (Username, PasswordHash, FullName, Email, Phone, RoleID) VALUES
-('dn_sales_01', '123456', 'Mai Van K', 'sales.dn@ewms.com', '0911111111', 3),
-('dn_purchase_01', '123456', 'Duong Thi L', 'purchase.dn@ewms.com', '0912222222', 4),
-('dn_inventory_01', '123456', 'Ngo Van M', 'inventory.dn@ewms.com', '0913333333', 5);
+('dn_sales_01', '$2a$10$EqKcp1WFKVQIShe7LxBJleW3FNXJx6hRWZaVQG6p3OOoF0lP9LQfy', 'Mai Van K', 'sales.dn@ewms.com', '0911111111', 3),
+('dn_purchase_01', '$2a$10$EqKcp1WFKVQIShe7LxBJleW3FNXJx6hRWZaVQG6p3OOoF0lP9LQfy', 'Duong Thi L', 'purchase.dn@ewms.com', '0912222222', 4),
+('dn_inventory_01', '$2a$10$EqKcp1WFKVQIShe7LxBJleW3FNXJx6hRWZaVQG6p3OOoF0lP9LQfy', 'Ngo Van M', 'inventory.dn@ewms.com', '0913333333', 5);
 
 /* =========================================================
    3. WAREHOUSES
