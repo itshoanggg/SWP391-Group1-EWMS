@@ -1,0 +1,161 @@
+@model EWMS.ViewModels.NXTReportViewModel
+@{
+    Layout = "~/Views/Shared/_LayoutWarehouseManager.cshtml";
+    ViewData["Title"] = "Inbound – Outbound – Inventory Report";
+    var period = (string)ViewBag.Period ?? "month";
+    var warehouses = (List<EWMS.Models.Warehouse>)ViewBag.AllowedWarehouses;
+    int selectedWarehouseId = (int)ViewBag.SelectedWarehouseId;
+    bool printMode = ViewBag.PrintMode == true;
+}
+
+@section Styles {
+    <style>
+        .stat-card { border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 16px; background: #fff; height:100%; }
+        .stat-label { color: #6c757d; font-size: .9rem; }
+        .stat-value { font-size: 1.4rem; font-weight: 700; }
+        .delta { font-size: .85rem; }
+        .delta.positive { color: #198754; }
+        .delta.negative { color: #dc3545; }
+        .group-in th { background: #e8f5e9; }
+        .group-out th { background: #ffebee; }
+        .group-stock th { background: #e3f2fd; }
+        .badge-low { margin-left: 6px; }
+        .filter-bar { background: #fff; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.05); }
+        @@media print { .filter-bar, .no-print { display: none !important; } body { background: #fff; } .main-content{ padding:0; } }
+    </style>
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="mb-0">Inbound – Outbound – Inventory Report</h1>
+            <p class="text-muted mb-0">Warehouse: <strong>@Model.WarehouseName</strong></p>
+        </div>
+        <div class="no-print">
+            @if (printMode)
+            {
+                <button class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Print/PDF</button>
+            }
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Opening Balance</div>
+                <div class="stat-value">@Model.Totals.BeginQty</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-label text-success">Total In (period)</div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <div class="stat-value text-success">+@Model.Totals.InQty</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-label text-danger">Total Out (period)</div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <div class="stat-value text-danger">-@Model.Totals.OutQty</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Ending Balance</div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <div class="stat-value">@Model.Totals.EndQty</div>
+                    <div class="delta @(Model.DeltaQty>=0?"positive":"negative")">(@(Model.DeltaQty>=0?"+":"")@Model.DeltaQty vs opening)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="filter-bar mb-3 no-print">
+        <form method="get" asp-action="NXT" asp-controller="Reports" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Warehouse</label>
+                <select name="warehouseId" class="form-select">
+                    @foreach (var w in warehouses)
+                    {
+                        <option value="@w.WarehouseId" selected="@(w.WarehouseId==selectedWarehouseId ? "selected" : null)">@w.WarehouseName</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Reporting period</label>
+                <select name="period" class="form-select">
+                    <option value="month" selected="@(period=="month" ? "selected" : null)">This Month</option>
+                    <option value="quarter" selected="@(period=="quarter" ? "selected" : null)">This Quarter</option>
+                    <option value="year" selected="@(period=="year" ? "selected" : null)">This Year</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Filter</button>
+                <a class="btn btn-outline-danger" href="@Url.Action("ExportPdf","Reports", new { warehouseId = selectedWarehouseId, period = period })"><i class="bi bi-file-earmark-pdf"></i> Export PDF</a>
+                <a class="btn btn-outline-success" href="@Url.Action("ExportExcel","Reports", new { warehouseId = selectedWarehouseId, period = period })"><i class="bi bi-file-earmark-excel"></i> Export Excel</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+                <thead>
+                    <tr>
+                        <th rowspan="2">Product</th>
+                        <th rowspan="2">Unit</th>
+                        <th colspan="3" class="text-center group-in">Nhập</th>
+                        <th colspan="2" class="text-center group-out">Xuất</th>
+                        <th colspan="2" class="text-center group-stock">Tồn</th>
+                    </tr>
+                    <tr>
+                        <th class="group-in">Opening</th>
+                        <th class="group-in">In Qty</th>
+                        <th class="group-in">In Value</th>
+                        <th class="group-out">Out Qty</th>
+                        <th class="group-out">Out Value</th>
+                        <th class="group-stock">Ending Qty</th>
+                        <th class="group-stock">Ending Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Rows)
+                    {
+                        <tr>
+                            <td>@r.ProductName</td>
+                            <td>@r.Unit</td>
+                            <td class="text-end">@r.BeginQty</td>
+                            <td class="text-end text-success">@r.InQty</td>
+                            <td class="text-end text-success">@r.InValue.ToString("N2")</td>
+                            <td class="text-end text-danger">@r.OutQty</td>
+                            <td class="text-end text-danger">@r.OutValue.ToString("N2")</td>
+                            <td class="text-end">
+                                @r.EndQty
+                                @if (r.EndQty < 15)
+                                {
+                                    <span class="badge bg-danger badge-low">Low</span>
+                                }
+                            </td>
+                            <td class="text-end">@r.EndValue.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="fw-bold">
+                        <td colspan="2" class="text-end">Tổng cộng</td>
+                        <td class="text-end">@Model.Totals.BeginQty</td>
+                        <td class="text-end text-success">@Model.Totals.InQty</td>
+                        <td class="text-end text-success">@Model.Totals.InValue.ToString("N2")</td>
+                        <td class="text-end text-danger">@Model.Totals.OutQty</td>
+                        <td class="text-end text-danger">@Model.Totals.OutValue.ToString("N2")</td>
+                        <td class="text-end">@Model.Totals.EndQty</td>
+                        <td class="text-end">@Model.Totals.EndValue.ToString("N2")</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
