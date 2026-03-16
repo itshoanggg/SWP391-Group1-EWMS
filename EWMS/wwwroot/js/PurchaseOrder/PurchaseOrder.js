@@ -150,9 +150,12 @@ function updateProduct(select, index) {
 
         row.querySelector('.sku-display').textContent = sku;
         
-        // Format price with commas (readonly, auto from product)
+        // Set suggested price from product (user can edit)
         const priceInput = row.querySelector('.price-input');
-        priceInput.value = formatPrice(costPrice);
+        if (!priceInput.value || priceInput.value === '0') {
+            // Only set if empty or zero
+            priceInput.value = costPrice || '';
+        }
 
         calculateTotal(index);
     } else {
@@ -176,13 +179,12 @@ function calculateTotal(index) {
     const row = document.querySelector(`.product-row[data-index="${index}"]`);
     const quantity = parseFloat(row.querySelector('.quantity-input').value) || 0;
     
-    // Remove dots from formatted price to get numeric value
-    const priceText = row.querySelector('.price-input').value.replace(/[^\d]/g, '');
-    const price = parseFloat(priceText) || 0;
+    // Get price directly as number (no formatting needed since input type is now number)
+    const price = parseFloat(row.querySelector('.price-input').value) || 0;
     
     const total = quantity * price;
 
-    row.querySelector('.total-display').value = total.toLocaleString('en-US');
+    row.querySelector('.total-display').value = total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
     updateTotals();
 }
@@ -214,8 +216,8 @@ function addProductRow() {
                            min="1" value="1" required onchange="calculateTotal(${productIndex})">
                 </td>
                 <td>
-                    <input type="text" name="Details[${productIndex}].UnitPrice" class="form-control price-input"
-                           required readonly>
+                    <input type="number" name="Details[${productIndex}].UnitPrice" class="form-control price-input"
+                           min="0" step="0.01" required onchange="calculateTotal(${productIndex})" placeholder="Enter price">
                 </td>
                 <td>
                     <input type="text" class="form-control total-display" readonly value="0">
@@ -296,11 +298,7 @@ function validateCreateForm(event) {
         const productId = row.querySelector('.product-select').value;
         if (productId) {
             hasProduct = true;
-            
-            // Convert formatted price back to number before submit
-            const priceInput = row.querySelector('.price-input');
-            const numericValue = priceInput.value.replace(/[^\d]/g, '');
-            priceInput.value = numericValue;
+            // Price is already in numeric format (input type="number"), no conversion needed
         }
     });
 
