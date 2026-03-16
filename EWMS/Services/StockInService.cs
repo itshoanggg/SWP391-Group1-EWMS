@@ -146,7 +146,14 @@ namespace EWMS.Services
                 await _unitOfWork.StockIns.Context.StockInDetails.AddAsync(stockInDetail);
                 totalAmount += detail.CurrentReceiving * detail.UnitPrice;
 
-                // Update inventory
+                // Update product prices using Moving Weighted Average BEFORE updating inventory
+                // (only for Purchase orders)
+                await _unitOfWork.Products.UpdateProductPricesByMovingAverageAsync(
+                    detail.ProductId, 
+                    detail.CurrentReceiving, 
+                    detail.UnitPrice);
+
+                // Update inventory AFTER price calculation
                 var inventory = await _unitOfWork.Inventories.GetByProductAndLocationAsync(detail.ProductId, detail.LocationId);
 
                 if (inventory != null)
@@ -237,7 +244,14 @@ namespace EWMS.Services
                 await _unitOfWork.StockIns.Context.StockInDetails.AddAsync(stockInDetail);
                 totalAmount += item.Quantity * item.UnitPrice;
 
-                // Update inventory
+                // Update product prices using Moving Weighted Average BEFORE updating inventory
+                // (only for Purchase orders)
+                await _unitOfWork.Products.UpdateProductPricesByMovingAverageAsync(
+                    item.ProductId, 
+                    item.Quantity, 
+                    item.UnitPrice);
+
+                // Update inventory AFTER price calculation
                 var inventory = await _unitOfWork.Inventories.GetByProductAndLocationAsync(item.ProductId, item.LocationId);
 
                 if (inventory != null)
