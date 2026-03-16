@@ -98,8 +98,7 @@
                     <th>Category</th>
                     <th>Supplier</th>
                     <th>Unit</th>
-                    <th>Cost Price</th>
-                    <th>Selling Price</th>
+                    <th>Total Stock</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -118,8 +117,11 @@
                                 @(product.SupplierName ?? "N/A")
                             </td>
                             <td>@product.Unit</td>
-                            <td>@product.CostPrice.ToString("N0") ₫</td>
-                            <td><strong>@product.SellingPrice.ToString("N0") ₫</strong></td>
+                            <td>
+                                <span class="badge @(product.TotalStock > 0 ? "badge-approved" : "badge-warning")">
+                                    @product.TotalStock @product.Unit
+                                </span>
+                            </td>
                             <td>
                                 <a asp-action="Details" asp-route-id="@product.ProductId" class="btn btn-primary btn-sm">
                                     View Details
@@ -141,7 +143,7 @@
                 else
                 {
                     <tr>
-                        <td colspan="8" class="text-center">No products found</td>
+                        <td colspan="7" class="text-center">No products found</td>
                     </tr>
                 }
             </tbody>
@@ -191,7 +193,7 @@
 </div>
 
 @section Styles {
-    <link rel="stylesheet" href="~/css/salesorder.css" />
+    <link rel="stylesheet" href="~/css/product.css" asp-append-version="true" />
 }
 
 <!-- Delete Confirmation Modal -->
