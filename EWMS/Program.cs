@@ -74,6 +74,7 @@ namespace EWMS
             builder.Services.AddScoped<IDashboardService, DashboardService>();
             builder.Services.AddScoped<ISupplierService, SupplierService>();
             builder.Services.AddScoped<IUserService, UserService>();
+            builder.Services.AddScoped<IInventoryReportService, InventoryReportService>();
 
             // Register TransferService so TransferController can be resolved
             builder.Services.AddScoped<TransferService>();
