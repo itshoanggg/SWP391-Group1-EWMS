@@ -104,5 +104,47 @@ namespace EWMS.Repositories
 
             return (products, totalCount);
         }
+
+        public async Task UpdateProductPricesByMovingAverageAsync(int productId, int quantityReceived, decimal unitPrice)
+        {
+            // Get product
+            var product = await _context.Products.FindAsync(productId);
+            if (product == null)
+            {
+                throw new Exception($"Product with ID {productId} not found");
+            }
+
+            // Get total current inventory BEFORE this receipt (inventory has not been updated yet)
+            var currentTotalQuantity = await _context.Inventories
+                .Where(i => i.ProductId == productId)
+                .SumAsync(i => i.Quantity ?? 0);
+
+            // Calculate new CostPrice using Moving Weighted Average formula
+            decimal newCostPrice;
+            
+            if (currentTotalQuantity <= 0)
+            {
+                // If no stock before, new cost price = unit price of this receipt
+                newCostPrice = unitPrice;
+            }
+            else
+            {
+                // Formula: (Current Stock × Current CostPrice + Quantity Received × Unit Price) / (Current Stock + Quantity Received)
+                var currentCostPrice = product.CostPrice ?? 0;
+                newCostPrice = (currentTotalQuantity * currentCostPrice + quantityReceived * unitPrice) / (currentTotalQuantity + quantityReceived);
+            }
+
+            // Round to 2 decimal places
+            newCostPrice = Math.Round(newCostPrice, 2);
+
+            // Calculate new SellingPrice (30% profit margin)
+            var newSellingPrice = Math.Round(newCostPrice * 1.3m, 2);
+
+            // Update product prices
+            product.CostPrice = newCostPrice;
+            product.SellingPrice = newSellingPrice;
+
+            _context.Products.Update(product);
+        }
     }
 }
