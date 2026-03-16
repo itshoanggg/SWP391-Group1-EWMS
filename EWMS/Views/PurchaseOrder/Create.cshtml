@@ -122,8 +122,8 @@
                                            min="1" value="1" required onchange="calculateTotal(0)">
                                 </td>
                                 <td>
-                                    <input type="text" name="Details[0].UnitPrice" class="form-control price-input"
-                                           required readonly>
+                                    <input type="number" name="Details[0].UnitPrice" class="form-control price-input"
+                                           min="0" step="0.01" required onchange="calculateTotal(0)" placeholder="Enter price">
                                 </td>
                                 <td>
                                     <input type="text" class="form-control total-display" readonly value="0">
