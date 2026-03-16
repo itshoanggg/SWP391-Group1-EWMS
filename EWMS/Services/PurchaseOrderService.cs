@@ -18,8 +18,9 @@ namespace EWMS.Services
 
         public async Task<IEnumerable<PurchaseOrder>> GetPurchaseOrdersAsync(int warehouseId, string? status = null)
         {
-            await _unitOfWork.PurchaseOrders.UpdateToReadyToReceiveAsync(warehouseId);
-            await _unitOfWork.SaveChangesAsync();
+            // Removed automatic status update - status should be manually updated
+            // await _unitOfWork.PurchaseOrders.UpdateToReadyToReceiveAsync(warehouseId);
+            // await _unitOfWork.SaveChangesAsync();
 
             return await _unitOfWork.PurchaseOrders.GetByWarehouseIdAsync(warehouseId, status);
         }
@@ -84,7 +85,7 @@ namespace EWMS.Services
             return purchaseOrder;
         }
 
-        public async Task<bool> MarkAsDeliveredAsync(int id, int warehouseId) // now marks as ReadyToReceive
+        public async Task<bool> MarkAsDeliveredAsync(int id, int warehouseId)
         {
             var purchaseOrder = await _unitOfWork.PurchaseOrders.FirstOrDefaultAsync(
                 po => po.PurchaseOrderId == id && po.WarehouseId == warehouseId);
@@ -92,7 +93,7 @@ namespace EWMS.Services
             if (purchaseOrder == null || purchaseOrder.Status != "Ordered")
                 return false;
 
-            purchaseOrder.Status = "ReadyToReceive";
+            purchaseOrder.Status = "Ordered"; // Keep as Ordered, status will be updated when stock-in is performed
             await _unitOfWork.SaveChangesAsync();
             return true;
         }
@@ -143,8 +144,9 @@ namespace EWMS.Services
 
         public async Task<IEnumerable<PurchaseOrderListDTO>> GetPurchaseOrderListAsync(int warehouseId, string? status, string? search)
         {
-            await _unitOfWork.PurchaseOrders.UpdateToReadyToReceiveAsync(warehouseId);
-            await _unitOfWork.SaveChangesAsync();
+            // Removed automatic status update - status should be manually updated
+            // await _unitOfWork.PurchaseOrders.UpdateToReadyToReceiveAsync(warehouseId);
+            // await _unitOfWork.SaveChangesAsync();
 
             var purchaseOrders = await _unitOfWork.PurchaseOrders.GetByWarehouseIdAsync(warehouseId, status);
 

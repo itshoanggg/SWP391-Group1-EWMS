@@ -31,7 +31,6 @@ function formatDate(dateString) {
 function getStatusBadge(status) {
     const statusMap = {
         'Ordered': { class: 'bg-info', icon: 'fa-clipboard-list', text: 'Ordered' },
-        'ReadyToReceive': { class: 'bg-success', icon: 'fa-check-circle', text: 'Ready To Receive' },
         'PartiallyReceived': { class: 'bg-primary', icon: 'fa-boxes', text: 'Partially Received' },
         'Received': { class: 'bg-dark', icon: 'fa-check-double', text: 'Fully Received' },
         'Cancelled': { class: 'bg-danger', icon: 'fa-ban', text: 'Cancelled' }
@@ -163,18 +162,18 @@ function renderTableRows(orders, tbody) {
     orders.forEach(order => {
         const row = document.createElement('tr');
 
-        // Check if clickable (ReadyToReceive or PartiallyReceived)
-        const isClickable = order.status === 'ReadyToReceive' || order.status === 'PartiallyReceived';
+        // All active statuses (Ordered, PartiallyReceived) should open preview modal
+        const isActive = order.status === 'Ordered' || order.status === 'PartiallyReceived';
         const isCancelled = order.status === 'Cancelled';
 
-        if (isClickable) {
+        if (isActive) {
             row.className = 'clickable';
-            row.onclick = () => viewDetails(order.purchaseOrderId);
+            row.onclick = () => openOrderedPreview(order);
         } else {
             row.className = 'disabled';
             row.title = isCancelled
                 ? 'This order has been cancelled'
-                : 'Stock-in is only available for orders with status "Delivered" or "Partially Received"';
+                : 'Stock-in is only available for active orders';
         }
 
         // Format expected date
@@ -202,9 +201,9 @@ function renderTableRows(orders, tbody) {
             </td>
             <td>${getStatusBadge(order.status)}</td>
             <td>
-                ${isClickable
-                ? `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); viewDetails(${order.purchaseOrderId})">
-                            <i class="fas fa-box-open"></i> Stock In
+                ${isActive
+                ? `<button class="btn btn-sm btn-primary view-btn" data-order='${JSON.stringify(order)}'>
+                            <i class="fas fa-eye"></i> View
                        </button>`
                 : isCancelled
                     ? `<button class="btn btn-sm btn-danger" disabled>
@@ -216,6 +215,18 @@ function renderTableRows(orders, tbody) {
             }
             </td>
         `;
+        
+        // Add event listener to View button if active
+        if (isActive) {
+            const viewBtn = row.querySelector('.view-btn');
+            if (viewBtn) {
+                viewBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openOrderedPreview(order);
+                });
+            }
+        }
+        
         tbody.appendChild(row);
     });
 }
@@ -359,6 +370,162 @@ function viewDetails(purchaseOrderId) {
     window.location.href = `/StockIn/Details/${purchaseOrderId}`;
 }
 
+// Open preview modal for Ordered status
+async function openOrderedPreview(order) {
+    try {
+        const modal = new bootstrap.Modal(document.getElementById('orderedPoModal'));
+        
+        // Store the purchase order ID
+        document.getElementById('ordered-po-id').value = order.purchaseOrderId;
+        
+        // Reset receipt date and disable button
+        document.getElementById('receipt-date-input').value = '';
+        document.getElementById('btn-proceed-stockin').disabled = true;
+        
+        // Show modal
+        modal.show();
+        
+        // Load PO info
+        await loadOrderedPoInfo(order.purchaseOrderId);
+        
+        // Load products
+        await loadOrderedPoProducts(order.purchaseOrderId);
+        
+    } catch (error) {
+        console.error('Failed to open ordered preview:', error);
+        alert('Failed to load purchase order details');
+    }
+}
+
+// Load PO info into modal
+async function loadOrderedPoInfo(purchaseOrderId) {
+    try {
+        const response = await fetch(`/StockIn/GetPurchaseOrderInfo?purchaseOrderId=${purchaseOrderId}`);
+        const data = await response.json();
+        
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        
+        const infoDiv = document.getElementById('ordered-po-info');
+        infoDiv.innerHTML = `
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <p class="mb-1"><strong>Order Number:</strong> <span class="badge bg-info">PO-${String(data.purchaseOrderId).padStart(4, '0')}</span></p>
+                    <p class="mb-1"><strong>Supplier:</strong> ${data.supplierName || 'N/A'}</p>
+                </div>
+                <div class="col-md-6">
+                    <p class="mb-1"><strong>Expected Date:</strong> ${formatDate(data.expectedReceivingDate)}</p>
+                    <p class="mb-1"><strong>Status:</strong> ${getStatusBadge(data.status)}</p>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Failed to load PO info:', error);
+        throw error;
+    }
+}
+
+// Load products into modal table
+async function loadOrderedPoProducts(purchaseOrderId) {
+    try {
+        const response = await fetch(`/StockIn/GetPurchaseOrderProducts?purchaseOrderId=${purchaseOrderId}`);
+        const products = await response.json();
+        
+        if (products.error) {
+            throw new Error(products.error);
+        }
+        
+        const tbody = document.querySelector('#ordered-po-products tbody');
+        const totalElement = document.getElementById('ordered-po-total');
+        
+        if (!Array.isArray(products) || products.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-3">No products found</td>
+                </tr>
+            `;
+            totalElement.textContent = formatCurrency(0);
+            return;
+        }
+        
+        let total = 0;
+        tbody.innerHTML = '';
+        
+        products.forEach(product => {
+            const lineTotal = (product.quantity || 0) * (product.unitPrice || 0);
+            total += lineTotal;
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${product.sku || 'N/A'}</td>
+                <td>
+                    <div><strong>${product.productName || 'N/A'}</strong></div>
+                    <small class="text-muted">${product.categoryName || ''}</small>
+                </td>
+                <td class="text-end">${formatNumber(product.quantity || 0)}</td>
+                <td class="text-end">${formatCurrency(product.unitPrice || 0)}</td>
+                <td class="text-end">${formatCurrency(lineTotal)}</td>
+            `;
+            tbody.appendChild(row);
+        });
+        
+        totalElement.textContent = formatCurrency(total);
+        
+    } catch (error) {
+        console.error('Failed to load products:', error);
+        const tbody = document.querySelector('#ordered-po-products tbody');
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center text-danger py-3">
+                    <i class="fas fa-exclamation-triangle"></i> Failed to load products
+                </td>
+            </tr>
+        `;
+        throw error;
+    }
+}
+
+// Check if receipt date is valid
+function checkReceiptDate() {
+    const receiptDateInput = document.getElementById('receipt-date-input');
+    const proceedButton = document.getElementById('btn-proceed-stockin');
+    const hintElement = document.getElementById('receipt-date-hint');
+    
+    if (!receiptDateInput.value) {
+        proceedButton.disabled = true;
+        hintElement.textContent = 'Please select a receipt date to proceed.';
+        hintElement.className = 'form-text text-muted';
+        return;
+    }
+    
+    const selectedDate = new Date(receiptDateInput.value);
+    const today = new Date();
+    
+    // Reset time parts for comparison
+    selectedDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    
+    // Allow today or past dates (not future dates)
+    if (selectedDate.getTime() <= today.getTime()) {
+        proceedButton.disabled = false;
+        hintElement.textContent = 'Ready to proceed to Stock-In!';
+        hintElement.className = 'form-text text-success';
+    } else {
+        proceedButton.disabled = true;
+        hintElement.textContent = 'Receipt date cannot be in the future.';
+        hintElement.className = 'form-text text-danger';
+    }
+}
+
+// Proceed to Stock In details page
+function proceedToStockIn() {
+    const purchaseOrderId = document.getElementById('ordered-po-id').value;
+    if (purchaseOrderId) {
+        window.location.href = `/StockIn/Details/${purchaseOrderId}`;
+    }
+}
+
 // Search handler with debounce
 let searchTimeout;
 function handleSearch() {
@@ -390,5 +557,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (searchInput) {
         searchInput.addEventListener('keyup', handleSearch);
+    }
+    
+    // Add event listener for receipt date
+    const receiptDateInput = document.getElementById('receipt-date-input');
+    if (receiptDateInput) {
+        receiptDateInput.addEventListener('change', checkReceiptDate);
+    }
+    
+    // Add event listener for proceed button
+    const proceedButton = document.getElementById('btn-proceed-stockin');
+    if (proceedButton) {
+        proceedButton.addEventListener('click', proceedToStockIn);
     }
 });

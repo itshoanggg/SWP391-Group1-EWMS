@@ -18,5 +18,23 @@ namespace EWMS.Repositories
 
             return userWarehouse?.WarehouseId ?? 0;
         }
+
+        public async Task<List<Warehouse>> GetWarehousesForUserAsync(int userId)
+        {
+            return await _dbSet
+                .Where(uw => uw.UserId == userId)
+                .Include(uw => uw.Warehouse)
+                .Select(uw => uw.Warehouse)
+                .OrderBy(w => w.WarehouseName)
+                .ToListAsync();
+        }
+
+        public async Task<List<int>> GetWarehouseIdsForUserAsync(int userId)
+        {
+            return await _dbSet
+                .Where(uw => uw.UserId == userId)
+                .Select(uw => uw.WarehouseId)
+                .ToListAsync();
+        }
     }
 }

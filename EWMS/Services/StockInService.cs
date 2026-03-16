@@ -18,15 +18,16 @@ namespace EWMS.Services
 
         public async Task<IEnumerable<PurchaseOrderListDTO>> GetPurchaseOrdersForStockInAsync(int warehouseId, string? status, string? search)
         {
-            await _unitOfWork.PurchaseOrders.UpdateToReadyToReceiveAsync(warehouseId);
-            await _unitOfWork.SaveChangesAsync();
+            // Removed automatic status update - status should be manually updated
+            // await _unitOfWork.PurchaseOrders.UpdateToReadyToReceiveAsync(warehouseId);
+            // await _unitOfWork.SaveChangesAsync();
 
             var purchaseOrders = await _unitOfWork.PurchaseOrders.GetByWarehouseIdAsync(warehouseId, status);
 
             // If no specific status requested, show only active statuses on the main list
             if (string.IsNullOrEmpty(status))
             {
-                purchaseOrders = purchaseOrders.Where(po => po.Status == "Ordered" || po.Status == "ReadyToReceive" || po.Status == "PartiallyReceived");
+                purchaseOrders = purchaseOrders.Where(po => po.Status == "Ordered" || po.Status == "PartiallyReceived");
             }
 
             if (!string.IsNullOrEmpty(search))
@@ -79,6 +80,8 @@ namespace EWMS.Services
                 SupplierPhone = purchaseOrder.Supplier.Phone,
                 CreatedBy = purchaseOrder.CreatedByNavigation?.FullName ?? purchaseOrder.CreatedByNavigation?.Username ?? "Unknown",
                 CreatedAt = purchaseOrder.CreatedAt,
+                ExpectedReceivingDate = purchaseOrder.ExpectedReceivingDate,
+                Status = purchaseOrder.Status ?? "Unknown",
                 HasStockIn = purchaseOrder.Status == "Received"
             };
         }
@@ -103,6 +106,7 @@ namespace EWMS.Services
                     Sku = $"SKU-{pod.ProductId:D5}",
                     ProductName = pod.Product.ProductName,
                     CategoryName = pod.Product.Category?.CategoryName ?? "N/A",
+                    Quantity = pod.Quantity,
                     OrderedQty = pod.Quantity,
                     ReceivedQty = receivedQty,
                     RemainingQty = remainingQty < 0 ? 0 : remainingQty,
@@ -174,6 +178,35 @@ namespace EWMS.Services
 
         public async Task<StockInReceipt> ConfirmStockInAsync(ConfirmStockInRequest request, int userId)
         {
+            // Validate: Check if received quantities exceed ordered quantities
+            var purchaseOrder = await _unitOfWork.PurchaseOrders.GetByIdWithDetailsAsync(request.PurchaseOrderId, request.WarehouseId);
+            if (purchaseOrder == null)
+            {
+                throw new Exception("Purchase Order not found");
+            }
+
+            var receivedQuantities = await _unitOfWork.StockIns.GetReceivedQuantitiesAsync(request.PurchaseOrderId);
+
+            foreach (var item in request.Items)
+            {
+                var orderDetail = purchaseOrder.PurchaseOrderDetails.FirstOrDefault(pod => pod.ProductId == item.ProductId);
+                if (orderDetail == null)
+                {
+                    throw new Exception($"Product {item.ProductId} not found in Purchase Order");
+                }
+
+                var previouslyReceived = receivedQuantities.ContainsKey(item.ProductId) ? receivedQuantities[item.ProductId] : 0;
+                var totalReceivingForProduct = request.Items.Where(i => i.ProductId == item.ProductId).Sum(i => i.Quantity);
+                var totalAfterStockIn = previouslyReceived + totalReceivingForProduct;
+
+                if (totalAfterStockIn > orderDetail.Quantity)
+                {
+                    throw new Exception($"Cannot receive {totalReceivingForProduct} units of {orderDetail.Product.ProductName}. " +
+                                      $"Ordered: {orderDetail.Quantity}, Previously received: {previouslyReceived}, " +
+                                      $"Remaining: {orderDetail.Quantity - previouslyReceived}");
+                }
+            }
+
             var stockInReceipt = new StockInReceipt
             {
                 WarehouseId = request.WarehouseId,
@@ -227,28 +260,22 @@ namespace EWMS.Services
 
             stockInReceipt.TotalAmount = totalAmount;
 
-            // Update PO status
-            var purchaseOrder = await _unitOfWork.PurchaseOrders.GetByIdWithDetailsAsync(request.PurchaseOrderId, request.WarehouseId);
-            if (purchaseOrder != null)
+            // Update PO status - reuse purchaseOrder and receivedQuantities from validation above
+            bool fullyReceived = true;
+            foreach (var pod in purchaseOrder.PurchaseOrderDetails)
             {
-                var receivedQuantities = await _unitOfWork.StockIns.GetReceivedQuantitiesAsync(request.PurchaseOrderId);
-                bool fullyReceived = true;
+                var totalReceived = receivedQuantities.ContainsKey(pod.ProductId) ? receivedQuantities[pod.ProductId] : 0;
+                var currentReceiving = request.Items.Where(i => i.ProductId == pod.ProductId).Sum(i => i.Quantity);
+                totalReceived += currentReceiving;
 
-                foreach (var pod in purchaseOrder.PurchaseOrderDetails)
+                if (totalReceived < pod.Quantity)
                 {
-                    var totalReceived = receivedQuantities.ContainsKey(pod.ProductId) ? receivedQuantities[pod.ProductId] : 0;
-                    var currentReceiving = request.Items.Where(i => i.ProductId == pod.ProductId).Sum(i => i.Quantity);
-                    totalReceived += currentReceiving;
-
-                    if (totalReceived < pod.Quantity)
-                    {
-                        fullyReceived = false;
-                        break;
-                    }
+                    fullyReceived = false;
+                    break;
                 }
-
-                purchaseOrder.Status = fullyReceived ? "Received" : "PartiallyReceived";
             }
+
+            purchaseOrder.Status = fullyReceived ? "Received" : "PartiallyReceived";
 
             await _unitOfWork.SaveChangesAsync();
             return stockInReceipt;
