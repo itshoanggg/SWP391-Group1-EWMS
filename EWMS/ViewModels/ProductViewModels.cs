@@ -25,9 +25,7 @@ namespace EWMS.ViewModels
         public int CategoryId { get; set; }
         public string? SupplierName { get; set; }
         public string Unit { get; set; } = null!;
-        public decimal CostPrice { get; set; }
-        public decimal SellingPrice { get; set; }
-        public decimal ProfitMargin => CostPrice > 0 ? ((SellingPrice - CostPrice) / CostPrice * 100) : 0;
+        public int TotalStock { get; set; }
     }
 
     // Details view
@@ -39,10 +37,6 @@ namespace EWMS.ViewModels
         public int CategoryId { get; set; }
         public string? SupplierName { get; set; }
         public string Unit { get; set; } = null!;
-        public decimal CostPrice { get; set; }
-        public decimal SellingPrice { get; set; }
-        public decimal ProfitMargin => CostPrice > 0 ? ((SellingPrice - CostPrice) / CostPrice * 100) : 0;
-        public decimal ProfitPerUnit => SellingPrice - CostPrice;
         public List<WarehouseInventoryViewModel> InventoryByWarehouse { get; set; } = new List<WarehouseInventoryViewModel>();
         public int TotalInventory { get; set; }
     }
@@ -55,27 +49,28 @@ namespace EWMS.ViewModels
         [Display(Name = "Product Name")]
         public string ProductName { get; set; } = null!;
 
-        [Required(ErrorMessage = "Category is required")]
         [Display(Name = "Category")]
-        public int CategoryId { get; set; }
+        public int? CategoryId { get; set; }
 
-        [Required(ErrorMessage = "Unit is required")]
-        [StringLength(20, ErrorMessage = "Unit cannot exceed 20 characters")]
+        [Display(Name = "New Category Name")]
+        public string? NewCategoryName { get; set; }
+
+        [Display(Name = "Supplier")]
+        public int? SupplierId { get; set; }
+
+        [Display(Name = "New Supplier Name")]
+        public string? NewSupplierName { get; set; }
+
         [Display(Name = "Unit")]
-        public string Unit { get; set; } = "Piece";
+        public string? Unit { get; set; }
 
-        [Required(ErrorMessage = "Cost price is required")]
-        [Range(0.01, double.MaxValue, ErrorMessage = "Cost price must be greater than 0")]
-        [Display(Name = "Cost Price (VND)")]
-        public decimal CostPrice { get; set; }
-
-        [Required(ErrorMessage = "Selling price is required")]
-        [Range(0.01, double.MaxValue, ErrorMessage = "Selling price must be greater than 0")]
-        [Display(Name = "Selling Price (VND)")]
-        public decimal SellingPrice { get; set; }
+        [Display(Name = "New Unit")]
+        public string? NewUnit { get; set; }
 
         // For dropdown lists
         public List<CategoryOptionViewModel> Categories { get; set; } = new List<CategoryOptionViewModel>();
+        public List<SupplierOptionViewModel> Suppliers { get; set; } = new List<SupplierOptionViewModel>();
+        public List<string> Units { get; set; } = new List<string>();
     }
 
     // Edit view
@@ -88,27 +83,28 @@ namespace EWMS.ViewModels
         [Display(Name = "Product Name")]
         public string ProductName { get; set; } = null!;
 
-        [Required(ErrorMessage = "Category is required")]
         [Display(Name = "Category")]
-        public int CategoryId { get; set; }
+        public int? CategoryId { get; set; }
 
-        [Required(ErrorMessage = "Unit is required")]
-        [StringLength(20, ErrorMessage = "Unit cannot exceed 20 characters")]
+        [Display(Name = "New Category Name")]
+        public string? NewCategoryName { get; set; }
+
+        [Display(Name = "Supplier")]
+        public int? SupplierId { get; set; }
+
+        [Display(Name = "New Supplier Name")]
+        public string? NewSupplierName { get; set; }
+
         [Display(Name = "Unit")]
-        public string Unit { get; set; } = "Piece";
+        public string? Unit { get; set; }
 
-        [Required(ErrorMessage = "Cost price is required")]
-        [Range(0.01, double.MaxValue, ErrorMessage = "Cost price must be greater than 0")]
-        [Display(Name = "Cost Price (VND)")]
-        public decimal CostPrice { get; set; }
-
-        [Required(ErrorMessage = "Selling price is required")]
-        [Range(0.01, double.MaxValue, ErrorMessage = "Selling price must be greater than 0")]
-        [Display(Name = "Selling Price (VND)")]
-        public decimal SellingPrice { get; set; }
+        [Display(Name = "New Unit")]
+        public string? NewUnit { get; set; }
 
         // For dropdown lists
         public List<CategoryOptionViewModel> Categories { get; set; } = new List<CategoryOptionViewModel>();
+        public List<SupplierOptionViewModel> Suppliers { get; set; } = new List<SupplierOptionViewModel>();
+        public List<string> Units { get; set; } = new List<string>();
     }
 
     // Helper ViewModels
@@ -135,5 +131,11 @@ namespace EWMS.ViewModels
         public string LocationName { get; set; } = null!;
         public int Quantity { get; set; }
         public DateTime? LastUpdated { get; set; }
+    }
+
+    public class SupplierOptionViewModel
+    {
+        public int SupplierId { get; set; }
+        public string SupplierName { get; set; } = null!;
     }
 }
