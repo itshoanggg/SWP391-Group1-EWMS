@@ -126,6 +126,7 @@
 /* Table Styles */
 .table-container {
     overflow-x: auto;
+    padding: 0 20px;
 }
 
 table {
@@ -134,21 +135,18 @@ table {
 }
 
 thead th {
-    padding: 11px 16px;
+    padding: 14px 12px;
     text-align: left;
-    font-size: 0.75rem;
+    font-size: 13px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: var(--text-muted);
-    border-bottom: 2px solid var(--border);
-    background: #f8fafc;
-    white-space: nowrap;
+    letter-spacing: 0.5px;
+    color: var(--text-light);
+    background: var(--bg-light);
 }
 
 tbody tr {
     transition: all 0.15s;
-    border-bottom: 1px solid var(--border);
 }
 
 tbody tr:hover {
@@ -156,9 +154,10 @@ tbody tr:hover {
 }
 
 tbody td {
-    padding: 13px 16px;
+    padding: 14px 12px;
     font-size: 0.875rem;
     vertical-align: middle;
+    border-bottom: 1px solid var(--border);
 }
 
 .product-name {
@@ -217,8 +216,18 @@ tbody td {
 }
 
 .badge-rejected {
-    background: #fff5f5;
-    color: #c53030;
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-approved {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-warning {
+    background: #fef3c7;
+    color: #92400e;
 }
 
 /* Price Display */
