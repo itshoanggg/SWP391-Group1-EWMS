@@ -77,6 +77,7 @@ namespace EWMS.Services
             Status = o.Status,
             Notes = o.Notes,
             CreatedAt = o.CreatedAt,
+            CreatedBy = o.CreatedBy,  // Thêm để kiểm tra quyền cancel
             WarehouseName = o.Warehouse.WarehouseName,
             Details = o.SalesOrderDetails.Select(d => new SalesOrderDetailViewModel
             {
@@ -106,6 +107,7 @@ namespace EWMS.Services
                 Status = order.Status,
                 Notes = order.Notes,
                 CreatedAt = order.CreatedAt,
+                CreatedBy = order.CreatedBy,  // Thêm để kiểm tra quyền cancel
                 WarehouseName = order.Warehouse.WarehouseName,
                 Details = order.SalesOrderDetails.Select(d => new SalesOrderDetailViewModel
                 {

@@ -5,6 +5,9 @@
     Layout = "~/Views/Shared/_LayoutSalesStaff.cshtml";
 }
 
+@* Hidden input để lưu UserId cho SignalR *@
+<input type="hidden" id="currentUserId" value="@User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value" />
+
 <div class="page-header">
     <h1>Sales Order Management</h1>
     <p>Create and manage sales orders</p>
@@ -137,4 +140,10 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/salesorder.css" />
+    <link rel="stylesheet" href="~/css/salesorder-signalr.css" />
+}
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script src="~/js/salesorder-signalr.js"></script>
 }
