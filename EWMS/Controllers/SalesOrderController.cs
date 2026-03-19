@@ -13,21 +13,15 @@ namespace EWMS.Controllers
         private readonly ISalesOrderService _salesOrderService;
         private readonly IInventoryCheckService _inventoryCheckService;
         private readonly IUserService _userService;
-        private readonly IRabbitMQService _rabbitMQService;
-        private readonly ILogger<SalesOrderController> _logger;
 
         public SalesOrderController(
             ISalesOrderService salesOrderService,
             IInventoryCheckService inventoryCheckService,
-            IUserService userService,
-            IRabbitMQService rabbitMQService,
-            ILogger<SalesOrderController> logger)
+            IUserService userService)
         {
             _salesOrderService = salesOrderService;
             _inventoryCheckService = inventoryCheckService;
             _userService = userService;
-            _rabbitMQService = rabbitMQService;
-            _logger = logger;
         }
 
         public async Task<IActionResult> Index(string? customer, string? status, int page = 1)
@@ -62,24 +56,10 @@ namespace EWMS.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Cancel(int id)
         {
-            // Lấy userId hiện tại
-            var currentUserId = _userService.GetCurrentUserId();
-            if (currentUserId == 0)
-            {
-                return RedirectToAction("Login", "Account");
-            }
-
             var order = await _salesOrderService.GetSalesOrderByIdAsync(id);
 
             if (order == null)
                 return NotFound();
-
-            // Kiểm tra xem đơn hàng có phải của user hiện tại không
-            if (order.CreatedBy != currentUserId)
-            {
-                TempData["ErrorMessage"] = "You can only cancel your own orders.";
-                return RedirectToAction(nameof(Details), new { id });
-            }
 
             if (order.Status != "Pending")
             {
@@ -157,47 +137,20 @@ namespace EWMS.Controllers
 
             // Ensure model's warehouse matches user's warehouse
             model.WarehouseId = warehouseId;
+            int currentUserId = userId;
 
             try
             {
-                // Lấy thông tin user hiện tại
-                var userName = User.Identity?.Name ?? "Unknown";
+                var result =
+                    await _salesOrderService.CreateSalesOrderAsync(model, currentUserId);
 
-                // Tạo message để gửi vào RabbitMQ
-                var message = new SalesOrderMessageDto
+                if (result.Success)
                 {
-                    UserId = userId,
-                    UserName = userName,
-                    WarehouseId = model.WarehouseId,
-                    CustomerName = model.CustomerName,
-                    CustomerPhone = model.CustomerPhone,
-                    CustomerAddress = model.CustomerAddress,
-                    ExpectedDeliveryDate = model.ExpectedDeliveryDate,
-                    Notes = model.Notes,
-                    Details = model.Details.Select(d => new SalesOrderDetailDto
-                    {
-                        ProductId = d.ProductId,
-                        Quantity = d.Quantity,
-                        UnitPrice = d.UnitPrice
-                    }).ToList()
-                };
+                    TempData["SuccessMessage"] = result.Message;
+                    return RedirectToAction(nameof(Index));
+                }
 
-                // Đẩy vào queue
-                _logger.LogInformation("Publishing sales order message for user {UserId}", userId);
-                _rabbitMQService.PublishMessage("sales-order-queue", message);
-                _logger.LogInformation("Sales order message published successfully for user {UserId}", userId);
-
-                // KHÔNG redirect ngay, ở lại trang để nhận SignalR notification
-                // Toast notification từ SignalR sẽ thông báo kết quả
-                
-                var productsAfterSubmit = await _salesOrderService.GetProductsForSelectionAsync();
-                var warehouseNameAfterSubmit = await _userService.GetWarehouseNameByUserIdAsync(userId);
-                
-                ViewBag.Products = productsAfterSubmit;
-                ViewBag.WarehouseId = warehouseId;
-                ViewBag.WarehouseName = warehouseNameAfterSubmit ?? "Unknown";
-
-                return View(new CreateSalesOrderViewModel());
+                TempData["ErrorMessage"] = result.Message;
             }
             catch (Exception ex)
             {

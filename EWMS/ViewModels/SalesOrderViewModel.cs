@@ -12,7 +12,6 @@
         public string Status { get; set; } = string.Empty;
         public string? Notes { get; set; }
         public DateTime CreatedAt { get; set; }
-        public int CreatedBy { get; set; }  // Thêm để kiểm tra quyền cancel
         public string WarehouseName { get; set; } = string.Empty;
         public List<SalesOrderDetailViewModel> Details { get; set; } = new();
     }

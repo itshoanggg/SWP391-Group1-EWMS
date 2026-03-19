@@ -9,8 +9,6 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.AspNetCore.Identity;
-using EWMS.Hubs;
-using EWMS.BackgroundServices;
 
 namespace EWMS
 {
@@ -81,15 +79,6 @@ namespace EWMS
             // Register TransferService so TransferController can be resolved
             builder.Services.AddScoped<TransferService>();
 
-            // RabbitMQ Service - Singleton vì dùng chung connection
-            builder.Services.AddSingleton<IRabbitMQService, RabbitMQService>();
-
-            // SignalR
-            builder.Services.AddSignalR();
-
-            // Background Worker để xử lý Sales Order từ RabbitMQ Queue
-            builder.Services.AddHostedService<SalesOrderWorker>();
-
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
@@ -107,9 +96,6 @@ namespace EWMS
             // IMPORTANT: enable authentication before authorization
             app.UseAuthentication();
             app.UseAuthorization();
-
-            // Map SignalR Hub
-            app.MapHub<SalesOrderHub>("/salesOrderHub");
 
             app.MapControllerRoute(
                 name: "default",
