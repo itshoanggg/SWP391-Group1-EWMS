@@ -1,4 +1,6 @@
 @{
+    if (User.IsInRole("Purchasing Staff")) { Layout = "~/Views/Shared/_LayoutPurchasingStaff.cshtml"; }
+
     ViewData["Title"] = "Stock-In History";
     var warehouseId = ViewBag.WarehouseId;
 }

@@ -26,6 +26,7 @@ namespace EWMS.DTOs
         public string ProductName { get; set; } = string.Empty;
         public string CategoryName { get; set; } = string.Empty;
         public int Quantity { get; set; }
+        
         public string LocationCode { get; set; } = string.Empty;
         public string? LocationName { get; set; }
         public string? Rack { get; set; }
