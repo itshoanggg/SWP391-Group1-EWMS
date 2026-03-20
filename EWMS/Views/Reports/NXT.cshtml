@@ -5,6 +5,8 @@
     var period = (string)ViewBag.Period ?? "month";
     var warehouses = (List<EWMS.Models.Warehouse>)ViewBag.AllowedWarehouses;
     int selectedWarehouseId = (int)ViewBag.SelectedWarehouseId;
+    int selectedYear = (int)ViewBag.SelectedYear;
+    int? selectedMonth = ViewBag.SelectedMonth != null ? (int)ViewBag.SelectedMonth : (int?)null;
     bool printMode = ViewBag.PrintMode == true;
 }
 
@@ -23,6 +25,29 @@
         .filter-bar { background: #fff; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.05); }
         @@media print { .filter-bar, .no-print { display: none !important; } body { background: #fff; } .main-content{ padding:0; } }
     </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const yearInput = document.getElementById('nxt-year');
+            const monthInput = document.getElementById('nxt-month');
+            const monthPicker = document.getElementById('nxt-monthpicker');
+
+            function syncPicker() {
+                const val = (monthPicker.value || '').trim(); // yyyy-MM
+                if (val) {
+                    const [yyyy, mm] = val.split('-');
+                    yearInput.value = yyyy;
+                    monthInput.value = mm.startsWith('0') ? mm.substring(1) : mm;
+                } else {
+                    // Nếu để trống (trình duyệt cho phép), xóa month và giữ nguyên year hiện tại
+                    monthInput.value = '';
+                }
+            }
+
+            // init
+            syncPicker();
+            monthPicker.addEventListener('change', syncPicker);
+        });
+    </script>
 }
 
 <div class="container-fluid">
@@ -30,11 +55,13 @@
         <div>
             <h1 class="mb-0">Inbound – Outbound – Inventory Report</h1>
             <p class="text-muted mb-0">Warehouse: <strong>@Model.WarehouseName</strong></p>
+            <p class="text-muted mb-0">Period: <strong>@period</strong> (@Model.FromDate?.ToString("dd/MM/yyyy") - @Model.ToDate?.ToString("dd/MM/yyyy"))</p>
         </div>
         <div class="no-print">
             @if (printMode)
             {
                 <button class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Print/PDF</button>
+                <script>document.addEventListener('DOMContentLoaded',()=>{ try{ window.print(); }catch(e){} });</script>
             }
         </div>
     </div>
@@ -80,22 +107,29 @@
                 <select name="warehouseId" class="form-select">
                     @foreach (var w in warehouses)
                     {
-                        <option value="@w.WarehouseId" selected="@(w.WarehouseId==selectedWarehouseId ? "selected" : null)">@w.WarehouseName</option>
+                        if (w.WarehouseId == selectedWarehouseId)
+                        {
+                            <option value="@w.WarehouseId" selected="selected">@w.WarehouseName</option>
+                        }
+                        else
+                        {
+                            <option value="@w.WarehouseId">@w.WarehouseName</option>
+                        }
                     }
                 </select>
             </div>
             <div class="col-md-4">
-                <label class="form-label">Reporting period</label>
-                <select name="period" class="form-select">
-                    <option value="month" selected="@(period=="month" ? "selected" : null)">This Month</option>
-                    <option value="quarter" selected="@(period=="quarter" ? "selected" : null)">This Quarter</option>
-                    <option value="year" selected="@(period=="year" ? "selected" : null)">This Year</option>
-                </select>
+                <label class="form-label">Thời gian</label>
+                <input type="hidden" name="year" id="nxt-year" value="@selectedYear" />
+                <input type="hidden" name="month" id="nxt-month" value="@(selectedMonth.HasValue ? selectedMonth.Value.ToString() : "")" />
+                <div class="d-flex align-items-center gap-2">
+                    <input type="month" id="nxt-monthpicker" class="form-control" required value="@(selectedMonth.HasValue ? ($"{selectedYear}-{selectedMonth.Value.ToString("D2")}") : "")" />
+                </div>
             </div>
             <div class="col-md-4 d-flex gap-2">
                 <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Filter</button>
-                <a class="btn btn-outline-danger" href="@Url.Action("ExportPdf","Reports", new { warehouseId = selectedWarehouseId, period = period })"><i class="bi bi-file-earmark-pdf"></i> Export PDF</a>
-                <a class="btn btn-outline-success" href="@Url.Action("ExportExcel","Reports", new { warehouseId = selectedWarehouseId, period = period })"><i class="bi bi-file-earmark-excel"></i> Export Excel</a>
+                <a class="btn btn-outline-danger" target="_blank" rel="noopener" href="@Url.Action("ExportPdf","Reports", new { warehouseId = selectedWarehouseId, year = selectedYear, month = selectedMonth })"><i class="bi bi-file-earmark-pdf"></i> Export PDF</a>
+                <a class="btn btn-outline-success" href="@Url.Action("ExportExcel","Reports", new { warehouseId = selectedWarehouseId, year = selectedYear, month = selectedMonth })"><i class="bi bi-file-earmark-excel"></i> Export Excel</a>
             </div>
         </form>
     </div>
@@ -107,9 +141,9 @@
                     <tr>
                         <th rowspan="2">Product</th>
                         <th rowspan="2">Unit</th>
-                        <th colspan="3" class="text-center group-in">Nhập</th>
-                        <th colspan="2" class="text-center group-out">Xuất</th>
-                        <th colspan="2" class="text-center group-stock">Tồn</th>
+                        <th colspan="3" class="text-center group-in">Stock-in</th>
+                        <th colspan="2" class="text-center group-out">Stock-out</th>
+                        <th colspan="2" class="text-center group-stock">Inventory</th>
                     </tr>
                     <tr>
                         <th class="group-in">Opening</th>
@@ -145,7 +179,7 @@
                 </tbody>
                 <tfoot>
                     <tr class="fw-bold">
-                        <td colspan="2" class="text-end">Tổng cộng</td>
+                        <td colspan="2" class="text-center">Total</td>
                         <td class="text-end">@Model.Totals.BeginQty</td>
                         <td class="text-end text-success">@Model.Totals.InQty</td>
                         <td class="text-end text-success">@Model.Totals.InValue.ToString("N2")</td>
