@@ -108,13 +108,13 @@ namespace EWMS.Controllers
 
             var lines = new List<string>
             {
-                "Product,Unit,Begin Qty,In Qty,In Value,Out Qty,Out Value,End Qty,End Value"
+                "Product,Unit,Begin Qty,In Qty,Out Qty,End Qty,End Value"
             };
             foreach (var r in vm.Rows)
             {
-                lines.Add($"{Escape(r.ProductName)},{Escape(r.Unit)},{r.BeginQty},{r.InQty},{r.InValue},{r.OutQty},{r.OutValue},{r.EndQty},{r.EndValue}");
+                lines.Add($"{Escape(r.ProductName)},{Escape(r.Unit)},{r.BeginQty},{r.InQty},{r.OutQty},{r.EndQty},{r.EndValue}");
             }
-            lines.Add($"TOTAL,,{vm.Totals.BeginQty},{vm.Totals.InQty},{vm.Totals.InValue},{vm.Totals.OutQty},{vm.Totals.OutValue},{vm.Totals.EndQty},{vm.Totals.EndValue}");
+            lines.Add($"TOTAL,,{vm.Totals.BeginQty},{vm.Totals.InQty},{vm.Totals.OutQty},{vm.Totals.EndQty},{vm.Totals.EndValue}");
 
             var csv = string.Join("\r\n", lines);
             var bytes = Encoding.UTF8.GetBytes(csv);

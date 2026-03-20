@@ -141,18 +141,16 @@
                     <tr>
                         <th rowspan="2">Product</th>
                         <th rowspan="2">Unit</th>
-                        <th colspan="3" class="text-center group-in">Stock-in</th>
-                        <th colspan="2" class="text-center group-out">Stock-out</th>
+                        <th colspan="2" class="text-center group-in">Stock-in</th>
+                        <th colspan="1" class="text-center group-out">Stock-out</th>
                         <th colspan="2" class="text-center group-stock">Inventory</th>
                     </tr>
                     <tr>
-                        <th class="group-in">Opening</th>
-                        <th class="group-in">In Qty</th>
-                        <th class="group-in">In Value</th>
-                        <th class="group-out">Out Qty</th>
-                        <th class="group-out">Out Value</th>
-                        <th class="group-stock">Ending Qty</th>
-                        <th class="group-stock">Ending Value</th>
+                        <th class="group-in text-end">Opening</th>
+                        <th class="group-in text-end">In Qty</th>
+                        <th class="group-out text-end">Out Qty</th>
+                        <th class="group-stock text-end">Ending Qty</th>
+                        <th class="group-stock text-end">Ending Value</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -163,9 +161,7 @@
                             <td>@r.Unit</td>
                             <td class="text-end">@r.BeginQty</td>
                             <td class="text-end text-success">@r.InQty</td>
-                            <td class="text-end text-success">@r.InValue.ToString("N2")</td>
                             <td class="text-end text-danger">@r.OutQty</td>
-                            <td class="text-end text-danger">@r.OutValue.ToString("N2")</td>
                             <td class="text-end">
                                 @r.EndQty
                                 @if (r.EndQty < 15)
@@ -182,9 +178,7 @@
                         <td colspan="2" class="text-center">Total</td>
                         <td class="text-end">@Model.Totals.BeginQty</td>
                         <td class="text-end text-success">@Model.Totals.InQty</td>
-                        <td class="text-end text-success">@Model.Totals.InValue.ToString("N2")</td>
                         <td class="text-end text-danger">@Model.Totals.OutQty</td>
-                        <td class="text-end text-danger">@Model.Totals.OutValue.ToString("N2")</td>
                         <td class="text-end">@Model.Totals.EndQty</td>
                         <td class="text-end">@Model.Totals.EndValue.ToString("N2")</td>
                     </tr>
