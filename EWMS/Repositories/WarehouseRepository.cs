@@ -68,5 +68,19 @@ namespace EWMS.Repositories
                 .OrderBy(w => w.WarehouseName)
                 .ToListAsync();
         }
+
+        public async Task<bool> IsDuplicateWarehouseAsync(string warehouseName, string address, int? excludeWarehouseId = null)
+        {
+            var query = _context.Warehouses
+                .Where(w => w.WarehouseName.ToLower() == warehouseName.ToLower() 
+                         && w.Address != null && w.Address.ToLower() == address.ToLower());
+
+            if (excludeWarehouseId.HasValue)
+            {
+                query = query.Where(w => w.WarehouseId != excludeWarehouseId.Value);
+            }
+
+            return await query.AnyAsync();
+        }
     }
 }

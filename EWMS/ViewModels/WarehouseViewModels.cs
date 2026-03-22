@@ -58,11 +58,8 @@ public class CreateWarehouseViewModel
     [Display(Name = "Địa chỉ")]
     public string Address { get; set; } = null!;
 
-    [Required(ErrorMessage = "Ký hiệu kho là bắt buộc")]
-    [StringLength(5, MinimumLength = 2, ErrorMessage = "Ký hiệu kho phải từ 2-5 ký tự")]
-    [RegularExpression(@"^[A-Z]+$", ErrorMessage = "Ký hiệu kho chỉ chứa chữ in hoa")]
-    [Display(Name = "Ký hiệu kho")]
-    public string Prefix { get; set; } = null!;
+    // Prefix is auto-generated from WarehouseName, not user input
+    public string? Prefix { get; set; }
 
     // Optional: Create locations at the same time
     public List<CreateLocationInWarehouseViewModel> Locations { get; set; } = new();
@@ -100,11 +97,8 @@ public class EditWarehouseViewModel
     [Display(Name = "Address")]
     public string Address { get; set; } = null!;
 
-    [Required(ErrorMessage = "Warehouse prefix is required")]
-    [StringLength(5, MinimumLength = 2, ErrorMessage = "Warehouse prefix must be 2-5 characters")]
-    [RegularExpression(@"^[A-Z]+$", ErrorMessage = "Warehouse prefix must contain only uppercase letters")]
-    [Display(Name = "Warehouse Prefix")]
-    public string Prefix { get; set; } = null!;
+    // Prefix is auto-generated from WarehouseName, not user input
+    public string? Prefix { get; set; }
 }
 
 public class LocationItemViewModel

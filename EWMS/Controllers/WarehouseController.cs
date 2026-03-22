@@ -53,7 +53,8 @@ public class WarehouseController : Controller
     {
         if (!ModelState.IsValid)
         {
-            return View(model);
+            TempData["ErrorMessage"] = "Please fill in all required fields correctly.";
+            return RedirectToAction(nameof(Index));
         }
 
         try
@@ -65,7 +66,7 @@ public class WarehouseController : Controller
         catch (Exception ex)
         {
             TempData["ErrorMessage"] = $"Error creating warehouse: {ex.Message}";
-            return View(model);
+            return RedirectToAction(nameof(Index));
         }
     }
 
