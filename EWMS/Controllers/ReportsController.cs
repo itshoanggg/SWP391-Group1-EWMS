@@ -25,7 +25,7 @@ namespace EWMS.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> NXT(int? warehouseId = null, string? period = "month", bool print = false)
+        public async Task<IActionResult> NXT(int? warehouseId = null, string? period = "month", int? year = null, int? month = null, bool print = false)
         {
             var userId = _userService.GetCurrentUserId();
             if (userId == 0) return RedirectToAction("Login", "Account");
@@ -43,36 +43,78 @@ namespace EWMS.Controllers
                 return Forbid();
             }
 
-            var (from, to) = ResolvePeriod(period ?? "month");
-            var vm = await _reportService.GetNXTReportAsync(selectedWarehouseId, from, to);
+            (DateTime? from, DateTime? to) range;
+            if (year.HasValue)
+            {
+                if (month.HasValue && month.Value >= 1 && month.Value <= 12)
+                {
+                    var fromDt = new DateTime(year.Value, month.Value, 1, 0, 0, 0);
+                    var toDt = fromDt.AddMonths(1).AddTicks(-1); // end of selected month
+                    range = (fromDt, toDt);
+                }
+                else
+                {
+                    var fromDt = new DateTime(year.Value, 1, 1, 0, 0, 0);
+                    var toDt = new DateTime(year.Value, 12, 31, 23, 59, 59);
+                    range = (fromDt, toDt);
+                }
+            }
+            else
+            {
+                range = ResolvePeriod(period ?? "month");
+            }
+
+            var vm = await _reportService.GetNXTReportAsync(selectedWarehouseId, range.from, range.to);
 
             ViewBag.Period = period ?? "month";
             ViewBag.AllowedWarehouses = allowedWarehouses;
             ViewBag.SelectedWarehouseId = selectedWarehouseId;
+            ViewBag.SelectedYear = year ?? (range.to?.Year ?? DateTime.Now.Year);
+            ViewBag.SelectedMonth = month ?? ((period == "month") ? (int?)(range.to?.Month ?? DateTime.Now.Month) : null);
             ViewBag.PrintMode = print;
 
             return View(vm);
         }
 
         [HttpGet]
-        public async Task<IActionResult> ExportExcel(int warehouseId, string? period = "month")
+        public async Task<IActionResult> ExportExcel(int warehouseId, string? period = "month", int? year = null, int? month = null)
         {
             var userId = _userService.GetCurrentUserId();
             var allowed = await _uow.UserWarehouses.GetWarehouseIdsForUserAsync(userId);
             if (!allowed.Contains(warehouseId)) return Forbid();
 
-            var (from, to) = ResolvePeriod(period ?? "month");
-            var vm = await _reportService.GetNXTReportAsync(warehouseId, from, to);
+            (DateTime? from, DateTime? to) range;
+            if (year.HasValue)
+            {
+                if (month.HasValue && month.Value >= 1 && month.Value <= 12)
+                {
+                    var fromDt = new DateTime(year.Value, month.Value, 1, 0, 0, 0);
+                    var toDt = fromDt.AddMonths(1).AddTicks(-1);
+                    range = (fromDt, toDt);
+                }
+                else
+                {
+                    var fromDt = new DateTime(year.Value, 1, 1, 0, 0, 0);
+                    var toDt = new DateTime(year.Value, 12, 31, 23, 59, 59);
+                    range = (fromDt, toDt);
+                }
+            }
+            else
+            {
+                range = ResolvePeriod(period ?? "month");
+            }
+
+            var vm = await _reportService.GetNXTReportAsync(warehouseId, range.from, range.to);
 
             var lines = new List<string>
             {
-                "Product,Unit,Begin Qty,In Qty,In Value,Out Qty,Out Value,End Qty,End Value"
+                "Product,Unit,Begin Qty,In Qty,Out Qty,End Qty,End Value"
             };
             foreach (var r in vm.Rows)
             {
-                lines.Add($"{Escape(r.ProductName)},{Escape(r.Unit)},{r.BeginQty},{r.InQty},{r.InValue},{r.OutQty},{r.OutValue},{r.EndQty},{r.EndValue}");
+                lines.Add($"{Escape(r.ProductName)},{Escape(r.Unit)},{r.BeginQty},{r.InQty},{r.OutQty},{r.EndQty},{r.EndValue}");
             }
-            lines.Add($"TOTAL,,{vm.Totals.BeginQty},{vm.Totals.InQty},{vm.Totals.InValue},{vm.Totals.OutQty},{vm.Totals.OutValue},{vm.Totals.EndQty},{vm.Totals.EndValue}");
+            lines.Add($"TOTAL,,{vm.Totals.BeginQty},{vm.Totals.InQty},{vm.Totals.OutQty},{vm.Totals.EndQty},{vm.Totals.EndValue}");
 
             var csv = string.Join("\r\n", lines);
             var bytes = Encoding.UTF8.GetBytes(csv);
@@ -82,9 +124,9 @@ namespace EWMS.Controllers
         }
 
         [HttpGet]
-        public IActionResult ExportPdf(int warehouseId, string? period = "month")
+        public IActionResult ExportPdf(int warehouseId, string? period = "month", int? year = null, int? month = null)
         {
-            return RedirectToAction(nameof(NXT), new { warehouseId, period, print = true });
+            return RedirectToAction(nameof(NXT), new { warehouseId, period, year, month, print = true });
         }
 
         private static (DateTime? from, DateTime? to) ResolvePeriod(string period)

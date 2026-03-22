@@ -1,7 +1,6 @@
 @{
-    if (User.IsInRole("Purchasing Staff")) { Layout = "~/Views/Shared/_LayoutPurchasingStaff.cshtml"; }
-
-    ViewData["Title"] = "Stock-In History";
+    ViewData["Title"] = "Purchase History";
+    Layout = "~/Views/Shared/_LayoutPurchasingStaff.cshtml";
     var warehouseId = ViewBag.WarehouseId;
 }
 
@@ -10,7 +9,6 @@
 }
 
 <div class="container-fluid">
-    
     @if (TempData["Error"] != null)
     {
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -18,12 +16,6 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
-
-    <div class="alert alert-info alert-dismissible fade show" role="alert">
-        <i class="fas fa-info-circle"></i>
-        <strong>Note:</strong> This page shows purchase orders with status <span class="badge bg-dark">Received</span> or <span class="badge bg-danger">Cancelled</span>.
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
 
     <div class="card mb-4">
         <div class="card-body">
@@ -60,7 +52,7 @@
         <div class="card-header">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="mb-0">
-                    <i class="fas fa-list-ul text-primary"></i> Historical Purchase Orders
+                    <i class="fas fa-list-ul text-primary"></i> Purchase Order History
                 </h5>
             </div>
         </div>
@@ -110,4 +102,4 @@
 <script>
     const warehouseId = @warehouseId;
 </script>
-<script src="~/js/Inventory/StockInHistory.js"></script>
+<script src="~/js/PurchaseOrder/PurchaseHistory.js"></script>

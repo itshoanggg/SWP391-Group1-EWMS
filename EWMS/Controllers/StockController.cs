@@ -4,7 +4,7 @@ using EWMS.Services.Interfaces;
 
 namespace EWMS.Controllers
 {
-    [Authorize(Roles = "Admin,Inventory Staff,Warehouse Manager")]
+    [Authorize(Roles = "Admin,Inventory Staff,Warehouse Manager,Purchasing Staff")]
     public class StockController : Controller
     {
         private readonly IStockService _stockService;
@@ -134,6 +134,7 @@ namespace EWMS.Controllers
             }
         }
         // GET: Stock/InternalTransfer
+        [Authorize(Roles = "Admin,Inventory Staff,Warehouse Manager")]
         [HttpGet]
         public async Task<IActionResult> InternalTransfer()
         {
@@ -149,6 +150,7 @@ namespace EWMS.Controllers
         }
 
         // POST: Stock/InternalTransfer
+        [Authorize(Roles = "Admin,Inventory Staff,Warehouse Manager")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> InternalTransfer(ViewModels.InternalTransferViewModel model)

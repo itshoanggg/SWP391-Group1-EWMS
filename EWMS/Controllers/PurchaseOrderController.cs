@@ -9,6 +9,46 @@ namespace EWMS.Controllers
     [Authorize(Roles = "Purchasing Staff")]
     public class PurchaseOrderController : Controller
     {
+        // New: History page for Purchasing Staff
+        [HttpGet]
+        public async Task<IActionResult> History()
+        {
+            var userId = _userService.GetCurrentUserId();
+            if (userId == 0)
+                return RedirectToAction("Login", "Account");
+
+            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            if (warehouseId == 0)
+            {
+                TempData["Error"] = "You have not been assigned to any warehouse.";
+                return RedirectToAction("Index", "Home");
+            }
+
+            ViewBag.WarehouseId = warehouseId;
+            return View();
+        }
+
+        // New: API for history list (Received/Cancelled)
+        [HttpGet]
+        public async Task<IActionResult> GetHistoryPurchaseOrders(string search = "")
+        {
+            try
+            {
+                var userId = _userService.GetCurrentUserId();
+                var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+                if (warehouseId == 0)
+                    return Json(new { error = "No warehouse assigned" });
+
+                var list = await _purchaseOrderService.GetPurchaseOrderListAsync(warehouseId, null, search);
+                // Filter for historical statuses only
+                var history = list.Where(po => po.Status == "Received" || po.Status == "Cancelled");
+                return Json(history);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
         private readonly IPurchaseOrderService _purchaseOrderService;
         private readonly ISupplierService _supplierService;
         private readonly IUserService _userService;

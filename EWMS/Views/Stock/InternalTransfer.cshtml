@@ -1,3 +1,6 @@
+@{
+    if (User.IsInRole("Purchasing Staff")) { Layout = "~/Views/Shared/_LayoutPurchasingStaff.cshtml"; }
+}
 @model EWMS.ViewModels.InternalTransferViewModel
 @{
     ViewData["Title"] = "Chuyển Kho Nội Bộ";
