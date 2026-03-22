@@ -107,18 +107,6 @@ public class EditWarehouseViewModel
     public string Prefix { get; set; } = null!;
 }
 
-public class LocationListViewModel
-{
-    public List<LocationItemViewModel> Locations { get; set; } = new();
-    public string? SearchQuery { get; set; }
-    public int? FilterWarehouseId { get; set; }
-    public List<WarehouseSelectItem> Warehouses { get; set; } = new();
-    public int Page { get; set; } = 1;
-    public int PageSize { get; set; } = 10;
-    public int TotalPages { get; set; }
-    public int TotalCount { get; set; }
-}
-
 public class LocationItemViewModel
 {
     public int LocationId { get; set; }

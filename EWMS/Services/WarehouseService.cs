@@ -211,49 +211,6 @@ public class WarehouseService : IWarehouseService
     }
 
     // Location methods
-    public async Task<LocationListViewModel> GetLocationsAsync(string? searchQuery, int? warehouseId, int page, int pageSize)
-    {
-        var (locations, totalCount) = await _locationRepository.GetLocationsPagedAsync(page, pageSize, searchQuery, warehouseId);
-
-        var locationItems = locations.Select(l =>
-        {
-            var used = l.Inventories?.Sum(i => i.Quantity ?? 0) ?? 0;
-            var usagePercentage = l.Capacity > 0 ? (int)Math.Round((double)used / l.Capacity * 100) : 0;
-
-            return new LocationItemViewModel
-            {
-                LocationId = l.LocationId,
-                WarehouseId = l.WarehouseId,
-                LocationCode = l.LocationCode,
-                LocationName = l.LocationName,
-                Rack = l.Rack,
-                Capacity = l.Capacity,
-                Used = used,
-                UsagePercentage = usagePercentage,
-                WarehouseName = l.Warehouse?.WarehouseName
-            };
-        }).ToList();
-
-        var warehouses = await _warehouseRepository.GetAllWarehousesAsync();
-        var warehouseSelectItems = warehouses.Select(w => new WarehouseSelectItem
-        {
-            WarehouseId = w.WarehouseId,
-            WarehouseName = w.WarehouseName
-        }).ToList();
-
-        return new LocationListViewModel
-        {
-            Locations = locationItems,
-            SearchQuery = searchQuery,
-            FilterWarehouseId = warehouseId,
-            Warehouses = warehouseSelectItems,
-            Page = page,
-            PageSize = pageSize,
-            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
-            TotalCount = totalCount
-        };
-    }
-
     public async Task<LocationDetailsViewModel?> GetLocationDetailsAsync(int locationId)
     {
         var location = await _locationRepository.GetLocationWithInventoryAsync(locationId);
