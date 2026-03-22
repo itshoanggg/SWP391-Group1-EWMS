@@ -48,6 +48,13 @@
         <button type="button" class="btn btn-primary" onclick="openAddLocationModal(@Model.WarehouseId)">
             <i class="bi bi-plus-circle"></i> Add Location
         </button>
+        @* Show delete button only if warehouse is empty (no inventory) *@
+        @if (Model.TotalUsed == 0)
+        {
+            <button type="button" class="btn btn-danger" onclick="confirmDeleteWarehouse(@Model.WarehouseId, '@Model.WarehouseName')">
+                <i class="bi bi-trash"></i> Delete
+            </button>
+        }
     </div>
 </div>
 
@@ -294,13 +301,13 @@
     </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
+<!-- Delete Location Confirmation Modal -->
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
                 <h5 class="modal-title">
-                    <i class="bi bi-exclamation-triangle-fill"></i> Confirm Delete
+                    <i class="bi bi-exclamation-triangle-fill"></i> Confirm Delete Location
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -324,6 +331,35 @@
     @Html.AntiForgeryToken()
     <input type="hidden" name="returnToWarehouse" value="@Model.WarehouseId" />
 </form>
+
+<!-- Delete Warehouse Confirmation Modal -->
+<div class="modal fade" id="deleteWarehouseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle-fill"></i> Confirm Delete Warehouse
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete warehouse <strong id="deleteWarehouseName"></strong>?</p>
+                <div class="alert alert-warning mb-0">
+                    <i class="bi bi-info-circle"></i> <strong>Note:</strong> This action cannot be undone. All locations in this warehouse will also be deleted.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteWarehouseForm" method="post" style="display: inline;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Delete Warehouse
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section Styles {
     <link rel="stylesheet" href="~/css/Warehouse/warehouse.css" />
@@ -441,5 +477,13 @@
                 form.submit();
             }
         });
+
+        // Delete Warehouse Modal
+        function confirmDeleteWarehouse(warehouseId, warehouseName) {
+            document.getElementById('deleteWarehouseName').textContent = warehouseName;
+            document.getElementById('deleteWarehouseForm').action = '@Url.Action("Delete", "Warehouse")/' + warehouseId;
+            var modal = new bootstrap.Modal(document.getElementById('deleteWarehouseModal'));
+            modal.show();
+        }
     </script>
 }
