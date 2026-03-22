@@ -27,6 +27,7 @@ namespace EWMS.Repositories
         {
             var query = _context.Warehouses
                 .Include(w => w.Locations)
+                    .ThenInclude(l => l.Inventories)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(searchQuery))
