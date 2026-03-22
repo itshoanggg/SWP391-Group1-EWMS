@@ -33,9 +33,9 @@ public class WarehouseService : IWarehouseService
                 l.Inventories?.Sum(i => i.Quantity ?? 0) ?? 0);
             var usagePercentage = totalCapacity > 0 ? (int)Math.Round((double)totalUsed / totalCapacity * 100) : 0;
 
-            // Generate Warehouse Code and Prefix
+            // Generate Warehouse Code and use DB Prefix (fallback to generated)
             var warehouseCode = $"WH-{w.WarehouseId:D3}";
-            var prefix = GeneratePrefixFromName(w.WarehouseName);
+            var prefix = w.Prefix ?? GeneratePrefixFromName(w.WarehouseName);
 
             return new WarehouseItemViewModel
             {
@@ -74,7 +74,7 @@ public class WarehouseService : IWarehouseService
         var usagePercentage = totalCapacity > 0 ? (int)Math.Round((double)totalUsed / totalCapacity * 100) : 0;
 
         var warehouseCode = $"WH-{warehouse.WarehouseId:D3}";
-        var prefix = GeneratePrefixFromName(warehouse.WarehouseName);
+        var prefix = warehouse.Prefix ?? GeneratePrefixFromName(warehouse.WarehouseName);
 
         // Get all locations first for mapping
         var allLocationItems = warehouse.Locations.Select(l =>
@@ -124,6 +124,13 @@ public class WarehouseService : IWarehouseService
 
     public async Task<int> CreateWarehouseAsync(CreateWarehouseViewModel model)
     {
+        // Check for duplicate warehouse name and address
+        var isDuplicate = await _warehouseRepository.IsDuplicateWarehouseAsync(model.WarehouseName, model.Address);
+        if (isDuplicate)
+        {
+            throw new InvalidOperationException($"A warehouse with the same name '{model.WarehouseName}' and address already exists!");
+        }
+
         var warehouse = new Warehouse
         {
             WarehouseName = model.WarehouseName,
@@ -160,6 +167,13 @@ public class WarehouseService : IWarehouseService
     {
         var warehouse = await _warehouseRepository.GetByIdAsync(model.WarehouseId);
         if (warehouse == null) return false;
+
+        // Check for duplicate warehouse name and address (excluding current warehouse)
+        var isDuplicate = await _warehouseRepository.IsDuplicateWarehouseAsync(model.WarehouseName, model.Address, model.WarehouseId);
+        if (isDuplicate)
+        {
+            throw new InvalidOperationException($"A warehouse with the same name '{model.WarehouseName}' and address already exists!");
+        }
 
         warehouse.WarehouseName = model.WarehouseName;
         warehouse.Address = model.Address;
@@ -199,61 +213,16 @@ public class WarehouseService : IWarehouseService
         var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId);
         if (warehouse == null) return null;
 
-        var prefix = GeneratePrefixFromName(warehouse.WarehouseName);
-
         return new EditWarehouseViewModel
         {
             WarehouseId = warehouse.WarehouseId,
             WarehouseName = warehouse.WarehouseName,
             Address = warehouse.Address ?? string.Empty,
-            Prefix = prefix
+            Prefix = warehouse.Prefix ?? GeneratePrefixFromName(warehouse.WarehouseName)
         };
     }
 
     // Location methods
-    public async Task<LocationListViewModel> GetLocationsAsync(string? searchQuery, int? warehouseId, int page, int pageSize)
-    {
-        var (locations, totalCount) = await _locationRepository.GetLocationsPagedAsync(page, pageSize, searchQuery, warehouseId);
-
-        var locationItems = locations.Select(l =>
-        {
-            var used = l.Inventories?.Sum(i => i.Quantity ?? 0) ?? 0;
-            var usagePercentage = l.Capacity > 0 ? (int)Math.Round((double)used / l.Capacity * 100) : 0;
-
-            return new LocationItemViewModel
-            {
-                LocationId = l.LocationId,
-                WarehouseId = l.WarehouseId,
-                LocationCode = l.LocationCode,
-                LocationName = l.LocationName,
-                Rack = l.Rack,
-                Capacity = l.Capacity,
-                Used = used,
-                UsagePercentage = usagePercentage,
-                WarehouseName = l.Warehouse?.WarehouseName
-            };
-        }).ToList();
-
-        var warehouses = await _warehouseRepository.GetAllWarehousesAsync();
-        var warehouseSelectItems = warehouses.Select(w => new WarehouseSelectItem
-        {
-            WarehouseId = w.WarehouseId,
-            WarehouseName = w.WarehouseName
-        }).ToList();
-
-        return new LocationListViewModel
-        {
-            Locations = locationItems,
-            SearchQuery = searchQuery,
-            FilterWarehouseId = warehouseId,
-            Warehouses = warehouseSelectItems,
-            Page = page,
-            PageSize = pageSize,
-            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
-            TotalCount = totalCount
-        };
-    }
-
     public async Task<LocationDetailsViewModel?> GetLocationDetailsAsync(int locationId)
     {
         var location = await _locationRepository.GetLocationWithInventoryAsync(locationId);

@@ -53,7 +53,8 @@ public class WarehouseController : Controller
     {
         if (!ModelState.IsValid)
         {
-            return View(model);
+            TempData["ErrorMessage"] = "Please fill in all required fields correctly.";
+            return RedirectToAction(nameof(Index));
         }
 
         try
@@ -65,7 +66,7 @@ public class WarehouseController : Controller
         catch (Exception ex)
         {
             TempData["ErrorMessage"] = $"Error creating warehouse: {ex.Message}";
-            return View(model);
+            return RedirectToAction(nameof(Index));
         }
     }
 
@@ -146,15 +147,6 @@ public class WarehouseController : Controller
         }
     }
 
-    // GET: Warehouse/LocationList
-    [HttpGet]
-    public async Task<IActionResult> LocationList(string? search, int? warehouseId, int page = 1)
-    {
-        const int pageSize = 10;
-        var viewModel = await _warehouseService.GetLocationsAsync(search, warehouseId, page, pageSize);
-        return View(viewModel);
-    }
-
     // GET: Warehouse/LocationDetails/5
     [HttpGet]
     public async Task<IActionResult> LocationDetails(int id)
@@ -163,7 +155,7 @@ public class WarehouseController : Controller
         if (viewModel == null)
         {
             TempData["ErrorMessage"] = "Location not found!";
-            return RedirectToAction(nameof(LocationList));
+            return RedirectToAction(nameof(Index));
         }
 
         return View(viewModel);
@@ -216,7 +208,7 @@ public class WarehouseController : Controller
         if (viewModel == null)
         {
             TempData["ErrorMessage"] = "Location not found!";
-            return RedirectToAction(nameof(LocationList));
+            return RedirectToAction(nameof(Index));
         }
 
         return View(viewModel);
@@ -238,7 +230,7 @@ public class WarehouseController : Controller
             if (!result)
             {
                 TempData["ErrorMessage"] = "Location not found!";
-                return RedirectToAction(nameof(LocationList));
+                return RedirectToAction(nameof(Index));
             }
 
             TempData["SuccessMessage"] = "Location updated successfully!";
@@ -267,7 +259,7 @@ public class WarehouseController : Controller
             if (!result)
             {
                 TempData["ErrorMessage"] = "Location not found!";
-                return RedirectToAction(nameof(LocationList));
+                return RedirectToAction(nameof(Index));
             }
 
             TempData["SuccessMessage"] = "Location deleted successfully!";
@@ -277,7 +269,7 @@ public class WarehouseController : Controller
                 return RedirectToAction(nameof(Details), new { id = returnToWarehouse.Value });
             }
             
-            return RedirectToAction(nameof(LocationList));
+            return RedirectToAction(nameof(Index));
         }
         catch (InvalidOperationException ex)
         {

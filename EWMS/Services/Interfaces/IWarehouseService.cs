@@ -11,7 +11,6 @@ public interface IWarehouseService
     Task<bool> DeleteWarehouseAsync(int warehouseId);
     Task<EditWarehouseViewModel?> GetWarehouseForEditAsync(int warehouseId);
     
-    Task<LocationListViewModel> GetLocationsAsync(string? searchQuery, int? warehouseId, int page, int pageSize);
     Task<LocationDetailsViewModel?> GetLocationDetailsAsync(int locationId);
     Task<int> CreateLocationAsync(CreateLocationViewModel model);
     Task<bool> UpdateLocationAsync(EditLocationViewModel model);

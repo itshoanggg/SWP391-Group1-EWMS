@@ -41,11 +41,10 @@
 
             <div class="mb-3">
                 <label asp-for="Prefix" class="form-label">
-                    Warehouse Prefix
+                    Warehouse Prefix <small class="text-muted">(auto-generated from name)</small>
                 </label>
-                <input asp-for="Prefix" class="form-control" style="font-family:'Courier New',monospace;text-transform:uppercase;" />
-                <div class="form-hint">Do not change prefix if locations already use the old code.</div>
-                <span asp-validation-for="Prefix" class="text-danger"></span>
+                <input asp-for="Prefix" class="form-control" readonly style="font-family:'Courier New',monospace;text-transform:uppercase;background-color:#f8f9fa;" />
+                <div class="form-hint">This prefix is automatically generated and used for location codes.</div>
             </div>
 
             <hr class="my-4" />
@@ -69,8 +68,20 @@
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
-        document.getElementById('Prefix').addEventListener('input', function() {
-            this.value = this.value.toUpperCase().replace(/[^A-Z]/g, '');
+        // Auto-update prefix when warehouse name changes
+        document.getElementById('WarehouseName').addEventListener('input', function() {
+            var words = this.value.trim().split(/\s+/);
+            var prefix = '';
+            
+            if (words.length >= 2) {
+                prefix = (words[0][0] || '') + (words[1][0] || '');
+            } else if (words.length === 1 && words[0].length >= 3) {
+                prefix = words[0].substring(0, 3);
+            } else if (words.length === 1) {
+                prefix = words[0];
+            }
+            
+            document.getElementById('Prefix').value = prefix.toUpperCase();
         });
     </script>
 }
