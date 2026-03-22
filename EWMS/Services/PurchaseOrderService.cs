@@ -85,17 +85,13 @@ namespace EWMS.Services
             return purchaseOrder;
         }
 
+        // Removed: MarkAsDeliveredAsync - This method was doing nothing (keeping status as "Ordered")
+        // Status is automatically updated when stock-in is performed via StockInService
         public async Task<bool> MarkAsDeliveredAsync(int id, int warehouseId)
         {
-            var purchaseOrder = await _unitOfWork.PurchaseOrders.FirstOrDefaultAsync(
-                po => po.PurchaseOrderId == id && po.WarehouseId == warehouseId);
-
-            if (purchaseOrder == null || purchaseOrder.Status != "Ordered")
-                return false;
-
-            purchaseOrder.Status = "Ordered"; // Keep as Ordered, status will be updated when stock-in is performed
-            await _unitOfWork.SaveChangesAsync();
-            return true;
+            // This endpoint is kept for backward compatibility but does nothing
+            // The actual status update happens in StockInService when goods are received
+            return await Task.FromResult(true);
         }
 
         public async Task<bool> CancelPurchaseOrderAsync(int id, int warehouseId)

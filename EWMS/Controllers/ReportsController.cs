@@ -15,22 +15,20 @@ namespace EWMS.Controllers
     {
         private readonly IInventoryReportService _reportService;
         private readonly IUserService _userService;
-        private readonly IUnitOfWork _uow;
 
-        public ReportsController(IInventoryReportService reportService, IUserService userService, IUnitOfWork uow)
+        public ReportsController(IInventoryReportService reportService, IUserService userService)
         {
             _reportService = reportService;
             _userService = userService;
-            _uow = uow;
         }
 
         [HttpGet]
-        public async Task<IActionResult> NXT(int? warehouseId = null, string? period = "month", int? year = null, int? month = null, bool print = false)
+        public async Task<IActionResult> NXT(int? warehouseId = null, int? year = null, int? month = null, bool print = false)
         {
             var userId = _userService.GetCurrentUserId();
             if (userId == 0) return RedirectToAction("Login", "Account");
 
-            var allowedWarehouses = await _uow.UserWarehouses.GetWarehousesForUserAsync(userId);
+            var allowedWarehouses = await _userService.GetWarehousesForUserAsync(userId);
             if (allowedWarehouses.Count == 0)
             {
                 TempData["Error"] = "You are not assigned to any warehouse.";
@@ -43,67 +41,26 @@ namespace EWMS.Controllers
                 return Forbid();
             }
 
-            (DateTime? from, DateTime? to) range;
-            if (year.HasValue)
-            {
-                if (month.HasValue && month.Value >= 1 && month.Value <= 12)
-                {
-                    var fromDt = new DateTime(year.Value, month.Value, 1, 0, 0, 0);
-                    var toDt = fromDt.AddMonths(1).AddTicks(-1); // end of selected month
-                    range = (fromDt, toDt);
-                }
-                else
-                {
-                    var fromDt = new DateTime(year.Value, 1, 1, 0, 0, 0);
-                    var toDt = new DateTime(year.Value, 12, 31, 23, 59, 59);
-                    range = (fromDt, toDt);
-                }
-            }
-            else
-            {
-                range = ResolvePeriod(period ?? "month");
-            }
-
+            var range = GetDateRange(year, month);
             var vm = await _reportService.GetNXTReportAsync(selectedWarehouseId, range.from, range.to);
 
-            ViewBag.Period = period ?? "month";
             ViewBag.AllowedWarehouses = allowedWarehouses;
             ViewBag.SelectedWarehouseId = selectedWarehouseId;
             ViewBag.SelectedYear = year ?? (range.to?.Year ?? DateTime.Now.Year);
-            ViewBag.SelectedMonth = month ?? ((period == "month") ? (int?)(range.to?.Month ?? DateTime.Now.Month) : null);
+            ViewBag.SelectedMonth = month;
             ViewBag.PrintMode = print;
 
             return View(vm);
         }
 
         [HttpGet]
-        public async Task<IActionResult> ExportExcel(int warehouseId, string? period = "month", int? year = null, int? month = null)
+        public async Task<IActionResult> ExportExcel(int warehouseId, int? year = null, int? month = null)
         {
             var userId = _userService.GetCurrentUserId();
-            var allowed = await _uow.UserWarehouses.GetWarehouseIdsForUserAsync(userId);
+            var allowed = await _userService.GetWarehouseIdsForUserAsync(userId);
             if (!allowed.Contains(warehouseId)) return Forbid();
 
-            (DateTime? from, DateTime? to) range;
-            if (year.HasValue)
-            {
-                if (month.HasValue && month.Value >= 1 && month.Value <= 12)
-                {
-                    var fromDt = new DateTime(year.Value, month.Value, 1, 0, 0, 0);
-                    var toDt = fromDt.AddMonths(1).AddTicks(-1);
-                    range = (fromDt, toDt);
-                }
-                else
-                {
-                    var fromDt = new DateTime(year.Value, 1, 1, 0, 0, 0);
-                    var toDt = new DateTime(year.Value, 12, 31, 23, 59, 59);
-                    range = (fromDt, toDt);
-                }
-            }
-            else
-            {
-                range = ResolvePeriod(period ?? "month");
-            }
-
+            var range = GetDateRange(year, month);
             var vm = await _reportService.GetNXTReportAsync(warehouseId, range.from, range.to);
 
             var lines = new List<string>
@@ -124,30 +81,36 @@ namespace EWMS.Controllers
         }
 
         [HttpGet]
-        public IActionResult ExportPdf(int warehouseId, string? period = "month", int? year = null, int? month = null)
+        public IActionResult ExportPdf(int warehouseId, int? year = null, int? month = null)
         {
-            return RedirectToAction(nameof(NXT), new { warehouseId, period, year, month, print = true });
+            return RedirectToAction(nameof(NXT), new { warehouseId, year, month, print = true });
         }
 
-        private static (DateTime? from, DateTime? to) ResolvePeriod(string period)
+        /// <summary>
+        /// Calculate date range based on year and month parameters
+        /// </summary>
+        private static (DateTime? from, DateTime? to) GetDateRange(int? year, int? month)
         {
-            var now = DateTime.Now;
-            switch (period.ToLowerInvariant())
+            if (!year.HasValue)
             {
-                case "month":
-                    var first = new DateTime(now.Year, now.Month, 1, 0, 0, 0);
-                    return (first, now);
-                case "quarter":
-                    int q = (now.Month - 1) / 3 + 1;
-                    int startMonth = (q - 1) * 3 + 1;
-                    var qfirst = new DateTime(now.Year, startMonth, 1, 0, 0, 0);
-                    return (qfirst, now);
-                case "year":
-                    var yfirst = new DateTime(now.Year, 1, 1, 0, 0, 0);
-                    return (yfirst, now);
-                default:
-                    return (null, null);
+                // Default to current month if no year specified
+                var now = DateTime.Now;
+                var first = new DateTime(now.Year, now.Month, 1, 0, 0, 0);
+                return (first, now);
             }
+
+            if (month.HasValue && month.Value >= 1 && month.Value <= 12)
+            {
+                // Specific month and year
+                var fromDt = new DateTime(year.Value, month.Value, 1, 0, 0, 0);
+                var toDt = fromDt.AddMonths(1).AddTicks(-1);
+                return (fromDt, toDt);
+            }
+
+            // Entire year
+            var fromYear = new DateTime(year.Value, 1, 1, 0, 0, 0);
+            var toYear = new DateTime(year.Value, 12, 31, 23, 59, 59);
+            return (fromYear, toYear);
         }
 
         private static string Escape(string input)

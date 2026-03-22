@@ -50,8 +50,7 @@ namespace EWMS.Services
                 .Select(g => new
                 {
                     ProductId = g.Key,
-                    InQty = g.Sum(x => x.Quantity),
-                    InValue = g.Sum(x => (x.TotalPrice.HasValue ? x.TotalPrice.Value : x.UnitPrice * x.Quantity))
+                    InQty = g.Sum(x => x.Quantity)
                 });
 
             var outWithinQuery = ctx.StockOutDetails
@@ -63,8 +62,7 @@ namespace EWMS.Services
                 .Select(g => new
                 {
                     ProductId = g.Key,
-                    OutQty = g.Sum(x => x.Quantity),
-                    OutValue = g.Sum(x => (x.TotalPrice.HasValue ? x.TotalPrice.Value : x.UnitPrice * x.Quantity))
+                    OutQty = g.Sum(x => x.Quantity)
                 });
 
             // Movements AFTER the 'to' date (to recompute ending as of 'to')
@@ -135,12 +133,9 @@ namespace EWMS.Services
                     Unit = unit,
                     BeginQty = beginQty,
                     InQty = inQty,
-                    InValue = iWithin?.InValue ?? 0m,
                     OutQty = outQty,
-                    OutValue = oWithin?.OutValue ?? 0m,
                     EndQty = endAtTo,
-                    EndValue = endAtTo * cost,
-                    CostPrice = cost
+                    EndValue = endAtTo * cost
                 });
             }
 
@@ -150,9 +145,7 @@ namespace EWMS.Services
             {
                 BeginQty = rows.Sum(r => r.BeginQty),
                 InQty = rows.Sum(r => r.InQty),
-                InValue = rows.Sum(r => r.InValue),
                 OutQty = rows.Sum(r => r.OutQty),
-                OutValue = rows.Sum(r => r.OutValue),
                 EndQty = rows.Sum(r => r.EndQty),
                 EndValue = rows.Sum(r => r.EndValue)
             };

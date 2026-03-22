@@ -10,21 +10,16 @@ namespace EWMS.ViewModels
         public string Unit { get; set; } = string.Empty;
         public int BeginQty { get; set; }
         public int InQty { get; set; }
-        public decimal InValue { get; set; }
         public int OutQty { get; set; }
-        public decimal OutValue { get; set; }
         public int EndQty { get; set; }
         public decimal EndValue { get; set; }
-        public decimal CostPrice { get; set; }
     }
 
     public class NXTReportTotals
     {
         public int BeginQty { get; set; }
         public int InQty { get; set; }
-        public decimal InValue { get; set; }
         public int OutQty { get; set; }
-        public decimal OutValue { get; set; }
         public int EndQty { get; set; }
         public decimal EndValue { get; set; }
     }
