@@ -13,6 +13,7 @@
         public string? Notes { get; set; }
         public DateTime CreatedAt { get; set; }
         public string WarehouseName { get; set; } = string.Empty;
+        public int CreatedBy { get; set; }
         public List<SalesOrderDetailViewModel> Details { get; set; } = new();
     }
 }

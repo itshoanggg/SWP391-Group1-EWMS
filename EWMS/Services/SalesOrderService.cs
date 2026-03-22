@@ -85,6 +85,7 @@ namespace EWMS.Services
             Notes = o.Notes,
             CreatedAt = o.CreatedAt,
             WarehouseName = o.Warehouse.WarehouseName,
+            CreatedBy = o.CreatedBy,
             Details = o.SalesOrderDetails.Select(d => new SalesOrderDetailViewModel
             {
                 ProductId = d.ProductId,
@@ -114,6 +115,7 @@ namespace EWMS.Services
                 Notes = order.Notes,
                 CreatedAt = order.CreatedAt,
                 WarehouseName = order.Warehouse.WarehouseName,
+                CreatedBy = order.CreatedBy,
                 Details = order.SalesOrderDetails.Select(d => new SalesOrderDetailViewModel
                 {
                     ProductId = d.ProductId,

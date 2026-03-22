@@ -14,7 +14,8 @@
     <div class="card-header d-flex justify-content-between align-items-center">
         <h3>Order Information</h3>
         <div class="d-flex gap-2">
-            @if (Model.Status == "Pending")
+            @* Chỉ hiển thị nút Cancel nếu user hiện tại là người tạo đơn và đơn đang ở trạng thái Pending *@
+            @if (Model.Status == "Pending" && Model.CreatedBy == ViewBag.CurrentUserId)
             {
                 <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#cancelOrderModal">
                     <i class="bi bi-x-circle"></i> Cancel Order
