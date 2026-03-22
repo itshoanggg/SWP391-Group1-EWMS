@@ -10,12 +10,6 @@ let productsData = [];
    INDEX PAGE FUNCTIONS
 ========================================================= */
 
-// Filter by status
-function filterByStatus() {
-    const status = document.getElementById('statusFilter').value;
-    window.location.href = `/PurchaseOrder/Index?status=${status}`;
-}
-
 // Search functionality
 function initializeSearch() {
     const searchInput = document.getElementById('searchInput');
@@ -281,48 +275,17 @@ function clearProductSelects() {
     productsData = [];
 }
 
-// Form validation before submit
-function validateCreateForm(event) {
-    const supplierId = document.getElementById('supplierSelect').value;
-
-    if (!supplierId) {
-        event.preventDefault();
-        showAlert('warning', 'Please select a supplier');
-        return false;
-    }
-
-    const rows = document.querySelectorAll('.product-row');
-    let hasProduct = false;
-
-    rows.forEach(row => {
-        const productId = row.querySelector('.product-select').value;
-        if (productId) {
-            hasProduct = true;
-            // Price is already in numeric format (input type="number"), no conversion needed
-        }
-    });
-
-    if (!hasProduct) {
-        event.preventDefault();
-        showAlert('warning', 'Please add at least 1 product');
-        return false;
-    }
-
-    return true;
-}
-
 /* =========================================================
    DETAILS PAGE FUNCTIONS
 ========================================================= */
 
-// Mark as delivered (replaces updateStatus)
-async function markAsDelivered(purchaseOrderId) {
-    if (!confirm('Confirm goods have arrived at warehouse?')) {
+async function cancelPurchaseOrder(id) {
+    if (!confirm('Are you sure you want to cancel this order?')) {
         return;
     }
 
     try {
-        const response = await fetch(`/PurchaseOrder/MarkAsDelivered/${purchaseOrderId}`, {
+        const response = await fetch(`/PurchaseOrder/Cancel/${id}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -339,7 +302,7 @@ async function markAsDelivered(purchaseOrderId) {
         }
     } catch (error) {
         console.error('Error:', error);
-        showAlert('error', 'An error occurred while updating status');
+        showAlert('error', 'An error occurred while cancelling order');
     }
 }
 
@@ -384,20 +347,6 @@ function showAlert(type, message) {
     }
 }
 
-// Format currency
-function formatCurrency(value) {
-    return new Intl.NumberFormat('vi-VN', {
-        style: 'currency',
-        currency: 'VND',
-        minimumFractionDigits: 0
-    }).format(value);
-}
-
-// Format number
-function formatNumber(value) {
-    return new Intl.NumberFormat('vi-VN').format(value);
-}
-
 /* =========================================================
    INITIALIZE ON PAGE LOAD
 ========================================================= */
@@ -405,55 +354,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize search on Index page
     initializeSearch();
 
-    // Initialize form validation on Create page
-    const createForm = document.getElementById('createPurchaseOrderForm');
-    if (createForm) {
-        createForm.addEventListener('submit', validateCreateForm);
-    }
-
     // Log page loaded
     console.log('Purchase Order module initialized');
 });
-
-/* =========================================================
-   EXPORT FUNCTIONS (if needed for module pattern)
-========================================================= */
-window.PurchaseOrderModule = {
-    filterByStatus,
-    deletePurchaseOrder,
-    loadSupplierInfo,
-    updateProduct,
-    calculateTotal,
-    addProductRow,
-    removeRow,
-    markAsDelivered,
-    showAlert,
-    formatCurrency,
-    formatNumber
-};
-
-async function cancelPurchaseOrder(id) {
-    if (!confirm('Are you sure you want to cancel this order?')) {
-        return;
-    }
-
-    try {
-        const response = await fetch(`/PurchaseOrder/Cancel/${id}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            alert(result.message);
-            location.reload();
-        } else {
-            alert(result.message);
-        }
-    } catch (error) {
-        alert('An error occurred');
-    }
-}

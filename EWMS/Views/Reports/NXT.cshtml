@@ -2,52 +2,16 @@
 @{
     Layout = "~/Views/Shared/_LayoutWarehouseManager.cshtml";
     ViewData["Title"] = "Inbound – Outbound – Inventory Report";
-    var period = (string)ViewBag.Period ?? "month";
     var warehouses = (List<EWMS.Models.Warehouse>)ViewBag.AllowedWarehouses;
     int selectedWarehouseId = (int)ViewBag.SelectedWarehouseId;
     int selectedYear = (int)ViewBag.SelectedYear;
-    int? selectedMonth = ViewBag.SelectedMonth != null ? (int)ViewBag.SelectedMonth : (int?)null;
+    int? selectedMonth = ViewBag.SelectedMonth;
     bool printMode = ViewBag.PrintMode == true;
 }
 
 @section Styles {
-    <style>
-        .stat-card { border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 16px; background: #fff; height:100%; }
-        .stat-label { color: #6c757d; font-size: .9rem; }
-        .stat-value { font-size: 1.4rem; font-weight: 700; }
-        .delta { font-size: .85rem; }
-        .delta.positive { color: #198754; }
-        .delta.negative { color: #dc3545; }
-        .group-in th { background: #e8f5e9; }
-        .group-out th { background: #ffebee; }
-        .group-stock th { background: #e3f2fd; }
-        .badge-low { margin-left: 6px; }
-        .filter-bar { background: #fff; border-radius: 12px; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.05); }
-        @@media print { .filter-bar, .no-print { display: none !important; } body { background: #fff; } .main-content{ padding:0; } }
-    </style>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const yearInput = document.getElementById('nxt-year');
-            const monthInput = document.getElementById('nxt-month');
-            const monthPicker = document.getElementById('nxt-monthpicker');
-
-            function syncPicker() {
-                const val = (monthPicker.value || '').trim(); // yyyy-MM
-                if (val) {
-                    const [yyyy, mm] = val.split('-');
-                    yearInput.value = yyyy;
-                    monthInput.value = mm.startsWith('0') ? mm.substring(1) : mm;
-                } else {
-                    // Nếu để trống (trình duyệt cho phép), xóa month và giữ nguyên year hiện tại
-                    monthInput.value = '';
-                }
-            }
-
-            // init
-            syncPicker();
-            monthPicker.addEventListener('change', syncPicker);
-        });
-    </script>
+    <link rel="stylesheet" href="~/css/Reports/NXT.css" />
+    <script src="~/js/Reports/NXT.js"></script>
 }
 
 <div class="container-fluid">
@@ -55,13 +19,12 @@
         <div>
             <h1 class="mb-0">Inbound – Outbound – Inventory Report</h1>
             <p class="text-muted mb-0">Warehouse: <strong>@Model.WarehouseName</strong></p>
-            <p class="text-muted mb-0">Period: <strong>@period</strong> (@Model.FromDate?.ToString("dd/MM/yyyy") - @Model.ToDate?.ToString("dd/MM/yyyy"))</p>
+            <p class="text-muted mb-0">Period: <strong>@Model.FromDate?.ToString("dd/MM/yyyy") - @Model.ToDate?.ToString("dd/MM/yyyy")</strong></p>
         </div>
         <div class="no-print">
             @if (printMode)
             {
                 <button class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Print/PDF</button>
-                <script>document.addEventListener('DOMContentLoaded',()=>{ try{ window.print(); }catch(e){} });</script>
             }
         </div>
     </div>
