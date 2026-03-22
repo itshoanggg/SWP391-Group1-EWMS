@@ -150,19 +150,16 @@ namespace EWMS.Controllers
                     return RedirectToAction(nameof(Index));
                 }
 
+                // Nếu thất bại (ví dụ: insufficient stock, race condition), 
+                // redirect về Index để user thấy message rõ ràng
                 TempData["ErrorMessage"] = result.Message;
+                return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
                 TempData["ErrorMessage"] = $"System error: {ex.Message}";
+                return RedirectToAction(nameof(Index));
             }
-
-            var reloadProducts = await _salesOrderService.GetProductsForSelectionAsync();
-
-            ViewBag.Products = reloadProducts;
-            ViewBag.WarehouseId = warehouseId;
-
-            return View(model);
         }
 
         [HttpPost]
