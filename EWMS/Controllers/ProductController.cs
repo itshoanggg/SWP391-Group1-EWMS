@@ -168,30 +168,47 @@ namespace EWMS.Controllers
                 ? model.NewUnit.Trim() 
                 : (model.Unit ?? "Piece");
 
-            // Validate
+            // Validate category
             if (!categoryId.HasValue && string.IsNullOrWhiteSpace(model.NewCategoryName))
             {
-                ModelState.AddModelError("", "Please select a category or enter a new category name.");
-                model.Categories = await GetCategoryOptionsAsync();
-                model.Suppliers = await GetSupplierOptionsAsync();
-                model.Units = await GetDistinctUnitsAsync();
-                return View(model);
+                TempData["ErrorMessage"] = "Please select a category or enter a new category name.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Check for duplicate product name
+            var productName = model.ProductName.Trim();
+            var existingProduct = await _productRepository.Context.Products
+                .Where(p => p.ProductName.ToLower() == productName.ToLower())
+                .FirstOrDefaultAsync();
+            
+            if (existingProduct != null)
+            {
+                TempData["ErrorMessage"] = $"Product '{productName}' already exists!";
+                return RedirectToAction(nameof(Index));
             }
 
             var product = new Product
             {
-                ProductName = model.ProductName.Trim(),
+                ProductName = productName,
                 CategoryId = categoryId,
                 Unit = unit,
                 CostPrice = 0,  // Will be set when first stock-in happens
                 SellingPrice = 0  // Will be set when first stock-in happens
             };
 
-            await _productRepository.AddAsync(product);
-            await _productRepository.SaveAsync();
+            try
+            {
+                await _productRepository.AddAsync(product);
+                await _productRepository.SaveAsync();
 
-            TempData["SuccessMessage"] = $"Product '{product.ProductName}' created successfully! Prices will be set automatically when you stock in.";
-            return RedirectToAction(nameof(Details), new { id = product.ProductId });
+                TempData["SuccessMessage"] = $"Product '{product.ProductName}' created successfully! Prices will be set automatically when you stock in.";
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error creating product: {ex.Message}";
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         // GET: Product/Edit/5
@@ -328,14 +345,65 @@ namespace EWMS.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Check if product has related data
+            // Check if product has inventory
             var hasInventory = await _inventoryRepository.GetInventoryByProductIdAsync(id);
             if (hasInventory.Any())
             {
-                TempData["ErrorMessage"] = $"Cannot delete '{product.ProductName}' because it has inventory records. Please remove all inventory first.";
-                return RedirectToAction(nameof(Details), new { id });
+                TempData["ErrorMessage"] = $"Cannot delete '{product.ProductName}' because it has inventory records in {hasInventory.Count()} location(s).";
+                return RedirectToAction(nameof(Index));
             }
 
+            // Check if product has purchase order details
+            var hasPurchaseOrders = await _productRepository.Context.PurchaseOrderDetails
+                .Where(pod => pod.ProductId == id)
+                .AnyAsync();
+            if (hasPurchaseOrders)
+            {
+                TempData["ErrorMessage"] = $"Cannot delete '{product.ProductName}' because it is referenced in purchase orders.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Check if product has sales order details
+            var hasSalesOrders = await _productRepository.Context.SalesOrderDetails
+                .Where(sod => sod.ProductId == id)
+                .AnyAsync();
+            if (hasSalesOrders)
+            {
+                TempData["ErrorMessage"] = $"Cannot delete '{product.ProductName}' because it is referenced in sales orders.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Check if product has stock in details
+            var hasStockIn = await _productRepository.Context.StockInDetails
+                .Where(sid => sid.ProductId == id)
+                .AnyAsync();
+            if (hasStockIn)
+            {
+                TempData["ErrorMessage"] = $"Cannot delete '{product.ProductName}' because it has stock in history.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Check if product has stock out details
+            var hasStockOut = await _productRepository.Context.StockOutDetails
+                .Where(sod => sod.ProductId == id)
+                .AnyAsync();
+            if (hasStockOut)
+            {
+                TempData["ErrorMessage"] = $"Cannot delete '{product.ProductName}' because it has stock out history.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Check if product has transfer details
+            var hasTransfers = await _productRepository.Context.TransferDetails
+                .Where(td => td.ProductId == id)
+                .AnyAsync();
+            if (hasTransfers)
+            {
+                TempData["ErrorMessage"] = $"Cannot delete '{product.ProductName}' because it is referenced in transfer requests.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // If no related records found, proceed with delete
             try
             {
                 _productRepository.Delete(product);
@@ -346,8 +414,8 @@ namespace EWMS.Controllers
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = $"Error deleting product: {ex.Message}. This product may be referenced by other records.";
-                return RedirectToAction(nameof(Details), new { id });
+                TempData["ErrorMessage"] = $"Error deleting product: {ex.Message}";
+                return RedirectToAction(nameof(Index));
             }
         }
 
