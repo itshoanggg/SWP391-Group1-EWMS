@@ -26,23 +26,27 @@ namespace EWMS.ViewModels
 
     public class CreateUserViewModel
     {
-        [Required]
-        [StringLength(50)]
+        [Required(ErrorMessage = "Username is required")]
+        [StringLength(50, MinimumLength = 3, ErrorMessage = "Username must be between 3 and 50 characters")]
+        [RegularExpression(@"^[a-zA-Z0-9_]+$", ErrorMessage = "Username can only contain letters, numbers, and underscores")]
         public string Username { get; set; } = string.Empty;
 
         [StringLength(255)]
-        public string? Password { get; set; } // plain for now; replace with hash later
+        [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
+        public string? Password { get; set; }
 
         [StringLength(100)]
+        [RegularExpression(@"^[\p{L}\sa-zA-Z0-9]+$", ErrorMessage = "Full name can only contain letters, numbers, and spaces")]
         public string? FullName { get; set; }
 
-        [EmailAddress]
+        [EmailAddress(ErrorMessage = "Invalid email format")]
         public string? Email { get; set; }
 
-        [StringLength(20)]
+        [Phone(ErrorMessage = "Invalid phone number format")]
+        [RegularExpression(@"^[0-9+\-\s]{10,20}$", ErrorMessage = "Phone number must be 10-20 digits")]
         public string? Phone { get; set; }
 
-        [Required]
+        [Required(ErrorMessage = "Role is required")]
         public int RoleId { get; set; }
 
         public bool IsActive { get; set; } = true;

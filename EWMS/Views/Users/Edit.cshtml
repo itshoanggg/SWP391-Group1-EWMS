@@ -18,22 +18,26 @@
             <div class="mb-3">
                 <label class="form-label">Username</label>
                 <input asp-for="Username" class="form-control" readonly />
-                <span asp-validation-for="Username" class="text-danger"></span>
+                <input type="hidden" name="Username" value="@Model.Username" />
+                <small class="text-muted"><i class="fas fa-lock me-1"></i>Username cannot be changed after creation</small>
             </div>
 
             <div class="mb-3">
                 <label class="form-label">New Password (leave blank to keep)</label>
-                <input asp-for="Password" class="form-control" />
+                <input asp-for="Password" type="password" class="form-control" />
+                <span asp-validation-for="Password" class="text-danger small"></span>
             </div>
 
             <div class="mb-3">
                 <label class="form-label">Full name</label>
                 <input asp-for="FullName" class="form-control" />
+                <span asp-validation-for="FullName" class="text-danger small"></span>
             </div>
 
             <div class="mb-3">
                 <label class="form-label">Email</label>
                 <input asp-for="Email" class="form-control" />
+                <span asp-validation-for="Email" class="text-danger small"></span>
             </div>
         </div>
 
@@ -56,12 +60,14 @@
                     @foreach (var w in warehouses)
                     {
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="WarehouseIds" value="@w.WarehouseId"
+                            <input class="form-check-input warehouse-checkbox" type="checkbox" name="WarehouseIds" value="@w.WarehouseId"
                                 id="w_@w.WarehouseId" @(selected.Contains(w.WarehouseId) ? "checked" : "") />
                             <label class="form-check-label" for="w_@w.WarehouseId">@w.WarehouseName</label>
                         </div>
                     }
                 </div>
+                <span asp-validation-for="WarehouseIds" class="text-danger small d-block mt-1"></span>
+                <small class="text-muted d-block mt-1">Non-manager roles can only be assigned to 1 warehouse</small>
             </div>
 
             <div class="form-check mb-3">

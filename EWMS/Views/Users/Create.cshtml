@@ -169,10 +169,10 @@
                 <div class="mb-3">
                     <label class="form-label"><i class="fas fa-key me-2"></i>Password</label>
                     <input asp-for="Password" type="password" class="form-control"
-                        placeholder="Leave blank for default (123456)" />
+                        placeholder="Leave blank for auto-generated password" />
                     <div class="password-hint">
                         <i class="fas fa-info-circle"></i>
-                        <span>Default password will be set if left empty</span>
+                        <span>Auto-generated secure password if left blank (min 6 characters)</span>
                     </div>
                     <span asp-validation-for="Password" class="text-danger small"></span>
                 </div>
@@ -180,16 +180,19 @@
                 <div class="mb-3">
                     <label class="form-label"><i class="fas fa-id-card me-2"></i>Full Name</label>
                     <input asp-for="FullName" class="form-control" placeholder="Enter full name" />
+                    <span asp-validation-for="FullName" class="text-danger small"></span>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label"><i class="fas fa-envelope me-2"></i>Email</label>
                     <input asp-for="Email" type="email" class="form-control" placeholder="user@example.com" />
+                    <span asp-validation-for="Email" class="text-danger small"></span>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label"><i class="fas fa-phone me-2"></i>Phone Number</label>
                     <input asp-for="Phone" class="form-control" placeholder="0900000000" />
+                    <span asp-validation-for="Phone" class="text-danger small"></span>
                 </div>
             </div>
 
@@ -216,7 +219,7 @@
                             @foreach (var w in warehouses)
                             {
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="WarehouseIds" value="@w.WarehouseId"
+                                    <input class="form-check-input warehouse-checkbox" type="checkbox" name="WarehouseIds" value="@w.WarehouseId"
                                         id="w_@w.WarehouseId" />
                                     <label class="form-check-label" for="w_@w.WarehouseId">
                                         <i class="fas fa-building me-2" style="color: #667eea;"></i>@w.WarehouseName
@@ -229,6 +232,8 @@
                             <p class="text-muted mb-0"><i class="fas fa-info-circle me-2"></i>No warehouses available</p>
                         }
                     </div>
+                    <span asp-validation-for="WarehouseIds" class="text-danger small d-block mt-1"></span>
+                    <small class="text-muted d-block mt-1"><i class="fas fa-info-circle me-1"></i>Non-manager roles can only be assigned to 1 warehouse</small>
                 </div>
 
                 <div class="active-switch">
