@@ -38,16 +38,15 @@ namespace EWMS.Services
                     productRequest.ProductId,
                     request.WarehouseId);
 
-                var expectedIncoming = await _inventoryRepository.GetExpectedIncomingAsync(
-                    productRequest.ProductId,
-                    request.WarehouseId,
-                    request.ExpectedDeliveryDate);
-
                 var pendingOutgoing = await _inventoryRepository.GetPendingOutgoingAsync(
                     productRequest.ProductId,
                     request.WarehouseId);
 
-                var availableStock = currentStock + expectedIncoming - pendingOutgoing;
+                // Available Stock = Current Stock - Pending Outgoing
+                // CONSERVATIVE approach: Only sell what we have in stock NOW
+                // NOTE: We do NOT count Purchase Orders/Transfers pending receipt
+                // Reason: No pre-order system, avoid overselling if suppliers delay delivery
+                var availableStock = currentStock - pendingOutgoing;
                 var isAvailable = availableStock >= productRequest.Quantity;
 
                 if (!isAvailable)
@@ -61,7 +60,6 @@ namespace EWMS.Services
                     ProductName = product.ProductName,
                     RequestedQuantity = productRequest.Quantity,
                     CurrentStock = currentStock,
-                    ExpectedIncoming = expectedIncoming,
                     PendingOutgoing = pendingOutgoing,
                     AvailableStock = availableStock,
                     IsAvailable = isAvailable

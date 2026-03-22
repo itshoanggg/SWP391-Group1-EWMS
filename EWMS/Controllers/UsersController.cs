@@ -74,13 +74,44 @@ namespace EWMS.Controllers
                 return View(model);
             }
 
+            // check email unique
+            if (!string.IsNullOrWhiteSpace(model.Email) && await _db.Users.AnyAsync(u => u.Email == model.Email))
+            {
+                ModelState.AddModelError(nameof(model.Email), "Email already exists.");
+                return View(model);
+            }
+
             // check warehouse restriction for non-managers
             var role = await _db.Roles.FindAsync(model.RoleId);
             bool isManager = role?.RoleName == "Admin" || role?.RoleName == "Warehouse Manager";
-            if (!isManager && model.WarehouseIds != null && model.WarehouseIds.Count > 1)
+            
+            if (!isManager)
             {
-                ModelState.AddModelError("WarehouseIds", "Non-manager roles can only be assigned to a maximum of 1 warehouse.");
-                return View(model);
+                if (model.WarehouseIds == null || model.WarehouseIds.Count == 0)
+                {
+                    ModelState.AddModelError("WarehouseIds", "Employee must be assigned to exactly 1 warehouse.");
+                    return View(model);
+                }
+                if (model.WarehouseIds.Count > 1)
+                {
+                    ModelState.AddModelError("WarehouseIds", "Non-manager roles can only be assigned to 1 warehouse.");
+                    return View(model);
+                }
+                // check duplicate warehouse
+                if (model.WarehouseIds.Distinct().Count() != model.WarehouseIds.Count)
+                {
+                    ModelState.AddModelError("WarehouseIds", "Duplicate warehouses selected.");
+                    return View(model);
+                }
+            }
+            else
+            {
+                // for managers, check for duplicates
+                if (model.WarehouseIds != null && model.WarehouseIds.Distinct().Count() != model.WarehouseIds.Count)
+                {
+                    ModelState.AddModelError("WarehouseIds", "Duplicate warehouses selected.");
+                    return View(model);
+                }
             }
 
             var user = new User
@@ -159,10 +190,34 @@ namespace EWMS.Controllers
             // check warehouse restriction for non-managers
             var role = await _db.Roles.FindAsync(model.RoleId);
             bool isManager = role?.RoleName == "Admin" || role?.RoleName == "Warehouse Manager";
-            if (!isManager && model.WarehouseIds != null && model.WarehouseIds.Count > 1)
+
+            if (!isManager)
             {
-                ModelState.AddModelError("WarehouseIds", "Non-manager roles can only be assigned to a maximum of 1 warehouse.");
-                return View(model);
+                if (model.WarehouseIds == null || model.WarehouseIds.Count == 0)
+                {
+                    ModelState.AddModelError("WarehouseIds", "Employee must be assigned to exactly 1 warehouse.");
+                    return View(model);
+                }
+                if (model.WarehouseIds.Count > 1)
+                {
+                    ModelState.AddModelError("WarehouseIds", "Non-manager roles can only be assigned to 1 warehouse.");
+                    return View(model);
+                }
+                // check duplicate warehouse
+                if (model.WarehouseIds.Distinct().Count() != model.WarehouseIds.Count)
+                {
+                    ModelState.AddModelError("WarehouseIds", "Duplicate warehouses selected.");
+                    return View(model);
+                }
+            }
+            else
+            {
+                // for managers, check for duplicates
+                if (model.WarehouseIds != null && model.WarehouseIds.Distinct().Count() != model.WarehouseIds.Count)
+                {
+                    ModelState.AddModelError("WarehouseIds", "Duplicate warehouses selected.");
+                    return View(model);
+                }
             }
 
             var user = await _db.Users
@@ -323,12 +378,39 @@ namespace EWMS.Controllers
 
             // check warehouse restriction for non-managers
             bool isManager = user.Role?.RoleName == "Admin" || user.Role?.RoleName == "Warehouse Manager";
-            if (!isManager && model.SelectedWarehouseIds != null && model.SelectedWarehouseIds.Count > 1)
+            if (!isManager)
             {
-                ModelState.AddModelError("SelectedWarehouseIds", "Non-manager roles can only be assigned to a maximum of 1 warehouse.");
-                model.AvailableWarehouses = (await _db.Warehouses.OrderBy(w => w.WarehouseName).ToListAsync())
-                    .Select(w => new WarehouseSelectItem { WarehouseId = w.WarehouseId, WarehouseName = w.WarehouseName }).ToList();
-                return View(model);
+                if (model.SelectedWarehouseIds == null || model.SelectedWarehouseIds.Count == 0)
+                {
+                    ModelState.AddModelError("SelectedWarehouseIds", "Employee must be assigned to exactly 1 warehouse.");
+                    model.AvailableWarehouses = (await _db.Warehouses.OrderBy(w => w.WarehouseName).ToListAsync())
+                        .Select(w => new WarehouseSelectItem { WarehouseId = w.WarehouseId, WarehouseName = w.WarehouseName }).ToList();
+                    return View(model);
+                }
+                if (model.SelectedWarehouseIds.Count > 1)
+                {
+                    ModelState.AddModelError("SelectedWarehouseIds", "Non-manager roles can only be assigned to 1 warehouse.");
+                    model.AvailableWarehouses = (await _db.Warehouses.OrderBy(w => w.WarehouseName).ToListAsync())
+                        .Select(w => new WarehouseSelectItem { WarehouseId = w.WarehouseId, WarehouseName = w.WarehouseName }).ToList();
+                    return View(model);
+                }
+                if (model.SelectedWarehouseIds.Distinct().Count() != model.SelectedWarehouseIds.Count)
+                {
+                    ModelState.AddModelError("SelectedWarehouseIds", "Duplicate warehouses selected.");
+                    model.AvailableWarehouses = (await _db.Warehouses.OrderBy(w => w.WarehouseName).ToListAsync())
+                        .Select(w => new WarehouseSelectItem { WarehouseId = w.WarehouseId, WarehouseName = w.WarehouseName }).ToList();
+                    return View(model);
+                }
+            }
+            else
+            {
+                if (model.SelectedWarehouseIds != null && model.SelectedWarehouseIds.Distinct().Count() != model.SelectedWarehouseIds.Count)
+                {
+                    ModelState.AddModelError("SelectedWarehouseIds", "Duplicate warehouses selected.");
+                    model.AvailableWarehouses = (await _db.Warehouses.OrderBy(w => w.WarehouseName).ToListAsync())
+                        .Select(w => new WarehouseSelectItem { WarehouseId = w.WarehouseId, WarehouseName = w.WarehouseName }).ToList();
+                    return View(model);
+                }
             }
 
             // remove all existing

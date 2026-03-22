@@ -27,6 +27,7 @@ namespace EWMS.Repositories
         {
             var query = _context.Warehouses
                 .Include(w => w.Locations)
+                    .ThenInclude(l => l.Inventories)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(searchQuery))
@@ -66,6 +67,20 @@ namespace EWMS.Repositories
             return await _context.Warehouses
                 .OrderBy(w => w.WarehouseName)
                 .ToListAsync();
+        }
+
+        public async Task<bool> IsDuplicateWarehouseAsync(string warehouseName, string address, int? excludeWarehouseId = null)
+        {
+            var query = _context.Warehouses
+                .Where(w => w.WarehouseName.ToLower() == warehouseName.ToLower() 
+                         && w.Address != null && w.Address.ToLower() == address.ToLower());
+
+            if (excludeWarehouseId.HasValue)
+            {
+                query = query.Where(w => w.WarehouseId != excludeWarehouseId.Value);
+            }
+
+            return await query.AnyAsync();
         }
     }
 }

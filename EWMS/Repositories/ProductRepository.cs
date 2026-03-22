@@ -73,6 +73,7 @@ namespace EWMS.Repositories
             var query = _context.Products
                 .Include(p => p.Category)
                     .ThenInclude(c => c.Supplier)
+                .Include(p => p.Inventories)
                 .AsQueryable();
 
             // Apply filters

@@ -60,16 +60,12 @@
                 <div class="info-val">@(Model.SupplierName ?? "N/A")</div>
             </div>
             <div class="info-item">
-                <div class="info-label">Cost Price</div>
-                <div class="info-val" style="font-family: 'Courier New', monospace;">@Model.CostPrice.ToString("N0") ₫</div>
+                <div class="info-label">Unit</div>
+                <div class="info-val">@Model.Unit</div>
             </div>
             <div class="info-item">
-                <div class="info-label">Selling Price</div>
-                <div class="info-val" style="color: var(--success); font-family: 'Courier New', monospace;">@Model.SellingPrice.ToString("N0") ₫</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Markup</div>
-                <div class="info-val" style="color: var(--accent); font-family: 'Courier New', monospace;">@Model.ProfitMargin.ToString("F1")%</div>
+                <div class="info-label">Total Stock</div>
+                <div class="info-val" style="color: var(--blue); font-family: 'Courier New', monospace; font-weight: 600;">@Model.TotalInventory @Model.Unit</div>
             </div>
         </div>
     </div>
