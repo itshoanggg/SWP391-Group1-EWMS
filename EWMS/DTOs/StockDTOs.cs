@@ -33,16 +33,6 @@ namespace EWMS.DTOs
         public DateTime? LastUpdated { get; set; }
     }
 
-    public class StockSummaryDTO
-    {
-        public int TotalLocations { get; set; }
-        public int TotalCapacity { get; set; }
-        public int TotalStock { get; set; }
-        public int TotalProducts { get; set; }
-        public int AvailableSpace { get; set; }
-        public double UtilizationRate { get; set; }
-    }
-
     public class AvailableLocationDTO
     {
         public int LocationId { get; set; }

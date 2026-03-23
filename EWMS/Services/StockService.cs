@@ -71,31 +71,6 @@ namespace EWMS.Services
             }).OrderBy(p => p.ProductName).ToList();
         }
 
-        public async Task<StockSummaryDTO> GetStockSummaryAsync(int warehouseId)
-        {
-            var locations = await _unitOfWork.Locations.GetByWarehouseIdAsync(warehouseId);
-            var inventories = await _unitOfWork.Inventories.GetByWarehouseIdAsync(warehouseId);
-
-            var totalLocations = locations.Count();
-            var totalCapacity = locations.Sum(l => l.Capacity);
-            var totalStock = inventories.Sum(i => i.Quantity ?? 0);
-            var totalProducts = inventories.Where(i => i.Quantity > 0).Select(i => i.ProductId).Distinct().Count();
-
-            var utilizationRate = totalCapacity > 0
-                ? Math.Round((double)totalStock / totalCapacity * 100, 2)
-                : 0;
-
-            return new StockSummaryDTO
-            {
-                TotalLocations = totalLocations,
-                TotalCapacity = totalCapacity,
-                TotalStock = totalStock,
-                TotalProducts = totalProducts,
-                AvailableSpace = totalCapacity - totalStock,
-                UtilizationRate = utilizationRate
-            };
-        }
-
         public async Task<bool> PerformInternalTransferAsync(int warehouseId, int fromLocationId, int toLocationId, int productId, int quantity, int userId, string? reason)
         {
             var dbContext = _unitOfWork.Inventories.Context;

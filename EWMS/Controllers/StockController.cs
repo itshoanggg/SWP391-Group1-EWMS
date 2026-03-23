@@ -4,7 +4,7 @@ using EWMS.Services.Interfaces;
 
 namespace EWMS.Controllers
 {
-    [Authorize(Roles = "Admin,Inventory Staff,Warehouse Manager,Purchasing Staff")]
+    [Authorize(Roles = "Admin,Inventory Staff,Warehouse Manager,Purchasing Staff,Sales Staff")]
     public class StockController : Controller
     {
         private readonly IStockService _stockService;
@@ -119,20 +119,6 @@ namespace EWMS.Controllers
             }
         }
 
-        // API: Get Stock Summary
-        [HttpGet]
-        public async Task<IActionResult> GetStockSummary(int warehouseId)
-        {
-            try
-            {
-                var summary = await _stockService.GetStockSummaryAsync(warehouseId);
-                return Json(summary);
-            }
-            catch (Exception ex)
-            {
-                return Json(new { error = ex.Message });
-            }
-        }
         // GET: Stock/InternalTransfer
         [Authorize(Roles = "Admin,Inventory Staff,Warehouse Manager")]
         [HttpGet]
