@@ -26,34 +26,6 @@ function initializeSearch() {
     }
 }
 
-// Delete purchase order
-async function deletePurchaseOrder(id) {
-    if (!confirm('Are you sure you want to delete this order?')) {
-        return;
-    }
-
-    try {
-        const response = await fetch(`/PurchaseOrder/Delete/${id}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            showAlert('success', result.message);
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            showAlert('error', result.message);
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        showAlert('error', 'An error occurred while deleting the order');
-    }
-}
-
 /* =========================================================
    CREATE PAGE FUNCTIONS
 ========================================================= */

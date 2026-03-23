@@ -38,6 +38,7 @@ namespace EWMS.Controllers
             }
 
             var purchaseOrders = await _purchaseOrderService.GetPurchaseOrdersAsync(warehouseId, status);
+            ViewBag.CurrentUserId = userId;
             return View(purchaseOrders);
         }
 
@@ -57,6 +58,7 @@ namespace EWMS.Controllers
 
             ViewBag.TotalQuantity = purchaseOrder.PurchaseOrderDetails.Sum(d => d.Quantity);
             ViewBag.TotalAmount = purchaseOrder.PurchaseOrderDetails.Sum(d => d.TotalPrice ?? 0);
+            ViewBag.CurrentUserId = userId;
 
             return View(purchaseOrder);
         }
@@ -184,11 +186,12 @@ namespace EWMS.Controllers
         [HttpPost]
         public async Task<IActionResult> Delete(int id)
         {
-            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(_userService.GetCurrentUserId());
-            var result = await _purchaseOrderService.DeletePurchaseOrderAsync(id, warehouseId);
+            var userId = _userService.GetCurrentUserId();
+            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            var result = await _purchaseOrderService.DeletePurchaseOrderAsync(id, warehouseId, userId);
 
             if (!result)
-                return Json(new { success = false, message = "Unable to delete purchase order" });
+                return Json(new { success = false, message = "Unable to delete purchase order. Only the creator can delete this order." });
 
             return Json(new { success = true, message = "Purchase order deleted successfully" });
         }
@@ -196,11 +199,12 @@ namespace EWMS.Controllers
         [HttpPost]
         public async Task<IActionResult> Cancel(int id)
         {
-            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(_userService.GetCurrentUserId());
-            var result = await _purchaseOrderService.CancelPurchaseOrderAsync(id, warehouseId);
+            var userId = _userService.GetCurrentUserId();
+            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            var result = await _purchaseOrderService.CancelPurchaseOrderAsync(id, warehouseId, userId);
 
             if (!result)
-                return Json(new { success = false, message = "Unable to cancel purchase order" });
+                return Json(new { success = false, message = "Unable to cancel purchase order. Only the creator can cancel this order." });
 
             return Json(new { success = true, message = "Purchase order cancelled successfully" });
         }

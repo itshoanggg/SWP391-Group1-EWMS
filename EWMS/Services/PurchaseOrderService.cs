@@ -94,7 +94,7 @@ namespace EWMS.Services
             return await Task.FromResult(true);
         }
 
-        public async Task<bool> CancelPurchaseOrderAsync(int id, int warehouseId)
+        public async Task<bool> CancelPurchaseOrderAsync(int id, int warehouseId, int userId)
         {
             var purchaseOrder = await _unitOfWork.PurchaseOrders.FirstOrDefaultAsync(
                 po => po.PurchaseOrderId == id && po.WarehouseId == warehouseId);
@@ -102,16 +102,24 @@ namespace EWMS.Services
             if (purchaseOrder == null || purchaseOrder.Status != "Ordered")
                 return false;
 
+            // Chỉ cho phép người tạo đơn hủy
+            if (purchaseOrder.CreatedBy != userId)
+                return false;
+
             purchaseOrder.Status = "Cancelled";
             await _unitOfWork.SaveChangesAsync();
             return true;
         }
 
-        public async Task<bool> DeletePurchaseOrderAsync(int id, int warehouseId)
+        public async Task<bool> DeletePurchaseOrderAsync(int id, int warehouseId, int userId)
         {
             var purchaseOrder = await _unitOfWork.PurchaseOrders.GetByIdWithDetailsAsync(id, warehouseId);
 
             if (purchaseOrder == null || purchaseOrder.Status != "Ordered")
+                return false;
+
+            // Chỉ cho phép người tạo đơn xóa
+            if (purchaseOrder.CreatedBy != userId)
                 return false;
 
             _unitOfWork.PurchaseOrders.Delete(purchaseOrder);
