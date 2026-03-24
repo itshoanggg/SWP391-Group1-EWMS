@@ -15,6 +15,14 @@ public partial class ProductCategory
     [StringLength(100)]
     public string CategoryName { get; set; } = null!;
 
+    // New optional foreign key to Supplier (column added in DB as "SuplierID")
+    [Column("SupplierID")]
+    public int? SupplierId { get; set; }
+
+    [ForeignKey("SupplierId")]
+    [InverseProperty("ProductCategories")]
+    public virtual Supplier? Supplier { get; set; }
+
     [InverseProperty("Category")]
     public virtual ICollection<Product> Products { get; set; } = new List<Product>();
 }

@@ -106,15 +106,17 @@ public partial class EWMSDbContext : DbContext
             entity.Property(e => e.SellingPrice).HasDefaultValue(0m);
 
             entity.HasOne(d => d.Category).WithMany(p => p.Products).HasConstraintName("FK_Products_Categories");
-            
-            entity.HasOne(d => d.Supplier).WithMany(p => p.Products)
-                  .HasForeignKey(d => d.SupplierId)
-                  .HasConstraintName("FK_Products_Suppliers");
         });
 
         modelBuilder.Entity<ProductCategory>(entity =>
         {
             entity.HasKey(e => e.CategoryId).HasName("PK__ProductC__19093A2B5BEBEBCB");
+
+            // Configure optional relationship to Supplier via SuplierID column
+            entity.HasOne(d => d.Supplier)
+                  .WithMany(p => p.ProductCategories)
+                  .HasForeignKey(d => d.SupplierId)
+                  .HasConstraintName("FK_ProductCategories_Suppliers");
         });
 
         modelBuilder.Entity<PurchaseOrder>(entity =>
