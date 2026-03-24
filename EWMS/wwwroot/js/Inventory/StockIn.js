@@ -7,6 +7,8 @@ let currentPage = 1;
 let pageSize = 10;
 let totalItems = 0;
 let allOrders = [];
+// Currently loaded PO info for modal validation
+let currentPoInfo = null;
 
 // Format helpers
 function formatCurrency(value) {
@@ -25,6 +27,14 @@ function formatDate(dateString) {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleDateString('en-GB');
+}
+
+// Format a Date to yyyy-MM-dd for <input type="date">
+function toInputDate(date) {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
 }
 
 // Get status badge HTML
@@ -378,15 +388,25 @@ async function openOrderedPreview(order) {
         // Store the purchase order ID
         document.getElementById('ordered-po-id').value = order.purchaseOrderId;
         
-        // Reset receipt date and disable proceed link
+        // Reset current PO info and receipt date constraints
+        currentPoInfo = null;
         const receiptInput = document.getElementById('receipt-date-input');
         const proceedLink = document.getElementById('btn-proceed-stockin');
-        if (receiptInput) receiptInput.value = '';
+        const hintElement = document.getElementById('receipt-date-hint');
+        if (receiptInput) {
+            receiptInput.value = '';
+            receiptInput.removeAttribute('min');
+            receiptInput.removeAttribute('max');
+        }
         if (proceedLink) {
             proceedLink.removeAttribute('href');
             proceedLink.classList.add('disabled');
             proceedLink.setAttribute('aria-disabled', 'true');
             proceedLink.setAttribute('tabindex', '-1');
+        }
+        if (hintElement) {
+            hintElement.textContent = 'Please select a receipt date to proceed.';
+            hintElement.className = 'form-text text-muted';
         }
         
         // Show modal
@@ -414,6 +434,9 @@ async function loadOrderedPoInfo(purchaseOrderId) {
             throw new Error(data.error);
         }
         
+        // Save for validation use
+        currentPoInfo = data;
+        
         const infoDiv = document.getElementById('ordered-po-info');
         infoDiv.innerHTML = `
             <div class="row g-3">
@@ -422,11 +445,24 @@ async function loadOrderedPoInfo(purchaseOrderId) {
                     <p class="mb-1"><strong>Supplier:</strong> ${data.supplierName || 'N/A'}</p>
                 </div>
                 <div class="col-md-6">
+                    <p class="mb-1"><strong>PO Created:</strong> ${formatDate(data.createdAt)}</p>
                     <p class="mb-1"><strong>Expected Date:</strong> ${formatDate(data.expectedReceivingDate)}</p>
                     <p class="mb-1"><strong>Status:</strong> ${getStatusBadge(data.status)}</p>
                 </div>
             </div>
         `;
+
+        // Configure date input constraints
+        const receiptInput = document.getElementById('receipt-date-input');
+        if (receiptInput) {
+            // Receipt date must be on/after PO created date
+            if (data.createdAt) {
+                const created = new Date(data.createdAt);
+                created.setHours(0, 0, 0, 0);
+                receiptInput.min = toInputDate(created);
+            }
+            // Do NOT set max; allow selecting future dates but disable Create when chosen
+        }
     } catch (error) {
         console.error('Failed to load PO info:', error);
         throw error;
@@ -500,19 +536,23 @@ function checkReceiptDate() {
     const hintElement = document.getElementById('receipt-date-hint');
     const poId = document.getElementById('ordered-po-id')?.value;
 
-    const disableLink = () => {
+    const disableLink = (message, className = 'form-text text-danger') => {
         if (proceedLink) {
             proceedLink.removeAttribute('href');
             proceedLink.classList.add('disabled');
             proceedLink.setAttribute('aria-disabled', 'true');
             proceedLink.setAttribute('tabindex', '-1');
         }
+        if (hintElement && message) {
+            hintElement.textContent = message;
+            hintElement.className = className;
+        }
     };
 
+    if (!receiptDateInput || !hintElement) return;
+
     if (!receiptDateInput.value) {
-        disableLink();
-        hintElement.textContent = 'Please select a receipt date to proceed.';
-        hintElement.className = 'form-text text-muted';
+        disableLink('Please select a receipt date to proceed.', 'form-text text-muted');
         return;
     }
 
@@ -523,21 +563,31 @@ function checkReceiptDate() {
     selectedDate.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
 
-    // Allow today or past dates (not future dates)
-    if (selectedDate.getTime() <= today.getTime() && poId) {
-        if (proceedLink) {
-            proceedLink.href = `/StockIn/Details/${poId}`;
-            proceedLink.classList.remove('disabled');
-            proceedLink.removeAttribute('aria-disabled');
-            proceedLink.removeAttribute('tabindex');
+    // Validate against PO created date if available
+    if (currentPoInfo && currentPoInfo.createdAt) {
+        const poCreated = new Date(currentPoInfo.createdAt);
+        poCreated.setHours(0, 0, 0, 0);
+        if (selectedDate.getTime() < poCreated.getTime()) {
+            disableLink('Receipt date cannot be earlier than the purchase order creation date.');
+            return;
         }
-        hintElement.textContent = 'Ready to proceed to Stock-In!';
-        hintElement.className = 'form-text text-success';
-    } else {
-        disableLink();
-        hintElement.textContent = 'Receipt date cannot be in the future.';
-        hintElement.className = 'form-text text-danger';
     }
+
+    // Validate not in the future
+    if (selectedDate.getTime() > today.getTime()) {
+        disableLink('Receipt date cannot be in the future.');
+        return;
+    }
+
+    // Valid: selectedDate is between PO created date and today (inclusive)
+    if (poId && proceedLink) {
+        proceedLink.href = `/StockIn/Details/${poId}`;
+        proceedLink.classList.remove('disabled');
+        proceedLink.removeAttribute('aria-disabled');
+        proceedLink.removeAttribute('tabindex');
+    }
+    hintElement.textContent = 'Ready to proceed to Stock-In!';
+    hintElement.className = 'form-text text-success';
 }
 
 // Proceed link now handled via dynamic href on #btn-proceed-stockin
