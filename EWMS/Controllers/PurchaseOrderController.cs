@@ -9,46 +9,6 @@ namespace EWMS.Controllers
     [Authorize(Roles = "Purchasing Staff")]
     public class PurchaseOrderController : Controller
     {
-        // New: History page for Purchasing Staff
-        [HttpGet]
-        public async Task<IActionResult> History()
-        {
-            var userId = _userService.GetCurrentUserId();
-            if (userId == 0)
-                return RedirectToAction("Login", "Account");
-
-            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
-            if (warehouseId == 0)
-            {
-                TempData["Error"] = "You have not been assigned to any warehouse.";
-                return RedirectToAction("Index", "Home");
-            }
-
-            ViewBag.WarehouseId = warehouseId;
-            return View();
-        }
-
-        // New: API for history list (Received/Cancelled)
-        [HttpGet]
-        public async Task<IActionResult> GetHistoryPurchaseOrders(string search = "")
-        {
-            try
-            {
-                var userId = _userService.GetCurrentUserId();
-                var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
-                if (warehouseId == 0)
-                    return Json(new { error = "No warehouse assigned" });
-
-                var list = await _purchaseOrderService.GetPurchaseOrderListAsync(warehouseId, null, search);
-                // Filter for historical statuses only
-                var history = list.Where(po => po.Status == "Received" || po.Status == "Cancelled");
-                return Json(history);
-            }
-            catch (Exception ex)
-            {
-                return Json(new { error = ex.Message });
-            }
-        }
         private readonly IPurchaseOrderService _purchaseOrderService;
         private readonly ISupplierService _supplierService;
         private readonly IUserService _userService;
@@ -78,6 +38,7 @@ namespace EWMS.Controllers
             }
 
             var purchaseOrders = await _purchaseOrderService.GetPurchaseOrdersAsync(warehouseId, status);
+            ViewBag.CurrentUserId = userId;
             return View(purchaseOrders);
         }
 
@@ -97,6 +58,7 @@ namespace EWMS.Controllers
 
             ViewBag.TotalQuantity = purchaseOrder.PurchaseOrderDetails.Sum(d => d.Quantity);
             ViewBag.TotalAmount = purchaseOrder.PurchaseOrderDetails.Sum(d => d.TotalPrice ?? 0);
+            ViewBag.CurrentUserId = userId;
 
             return View(purchaseOrder);
         }
@@ -154,12 +116,12 @@ namespace EWMS.Controllers
             {
                 var purchaseOrder = await _purchaseOrderService.CreatePurchaseOrderAsync(model, warehouseId, userId);
 
-                TempData["Success"] = $"Tạo đơn mua hàng PO-{purchaseOrder.PurchaseOrderId:D4} thành công!";
+                TempData["Success"] = $"Purchase order PO-{purchaseOrder.PurchaseOrderId:D4} created successfully!";
                 return RedirectToAction(nameof(Details), new { id = purchaseOrder.PurchaseOrderId });
             }
             catch (Exception ex)
             {
-                TempData["Error"] = $"Có lỗi xảy ra: {ex.Message}";
+                TempData["Error"] = $"An error occurred: {ex.Message}";
 
                 ViewBag.Suppliers = new SelectList(
                     await _supplierService.GetAllSuppliersAsync(),
@@ -183,13 +145,13 @@ namespace EWMS.Controllers
                 var result = await _purchaseOrderService.MarkAsDeliveredAsync(id, warehouseId);
 
                 if (!result)
-                    return Json(new { success = false, message = "Không thể cập nhật đơn hàng" });
+                    return Json(new { success = false, message = "Unable to update purchase order" });
 
-                return Json(new { success = true, message = "Đã cập nhật: Hàng đã về kho" });
+                return Json(new { success = true, message = "Updated: Goods have arrived at warehouse" });
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = $"Lỗi: {ex.Message}" });
+                return Json(new { success = false, message = $"Error: {ex.Message}" });
             }
         }
 
@@ -224,25 +186,27 @@ namespace EWMS.Controllers
         [HttpPost]
         public async Task<IActionResult> Delete(int id)
         {
-            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(_userService.GetCurrentUserId());
-            var result = await _purchaseOrderService.DeletePurchaseOrderAsync(id, warehouseId);
+            var userId = _userService.GetCurrentUserId();
+            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            var result = await _purchaseOrderService.DeletePurchaseOrderAsync(id, warehouseId, userId);
 
             if (!result)
-                return Json(new { success = false, message = "Không thể xóa đơn hàng" });
+                return Json(new { success = false, message = "Unable to delete purchase order. Only the creator can delete this order." });
 
-            return Json(new { success = true, message = "Xóa đơn hàng thành công" });
+            return Json(new { success = true, message = "Purchase order deleted successfully" });
         }
 
         [HttpPost]
         public async Task<IActionResult> Cancel(int id)
         {
-            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(_userService.GetCurrentUserId());
-            var result = await _purchaseOrderService.CancelPurchaseOrderAsync(id, warehouseId);
+            var userId = _userService.GetCurrentUserId();
+            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            var result = await _purchaseOrderService.CancelPurchaseOrderAsync(id, warehouseId, userId);
 
             if (!result)
-                return Json(new { success = false, message = "Không thể hủy đơn hàng" });
+                return Json(new { success = false, message = "Unable to cancel purchase order. Only the creator can cancel this order." });
 
-            return Json(new { success = true, message = "Đã hủy đơn hàng thành công" });
+            return Json(new { success = true, message = "Purchase order cancelled successfully" });
         }
 
     }

@@ -256,7 +256,7 @@
                         </tr>
                     </tfoot>
                 </table>
-                @if (Model.Status == "Ordered")
+                @if (Model.Status == "Ordered" && Model.CreatedBy == ViewBag.CurrentUserId)
                 {
                     <div class="mt-3">
                         <button class="btn btn-danger"

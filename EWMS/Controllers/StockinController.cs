@@ -123,35 +123,6 @@ namespace EWMS.Controllers
             return View(purchaseOrder);
         }
 
-        // GET: StockIn/PurchaseOrderDetails/{id} - Read-only PO details for Inventory Staff
-        [Authorize(Roles = "Inventory Staff")]
-        [HttpGet]
-        public async Task<IActionResult> PurchaseOrderDetails(int id)
-        {
-            var userId = _userService.GetCurrentUserId();
-            if (userId == 0) return RedirectToAction("Login", "Account");
-
-            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
-            if (warehouseId == 0)
-            {
-                TempData["Error"] = "You have not been assigned to any warehouse.";
-                return RedirectToAction("Index", "Home");
-            }
-
-            var purchaseOrder = await _stockInService.GetPurchaseOrderDetailsAsync(id, warehouseId);
-            if (purchaseOrder == null)
-            {
-                TempData["Error"] = "Purchase order not found.";
-                return RedirectToAction(nameof(History));
-            }
-
-            ViewBag.TotalQuantity = purchaseOrder.PurchaseOrderDetails.Sum(d => d.Quantity);
-            ViewBag.TotalAmount = purchaseOrder.PurchaseOrderDetails.Sum(d => d.TotalPrice ?? 0);
-
-            // Reuse existing PO Details view
-            return View("~/Views/PurchaseOrder/Details.cshtml", purchaseOrder);
-        }
-
         // GET: StockIn/DetailsReadOnly/{id} - Reuse Stock-In details UI in read-only mode
         [Authorize(Roles = "Inventory Staff")]
         [HttpGet]
@@ -192,7 +163,7 @@ namespace EWMS.Controllers
                 var result = await _stockInService.GetPurchaseOrderInfoAsync(purchaseOrderId, warehouseId);
 
                 if (result == null)
-                    return Json(new { error = "Không tìm thấy đơn hàng" });
+                    return Json(new { error = "Purchase order not found" });
 
                 return Json(result);
             }
@@ -235,7 +206,7 @@ namespace EWMS.Controllers
                 var userWarehouseId = await _userService.GetWarehouseIdByUserIdAsync(_userService.GetCurrentUserId());
 
                 if (userWarehouseId != warehouseId)
-                    return Json(new { error = "Không có quyền truy cập" });
+                    return Json(new { error = "Access denied" });
 
                 var locations = await _stockInService.GetAvailableLocationsAsync(warehouseId, productId);
                 return Json(locations);
@@ -255,7 +226,7 @@ namespace EWMS.Controllers
                 var result = await _stockInService.CheckLocationCapacityAsync(locationId);
 
                 if (result == null)
-                    return Json(new { error = "Không tìm thấy vị trí" });
+                    return Json(new { error = "Location not found" });
 
                 return Json(result);
             }
@@ -282,7 +253,7 @@ namespace EWMS.Controllers
                 return Json(new
                 {
                     success = true,
-                    message = $"Nhập kho thành công! Mã phiếu: SI-{stockInReceipt.StockInId:D4}"
+                    message = $"Stock-in successful! Receipt code: SI-{stockInReceipt.StockInId:D4}"
                 });
             }
             catch (Exception ex)

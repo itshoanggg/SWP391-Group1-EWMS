@@ -176,13 +176,6 @@
                     <span>Purchase Orders</span>
                 </div>
             </a>
-            <a href="@Url.Action("History", "PurchaseOrder")"
-               class="sidebar-menu-item @((ViewContext.RouteData.Values["controller"]?.ToString() == "PurchaseOrder" && ViewContext.RouteData.Values["action"]?.ToString() == "History") ? "active" : "")">
-                <div>
-                    <i class="bi bi-clock-history menu-icon"></i>
-                    <span>Purchase History</span>
-                </div>
-            </a>
             <div class="sidebar-menu-item" id="stock-menu" onclick="toggleSubmenu('stock-submenu')">
                 <div>
                     <i class="bi bi-boxes menu-icon"></i>
