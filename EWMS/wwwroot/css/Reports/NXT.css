@@ -1,0 +1,66 @@
+.stat-card {
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    padding: 16px;
+    background: #fff;
+    height: 100%;
+}
+
+.stat-label {
+    color: #6c757d;
+    font-size: .9rem;
+}
+
+.stat-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+.delta {
+    font-size: .85rem;
+}
+
+.delta.positive {
+    color: #198754;
+}
+
+.delta.negative {
+    color: #dc3545;
+}
+
+.group-in th {
+    background: #e8f5e9;
+}
+
+.group-out th {
+    background: #ffebee;
+}
+
+.group-stock th {
+    background: #e3f2fd;
+}
+
+.badge-low {
+    margin-left: 6px;
+}
+
+.filter-bar {
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .05);
+}
+
+@media print {
+    .filter-bar, .no-print {
+        display: none !important;
+    }
+
+    body {
+        background: #fff;
+    }
+
+    .main-content {
+        padding: 0;
+    }
+}

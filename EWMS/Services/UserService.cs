@@ -73,5 +73,15 @@ namespace EWMS.Services
                 WarehouseName = warehouse?.WarehouseName ?? string.Empty
             };
         }
+
+        public async Task<List<Warehouse>> GetWarehousesForUserAsync(int userId)
+        {
+            return await _unitOfWork.UserWarehouses.GetWarehousesForUserAsync(userId);
+        }
+
+        public async Task<List<int>> GetWarehouseIdsForUserAsync(int userId)
+        {
+            return await _unitOfWork.UserWarehouses.GetWarehouseIdsForUserAsync(userId);
+        }
     }
 }
