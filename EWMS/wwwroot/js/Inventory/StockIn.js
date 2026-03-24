@@ -378,9 +378,16 @@ async function openOrderedPreview(order) {
         // Store the purchase order ID
         document.getElementById('ordered-po-id').value = order.purchaseOrderId;
         
-        // Reset receipt date and disable button
-        document.getElementById('receipt-date-input').value = '';
-        document.getElementById('btn-proceed-stockin').disabled = true;
+        // Reset receipt date and disable proceed link
+        const receiptInput = document.getElementById('receipt-date-input');
+        const proceedLink = document.getElementById('btn-proceed-stockin');
+        if (receiptInput) receiptInput.value = '';
+        if (proceedLink) {
+            proceedLink.removeAttribute('href');
+            proceedLink.classList.add('disabled');
+            proceedLink.setAttribute('aria-disabled', 'true');
+            proceedLink.setAttribute('tabindex', '-1');
+        }
         
         // Show modal
         modal.show();
@@ -489,42 +496,51 @@ async function loadOrderedPoProducts(purchaseOrderId) {
 // Check if receipt date is valid
 function checkReceiptDate() {
     const receiptDateInput = document.getElementById('receipt-date-input');
-    const proceedButton = document.getElementById('btn-proceed-stockin');
+    const proceedLink = document.getElementById('btn-proceed-stockin');
     const hintElement = document.getElementById('receipt-date-hint');
-    
+    const poId = document.getElementById('ordered-po-id')?.value;
+
+    const disableLink = () => {
+        if (proceedLink) {
+            proceedLink.removeAttribute('href');
+            proceedLink.classList.add('disabled');
+            proceedLink.setAttribute('aria-disabled', 'true');
+            proceedLink.setAttribute('tabindex', '-1');
+        }
+    };
+
     if (!receiptDateInput.value) {
-        proceedButton.disabled = true;
+        disableLink();
         hintElement.textContent = 'Please select a receipt date to proceed.';
         hintElement.className = 'form-text text-muted';
         return;
     }
-    
+
     const selectedDate = new Date(receiptDateInput.value);
     const today = new Date();
-    
+
     // Reset time parts for comparison
     selectedDate.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
-    
+
     // Allow today or past dates (not future dates)
-    if (selectedDate.getTime() <= today.getTime()) {
-        proceedButton.disabled = false;
+    if (selectedDate.getTime() <= today.getTime() && poId) {
+        if (proceedLink) {
+            proceedLink.href = `/StockIn/Details/${poId}`;
+            proceedLink.classList.remove('disabled');
+            proceedLink.removeAttribute('aria-disabled');
+            proceedLink.removeAttribute('tabindex');
+        }
         hintElement.textContent = 'Ready to proceed to Stock-In!';
         hintElement.className = 'form-text text-success';
     } else {
-        proceedButton.disabled = true;
+        disableLink();
         hintElement.textContent = 'Receipt date cannot be in the future.';
         hintElement.className = 'form-text text-danger';
     }
 }
 
-// Proceed to Stock In details page
-function proceedToStockIn() {
-    const purchaseOrderId = document.getElementById('ordered-po-id').value;
-    if (purchaseOrderId) {
-        window.location.href = `/StockIn/Details/${purchaseOrderId}`;
-    }
-}
+// Proceed link now handled via dynamic href on #btn-proceed-stockin
 
 // Search handler with debounce
 let searchTimeout;
@@ -565,9 +581,5 @@ document.addEventListener('DOMContentLoaded', () => {
         receiptDateInput.addEventListener('change', checkReceiptDate);
     }
     
-    // Add event listener for proceed button
-    const proceedButton = document.getElementById('btn-proceed-stockin');
-    if (proceedButton) {
-        proceedButton.addEventListener('click', proceedToStockIn);
-    }
+    // Proceed is handled by anchor href; no click handler needed
 });
