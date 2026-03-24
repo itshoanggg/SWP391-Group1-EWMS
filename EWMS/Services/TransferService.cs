@@ -21,8 +21,22 @@ namespace EWMS.Services
                 .Include(t => t.FromWarehouse)
                 .Include(t => t.ToWarehouse)
                 .Include(t => t.RequestedByNavigation)
+                .Include(t => t.ApprovedByNavigation)
                 .Include(t => t.TransferDetails)
                     .ThenInclude(d => d.Product)
+                .ToListAsync();
+        }
+
+        public async Task<List<TransferRequest>> GetTransfersForWarehouseAsync(int warehouseId)
+        {
+            return await _db.TransferRequests
+                .Include(t => t.FromWarehouse)
+                .Include(t => t.ToWarehouse)
+                .Include(t => t.RequestedByNavigation)
+                .Include(t => t.ApprovedByNavigation)
+                .Include(t => t.TransferDetails)
+                    .ThenInclude(d => d.Product)
+                .Where(t => t.ToWarehouseId == warehouseId || t.FromWarehouseId == warehouseId)
                 .ToListAsync();
         }
 
@@ -42,6 +56,7 @@ namespace EWMS.Services
                 .Include(t => t.FromWarehouse)
                 .Include(t => t.ToWarehouse)
                 .Include(t => t.RequestedByNavigation)
+                .Include(t => t.ApprovedByNavigation)
                 .Include(t => t.TransferDetails)
                     .ThenInclude(d => d.Product)
                 .FirstOrDefaultAsync(t => t.TransferId == id);
@@ -49,14 +64,12 @@ namespace EWMS.Services
 
         public async Task<int> CreateTransferAsync(TransferRequest request, int productId, int quantity, int requestedBy)
         {
-            // Validate that product exists
             var product = await _db.Products.FindAsync(productId);
             if (product == null)
             {
                 throw new InvalidOperationException("Product not found.");
             }
 
-            // Check inventory availability at source warehouse
             var totalAvailable = await _db.Inventories
                 .Include(i => i.Location)
                 .Where(i => i.ProductId == productId && i.Location.WarehouseId == request.FromWarehouseId)
@@ -67,14 +80,12 @@ namespace EWMS.Services
                 throw new InvalidOperationException($"Insufficient inventory. Available: {totalAvailable}, Requested: {quantity}");
             }
 
-            // Create transfer request
             request.RequestedBy = requestedBy;
             request.RequestedDate = DateTime.Now;
-            request.Status = "Pending"; // Set default status
+            request.Status = "Pending Approval";
             _db.TransferRequests.Add(request);
             await _db.SaveChangesAsync();
 
-            // Create transfer detail
             var detail = new TransferDetail
             {
                 TransferId = request.TransferId,
@@ -88,7 +99,7 @@ namespace EWMS.Services
             return request.TransferId;
         }
 
-        public async Task<bool> ApproveTransferAsync(int transferId, int approvedBy)
+        public async Task<bool> ApproveTransferAsync(int transferId, int approvedBy, int userWarehouseId)
         {
             var transfer = await _db.TransferRequests.FindAsync(transferId);
             if (transfer == null)
@@ -96,9 +107,14 @@ namespace EWMS.Services
                 throw new InvalidOperationException("Transfer request not found.");
             }
 
-            if (transfer.Status != "Pending")
+            if (transfer.Status != "Pending Approval")
             {
                 throw new InvalidOperationException($"Cannot approve transfer with status: {transfer.Status}");
+            }
+
+            if (transfer.ToWarehouseId != userWarehouseId)
+            {
+                throw new InvalidOperationException("You can only approve transfers destined for your warehouse.");
             }
 
             transfer.Status = "Approved";
@@ -111,7 +127,7 @@ namespace EWMS.Services
             return true;
         }
 
-        public async Task<bool> RejectTransferAsync(int transferId, int rejectedBy, string? rejectionReason = null)
+        public async Task<bool> RejectTransferAsync(int transferId, int rejectedBy, int userWarehouseId, string? rejectionReason = null)
         {
             var transfer = await _db.TransferRequests.FindAsync(transferId);
             if (transfer == null)
@@ -119,9 +135,14 @@ namespace EWMS.Services
                 throw new InvalidOperationException("Transfer request not found.");
             }
 
-            if (transfer.Status != "Pending")
+            if (transfer.Status != "Pending Approval")
             {
                 throw new InvalidOperationException($"Cannot reject transfer with status: {transfer.Status}");
+            }
+
+            if (transfer.ToWarehouseId != userWarehouseId)
+            {
+                throw new InvalidOperationException("You can only reject transfers destined for your warehouse.");
             }
 
             transfer.Status = "Rejected";

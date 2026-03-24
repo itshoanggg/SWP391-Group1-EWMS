@@ -3,6 +3,7 @@
     ViewData["Title"] = "Create Transfer";
     var warehouses = ViewBag.Warehouses as List<EWMS.Models.Warehouse> ?? new List<EWMS.Models.Warehouse>();
     var products = ViewBag.Products as List<EWMS.Models.Product> ?? new List<EWMS.Models.Product>();
+    var userWarehouseId = ViewBag.UserWarehouseId ?? 0;
 }
 
 <style>
@@ -66,7 +67,7 @@
 
 <div class="create-header">
     <h2><i class="bi bi-plus-circle me-2"></i>Create Transfer Request</h2>
-    <p class="mb-0 mt-2" style="opacity: 0.9;">Transfer goods between warehouses</p>
+    <p class="mb-0 mt-2" style="opacity: 0.9;">Transfer goods between warehouses. The destination warehouse manager must approve the transfer.</p>
 </div>
 
 @if (ViewData.ModelState.ErrorCount > 0)
@@ -87,13 +88,22 @@
         <div class="row mb-4">
             <div class="col-md-6">
                 <label class="form-label"><i class="bi bi-box-arrow-right me-2"></i>Source Warehouse</label>
-                <select name="FromWarehouseId" class="form-select" required>
-                    <option value="">-- Select Source Warehouse --</option>
-                    @foreach (var w in warehouses)
-                    {
-                            <option value="@w.WarehouseId">@w.WarehouseName</option>
-                    }
-                </select>
+                @if (userWarehouseId > 0)
+                {
+                    var sourceWarehouse = warehouses.FirstOrDefault(w => w.WarehouseId == userWarehouseId);
+                    <input type="hidden" name="FromWarehouseId" value="@userWarehouseId" />
+                    <input type="text" class="form-control" value="@sourceWarehouse?.WarehouseName" readonly />
+                }
+                else
+                {
+                    <select name="FromWarehouseId" class="form-select" required>
+                        <option value="">-- Select Source Warehouse --</option>
+                        @foreach (var w in warehouses)
+                        {
+                                <option value="@w.WarehouseId">@w.WarehouseName</option>
+                        }
+                    </select>
+                }
             </div>
 
             <div class="col-md-6">
