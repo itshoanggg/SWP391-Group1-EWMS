@@ -2,6 +2,8 @@
 @{
     Layout = "~/Views/Shared/_Layout.cshtml";
     ViewData["Title"] = "Transfer";
+    var isManager = ViewBag.IsManager == true;
+    var userWarehouseId = ViewBag.UserWarehouseId ?? 0;
 }
 
 <style>
@@ -96,7 +98,7 @@
 <div class="transfer-header d-flex justify-content-between align-items-center">
     <div>
         <h2><i class="bi bi-arrow-left-right me-2"></i>Cross-Warehouse Transfer Management</h2>
-        <p class="mb-0 mt-2" style="opacity: 0.9;">Manage transfer requests between branches</p>
+        <p class="mb-0 mt-2" style="opacity: 0.9;">Manage transfer requests between warehouses</p>
     </div>
     @if (User.IsInRole("Inventory Staff") || User.IsInRole("Admin"))
     {
@@ -110,6 +112,14 @@
 {
     <div class="alert alert-success mb-4">
         <i class="bi bi-check-circle me-2"></i>@TempData["SuccessMessage"]
+    </div>
+}
+
+@if (isManager && userWarehouseId > 0)
+{
+    <div class="alert alert-info mb-4">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Note:</strong> As a warehouse manager, you can view and approve transfers destined for your warehouse (Warehouse ID: @userWarehouseId).
     </div>
 }
 
@@ -134,12 +144,13 @@
         <tbody>
             @foreach (var t in Model)
             {
-                var status = (t.Status ?? "Pending").ToLowerInvariant();
+                var status = (t.Status ?? "Pending Approval").ToLowerInvariant();
                 var statusClass = status switch
                 {
                     "approved" => "status-approved",
                     "rejected" => "status-rejected",
                     "in transit" => "status-transit",
+                    "pending approval" => "status-pending",
                     _ => "status-pending",
                 };
                 <tr>

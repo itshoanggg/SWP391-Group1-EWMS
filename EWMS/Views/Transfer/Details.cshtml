@@ -1,10 +1,11 @@
 ﻿@model EWMS.Models.TransferRequest
 @{
     Layout = "~/Views/Shared/_Layout.cshtml";
-    var isPending = Model.Status?.ToLower() == "pending";
+    var isPending = Model.Status?.ToLower() == "pending approval";
+    var canApprove = ViewBag.CanApprove == true;
     var statusColor = Model.Status?.ToLower() switch
     {
-        "pending" => "bg-yellow-100 text-yellow-800 border-yellow-300",
+        "pending approval" => "bg-yellow-100 text-yellow-800 border-yellow-300",
         "approved" => "bg-green-100 text-green-800 border-green-300",
         "rejected" => "bg-red-100 text-red-800 border-red-300",
         "in transit" => "bg-blue-100 text-blue-800 border-blue-300",
@@ -188,12 +189,12 @@
         </div>
     </div>
 
-    <!-- Action Buttons (if pending) -->
-    @if (isPending && (User.IsInRole("Admin") || User.IsInRole("Inventory Staff")))
+    <!-- Action Buttons (if pending and can approve) -->
+    @if (isPending && canApprove)
     {
         <div class="detail-card">
             <h5 class="mb-3"><i class="fas fa-tasks me-2 text-primary"></i>Actions</h5>
-            <p class="text-muted mb-3">Approve or reject this transfer request</p>
+            <p class="text-muted mb-3">You can approve or reject this transfer request as the destination warehouse manager.</p>
             
             <div class="d-flex gap-2 mb-3">
                 <form asp-action="Approve" asp-route-id="@Model.TransferId" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to approve this transfer request?');">
@@ -214,7 +215,17 @@
             </div>
         </div>
 
-        <!-- Reject Modal -->
+        @if (!canApprove && isPending)
+    {
+        <div class="detail-card">
+            <div class="alert alert-info mb-0">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Pending Approval:</strong> This transfer is waiting for approval from the destination warehouse manager.
+            </div>
+        </div>
+    }
+
+    <!-- Reject Modal -->
         <div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">

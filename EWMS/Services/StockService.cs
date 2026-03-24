@@ -83,14 +83,14 @@ namespace EWMS.Services
                     .FirstOrDefaultAsync(i => i.LocationId == fromLocationId && i.ProductId == productId);
 
                 if (sourceInventory == null || sourceInventory.Quantity < quantity)
-                    throw new Exception("Sản phẩm không đủ số lượng tại vị trí nguồn.");
+                    throw new Exception("Insufficient product quantity at source location.");
 
                 // Validate locations belong to warehouse
                 var fromLocation = await dbContext.Locations.FirstOrDefaultAsync(l => l.LocationId == fromLocationId && l.WarehouseId == warehouseId);
                 var toLocation = await dbContext.Locations.FirstOrDefaultAsync(l => l.LocationId == toLocationId && l.WarehouseId == warehouseId);
 
                 if (fromLocation == null || toLocation == null)
-                    throw new Exception("Vị trí không hợp lệ hoặc không thuộc kho hiện tại.");
+                    throw new Exception("Invalid location or not belonging to current warehouse.");
 
                 // Deduct from source
                 sourceInventory.Quantity -= quantity;
