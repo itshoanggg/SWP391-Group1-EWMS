@@ -125,10 +125,10 @@ namespace EWMS.Services
 
         public async Task<IEnumerable<ProductBySupplierDTO>> GetProductsBySupplierAsync(int supplierId)
         {
-            // Query directly from DB with filter by SupplierId via Category to avoid loading all products
+            // Query directly from DB with filter by SupplierId to avoid loading all products
             var filtered = await _unitOfWork.Products.Context.Products
                 .Include(p => p.Category)
-                .Where(p => p.Category != null && p.Category.SupplierId == supplierId)
+                .Where(p => p.SupplierId == supplierId)
                 .OrderBy(p => p.ProductName)
                 .Select(p => new ProductBySupplierDTO
                 {

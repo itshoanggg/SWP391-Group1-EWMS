@@ -27,9 +27,16 @@ public partial class Product
     [Column(TypeName = "decimal(18, 2)")]
     public decimal? SellingPrice { get; set; }
 
+    [Column("SupplierID")]
+    public int? SupplierId { get; set; }
+
     [ForeignKey("CategoryId")]
     [InverseProperty("Products")]
     public virtual ProductCategory? Category { get; set; }
+
+    [ForeignKey("SupplierId")]
+    [InverseProperty("Products")]
+    public virtual Supplier? Supplier { get; set; }
 
     [InverseProperty("Product")]
     public virtual ICollection<Inventory> Inventories { get; set; } = new List<Inventory>();

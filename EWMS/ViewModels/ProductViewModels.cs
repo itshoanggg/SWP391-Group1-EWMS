@@ -112,9 +112,6 @@ namespace EWMS.ViewModels
     {
         public int CategoryId { get; set; }
         public string CategoryName { get; set; } = null!;
-        public string? SupplierName { get; set; }
-        public int? SupplierId { get; set; }
-        public int SuggestedMarkupPercent { get; set; } = 25;
     }
 
     public class WarehouseInventoryViewModel

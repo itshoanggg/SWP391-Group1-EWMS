@@ -41,7 +41,7 @@ namespace EWMS.Repositories
         {
             return await _context.Products
                 .Include(p => p.Category)
-                    .ThenInclude(c => c.Supplier)
+                .Include(p => p.Supplier)
                 .FirstOrDefaultAsync(p => p.ProductId == productId);
         }
 
@@ -55,14 +55,6 @@ namespace EWMS.Repositories
         }
 
         // New methods for Product Management
-        public async Task<List<ProductCategory>> GetAllCategoriesWithSupplierAsync()
-        {
-            return await _context.ProductCategories
-                .Include(c => c.Supplier)
-                .OrderBy(c => c.CategoryName)
-                .ToListAsync();
-        }
-
         public async Task<(List<Product> Products, int TotalCount)> GetProductsPagedAsync(
             int page, 
             int pageSize, 
@@ -72,7 +64,7 @@ namespace EWMS.Repositories
         {
             var query = _context.Products
                 .Include(p => p.Category)
-                    .ThenInclude(c => c.Supplier)
+                .Include(p => p.Supplier)
                 .Include(p => p.Inventories)
                 .AsQueryable();
 
@@ -92,7 +84,7 @@ namespace EWMS.Repositories
 
             if (supplierId.HasValue)
             {
-                query = query.Where(p => p.Category != null && p.Category.SupplierId == supplierId.Value);
+                query = query.Where(p => p.SupplierId == supplierId.Value);
             }
 
             var totalCount = await query.CountAsync();

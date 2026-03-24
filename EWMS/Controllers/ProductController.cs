@@ -44,7 +44,7 @@ namespace EWMS.Controllers
                     ProductName = p.ProductName,
                     CategoryName = p.Category?.CategoryName ?? "N/A",
                     CategoryId = p.CategoryId ?? 0,
-                    SupplierName = p.Category?.Supplier?.SupplierName,
+                    SupplierName = p.Supplier?.SupplierName,
                     Unit = p.Unit ?? "Unit",
                     TotalStock = p.Inventories?.Sum(i => i.Quantity ?? 0) ?? 0
                 }).ToList(),
@@ -57,7 +57,9 @@ namespace EWMS.Controllers
             };
 
             // Pass categories and suppliers for filters
-            ViewBag.Categories = await _productRepository.GetAllCategoriesWithSupplierAsync();
+            ViewBag.Categories = await _productRepository.Context.ProductCategories
+                .OrderBy(c => c.CategoryName)
+                .ToListAsync();
             ViewBag.Suppliers = await _supplierRepository.GetAllOrderedByNameAsync();
 
             return View(viewModel);
@@ -82,7 +84,7 @@ namespace EWMS.Controllers
                 ProductName = product.ProductName,
                 CategoryName = product.Category?.CategoryName ?? "N/A",
                 CategoryId = product.CategoryId ?? 0,
-                SupplierName = product.Category?.Supplier?.SupplierName,
+                SupplierName = product.Supplier?.SupplierName,
                 Unit = product.Unit ?? "Unit",
                 InventoryByWarehouse = inventoryItems
                     .GroupBy(i => new { i.Location.WarehouseId, i.Location.Warehouse.WarehouseName })
@@ -131,8 +133,7 @@ namespace EWMS.Controllers
             {
                 var newCategory = new ProductCategory
                 {
-                    CategoryName = model.NewCategoryName.Trim(),
-                    SupplierId = model.SupplierId
+                    CategoryName = model.NewCategoryName.Trim()
                 };
                 await _productRepository.Context.ProductCategories.AddAsync(newCategory);
                 await _productRepository.Context.SaveChangesAsync();
@@ -150,17 +151,6 @@ namespace EWMS.Controllers
                 await _supplierRepository.AddAsync(newSupplier);
                 await _supplierRepository.SaveAsync();
                 supplierId = newSupplier.SupplierId;
-
-                // Update category with new supplier if category was also new
-                if (!string.IsNullOrWhiteSpace(model.NewCategoryName) && categoryId.HasValue)
-                {
-                    var category = await _productRepository.Context.ProductCategories.FindAsync(categoryId.Value);
-                    if (category != null)
-                    {
-                        category.SupplierId = supplierId;
-                        await _productRepository.Context.SaveChangesAsync();
-                    }
-                }
             }
 
             // Determine unit
@@ -191,6 +181,7 @@ namespace EWMS.Controllers
             {
                 ProductName = productName,
                 CategoryId = categoryId,
+                SupplierId = supplierId,
                 Unit = unit,
                 CostPrice = 0,  // Will be set when first stock-in happens
                 SellingPrice = 0  // Will be set when first stock-in happens
@@ -227,7 +218,7 @@ namespace EWMS.Controllers
                 ProductId = product.ProductId,
                 ProductName = product.ProductName,
                 CategoryId = product.CategoryId,
-                SupplierId = product.Category?.SupplierId,
+                SupplierId = product.SupplierId,
                 Unit = product.Unit ?? "Piece",
                 Categories = await GetCategoryOptionsAsync(),
                 Suppliers = await GetSupplierOptionsAsync(),
@@ -261,8 +252,7 @@ namespace EWMS.Controllers
             {
                 var newCategory = new ProductCategory
                 {
-                    CategoryName = model.NewCategoryName.Trim(),
-                    SupplierId = model.SupplierId
+                    CategoryName = model.NewCategoryName.Trim()
                 };
                 await _productRepository.Context.ProductCategories.AddAsync(newCategory);
                 await _productRepository.Context.SaveChangesAsync();
@@ -280,28 +270,6 @@ namespace EWMS.Controllers
                 await _supplierRepository.AddAsync(newSupplier);
                 await _supplierRepository.SaveAsync();
                 supplierId = newSupplier.SupplierId;
-
-                // Update category with new supplier if category was also new
-                if (!string.IsNullOrWhiteSpace(model.NewCategoryName) && categoryId.HasValue)
-                {
-                    var category = await _productRepository.Context.ProductCategories.FindAsync(categoryId.Value);
-                    if (category != null)
-                    {
-                        category.SupplierId = supplierId;
-                        await _productRepository.Context.SaveChangesAsync();
-                    }
-                }
-            }
-
-            // Update existing category's supplier if changed
-            if (categoryId.HasValue && supplierId.HasValue && string.IsNullOrWhiteSpace(model.NewCategoryName))
-            {
-                var category = await _productRepository.Context.ProductCategories.FindAsync(categoryId.Value);
-                if (category != null && category.SupplierId != supplierId)
-                {
-                    category.SupplierId = supplierId;
-                    await _productRepository.Context.SaveChangesAsync();
-                }
             }
 
             // Determine unit
@@ -322,6 +290,7 @@ namespace EWMS.Controllers
             // Update product properties
             product.ProductName = model.ProductName.Trim();
             product.CategoryId = categoryId;
+            product.SupplierId = supplierId;
             product.Unit = unit;
             // Note: CostPrice and SellingPrice are NOT updated here - they are managed by StockIn
 
@@ -423,38 +392,31 @@ namespace EWMS.Controllers
         [HttpGet]
         public async Task<IActionResult> GetCategoryDetails(int categoryId)
         {
-            var categories = await _productRepository.GetAllCategoriesWithSupplierAsync();
-            var category = categories.FirstOrDefault(c => c.CategoryId == categoryId);
+            var category = await _productRepository.Context.ProductCategories
+                .FirstOrDefaultAsync(c => c.CategoryId == categoryId);
 
             if (category == null)
             {
                 return NotFound();
             }
 
-            // Markup suggestions based on category
-            var markupPercent = GetSuggestedMarkupForCategory(category.CategoryName);
-
             return Json(new
             {
                 categoryId = category.CategoryId,
-                categoryName = category.CategoryName,
-                supplierId = category.SupplierId,
-                supplierName = category.Supplier?.SupplierName ?? "N/A",
-                suggestedMarkup = markupPercent
+                categoryName = category.CategoryName
             });
         }
 
         // Helper methods
         private async Task<List<CategoryOptionViewModel>> GetCategoryOptionsAsync()
         {
-            var categories = await _productRepository.GetAllCategoriesWithSupplierAsync();
+            var categories = await _productRepository.Context.ProductCategories
+                .OrderBy(c => c.CategoryName)
+                .ToListAsync();
             return categories.Select(c => new CategoryOptionViewModel
             {
                 CategoryId = c.CategoryId,
-                CategoryName = c.CategoryName,
-                SupplierName = c.Supplier?.SupplierName,
-                SupplierId = c.SupplierId,
-                SuggestedMarkupPercent = GetSuggestedMarkupForCategory(c.CategoryName)
+                CategoryName = c.CategoryName
             }).ToList();
         }
 
@@ -488,20 +450,6 @@ namespace EWMS.Controllers
             }
             
             return units.OrderBy(u => u).ToList();
-        }
-
-        private int GetSuggestedMarkupForCategory(string categoryName)
-        {
-            // Suggested markup percentages based on category
-            return categoryName.ToLower() switch
-            {
-                var s when s.Contains("laptop") || s.Contains("computer") => 25,
-                var s when s.Contains("smartphone") || s.Contains("tablet") || s.Contains("phone") => 21,
-                var s when s.Contains("audio") || s.Contains("headphone") || s.Contains("speaker") => 44,
-                var s when s.Contains("monitor") || s.Contains("display") => 41,
-                var s when s.Contains("accessor") || s.Contains("peripheral") || s.Contains("mouse") || s.Contains("keyboard") => 56,
-                _ => 25
-            };
         }
     }
 }
