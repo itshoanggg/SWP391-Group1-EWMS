@@ -141,7 +141,7 @@ namespace EWMS.Controllers
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             if (warehouseId == 0)
             {
-                TempData["Error"] = "Cần phân công kho cho tài khoản của bạn trước khi thực hiện chuyển kho nội bộ.";
+                TempData["Error"] = "Please assign a warehouse to your account before performing internal transfer.";
                 return RedirectToAction("Index", "Home");
             }
             ViewBag.WarehouseId = warehouseId;
@@ -157,7 +157,7 @@ namespace EWMS.Controllers
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             if (warehouseId == 0)
             {
-                TempData["Error"] = "Cần phân công kho cho tài khoản của bạn trước khi thực hiện chuyển kho nội bộ.";
+                TempData["Error"] = "Please assign a warehouse to your account before performing internal transfer.";
                 return RedirectToAction("Index", "Home");
             }
             ViewBag.WarehouseId = warehouseId;
@@ -169,7 +169,7 @@ namespace EWMS.Controllers
 
             if (model.FromLocationId == model.ToLocationId)
             {
-                ModelState.AddModelError("", "Vị trí nguồn và đích phải khác nhau.");
+                ModelState.AddModelError("", "Source location and destination location must be different.");
                 return View(model);
             }
 
@@ -187,7 +187,7 @@ namespace EWMS.Controllers
 
                 if (success)
                 {
-                    TempData["Success"] = "Chuyển kho nội bộ thành công.";
+                    TempData["Success"] = "Internal transfer completed successfully.";
                     return RedirectToAction(nameof(InternalTransfer));
                 }
             }
