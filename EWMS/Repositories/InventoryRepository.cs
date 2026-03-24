@@ -52,7 +52,6 @@ namespace EWMS.Repositories
                 .ToListAsync();
         }
 
-        // New (master) methods used by InventoryCheck and Sales flows
         public async Task<int> GetCurrentStockAsync(int productId, int warehouseId)
         {
             var totalStock = await _context.Inventories
@@ -62,28 +61,6 @@ namespace EWMS.Repositories
             return totalStock;
         }
 
-        public async Task<int> GetExpectedIncomingAsync(int productId, int warehouseId, DateTime beforeDate)
-        {
-            var expectedFromPurchase = await _context.PurchaseOrderDetails
-                .Include(pod => pod.PurchaseOrder)
-                .Where(pod => pod.ProductId == productId
-                    && pod.PurchaseOrder.WarehouseId == warehouseId
-                    && pod.PurchaseOrder.Status == "Ordered"
-                    && pod.PurchaseOrder.CreatedAt < beforeDate
-                    && !_context.StockInReceipts.Any(sir => sir.PurchaseOrderId == pod.PurchaseOrderId))
-                .SumAsync(pod => pod.Quantity);
-
-            var expectedFromTransfer = await _context.TransferDetails
-                .Include(td => td.Transfer)
-                .Where(td => td.ProductId == productId
-                    && td.Transfer.ToWarehouseId == warehouseId
-                    && td.Transfer.Status == "Approved"
-                    && td.Transfer.ApprovedDate < beforeDate
-                    && !_context.StockInReceipts.Any(sir => sir.TransferId == td.TransferId))
-                .SumAsync(td => td.Quantity);
-
-            return expectedFromPurchase + expectedFromTransfer;
-        }
 
         public async Task<int> GetPendingOutgoingAsync(int productId, int warehouseId)
         {
@@ -121,6 +98,91 @@ namespace EWMS.Repositories
                 .Include(i => i.Product)
                 .Include(i => i.Location)
                 .FirstOrDefaultAsync(i => i.ProductId == productId && i.LocationId == locationId);
+        }
+
+        /// <summary>
+        /// Lock và lấy available stock cho danh sách products.
+        /// Sử dụng UPDLOCK, ROWLOCK để tránh race condition.
+        /// QUAN TRỌNG: Method này PHẢI được gọi trong một transaction!
+        /// 
+        /// LOGIC: Available Stock = Current Stock - Pending Outgoing
+        /// - Current Stock: Tổng số lượng hiện có trong kho (tất cả locations)
+        /// - Pending Outgoing: Sales Orders + Transfer Requests chưa xuất kho
+        /// - NOTE: KHÔNG tính Purchase Orders/Transfers đang chờ nhập kho (Conservative approach)
+        ///         Lý do: Không có hệ thống pre-order, tránh oversell nếu supplier delay
+        /// </summary>
+        public async Task<Dictionary<int, int>> GetAndLockAvailableStockAsync(List<int> productIds, int warehouseId)
+        {
+            if (productIds == null || !productIds.Any())
+            {
+                return new Dictionary<int, int>();
+            }
+
+            // ════════════════════════════════════════════════════════════════════
+            // BƯỚC 1: Lock inventory rows với FromSqlRaw + UPDLOCK, ROWLOCK
+            // Chỉ lock các rows của products trong danh sách này
+            // ════════════════════════════════════════════════════════════════════
+            
+            // Build parameterized SQL để tránh SQL injection
+            var parameters = new List<object> { warehouseId };
+            var paramPlaceholders = new List<string>();
+            
+            for (int i = 0; i < productIds.Count; i++)
+            {
+                paramPlaceholders.Add($"{{{i + 1}}}");  // {1}, {2}, {3}...
+                parameters.Add(productIds[i]);
+            }
+            
+            var sql = $@"
+                SELECT i.*
+                FROM Inventory i WITH (UPDLOCK, ROWLOCK)
+                INNER JOIN Locations l ON i.LocationId = l.LocationId
+                WHERE i.ProductId IN ({string.Join(",", paramPlaceholders)})
+                  AND l.WarehouseId = {{0}}";
+            
+            // Lock các rows và load vào memory
+            var lockedInventories = await _context.Inventories
+                .FromSqlRaw(sql, parameters.ToArray())
+                .Include(i => i.Location)
+                .ToListAsync();
+
+            // ════════════════════════════════════════════════════════════════════
+            // BƯỚC 2: Tính available stock cho từng product
+            // Available = CurrentStock - PendingOutgoing
+            // ════════════════════════════════════════════════════════════════════
+            
+            var result = new Dictionary<int, int>();
+            
+            foreach (var productId in productIds)
+            {
+                // Current stock (từ locked inventories)
+                var currentStock = lockedInventories
+                    .Where(i => i.ProductId == productId)
+                    .Sum(i => i.Quantity ?? 0);
+                
+                // Pending outgoing (Sales Orders chưa được fulfill)
+                var pendingFromSales = await _context.SalesOrderDetails
+                    .Where(sod => sod.ProductId == productId
+                        && sod.SalesOrder.WarehouseId == warehouseId
+                        && sod.SalesOrder.Status == "Pending"
+                        && !_context.StockOutReceipts.Any(sor => sor.SalesOrderId == sod.SalesOrderId))
+                    .SumAsync(sod => sod.Quantity);
+                
+                // Pending outgoing (Transfer Requests chưa được fulfill)
+                var pendingFromTransfer = await _context.TransferDetails
+                    .Where(td => td.ProductId == productId
+                        && td.Transfer.FromWarehouseId == warehouseId
+                        && td.Transfer.Status == "Approved"
+                        && !_context.StockOutReceipts.Any(sor => sor.TransferId == td.TransferId))
+                    .SumAsync(td => td.Quantity);
+                
+                var totalPendingOutgoing = pendingFromSales + pendingFromTransfer;
+                var availableStock = currentStock - totalPendingOutgoing;
+                
+                result[productId] = availableStock;
+            }
+            
+            return result;
         }
     }
 }

@@ -26,20 +26,11 @@ namespace EWMS.DTOs
         public string ProductName { get; set; } = string.Empty;
         public string CategoryName { get; set; } = string.Empty;
         public int Quantity { get; set; }
+        
         public string LocationCode { get; set; } = string.Empty;
         public string? LocationName { get; set; }
         public string? Rack { get; set; }
         public DateTime? LastUpdated { get; set; }
-    }
-
-    public class StockSummaryDTO
-    {
-        public int TotalLocations { get; set; }
-        public int TotalCapacity { get; set; }
-        public int TotalStock { get; set; }
-        public int TotalProducts { get; set; }
-        public int AvailableSpace { get; set; }
-        public double UtilizationRate { get; set; }
     }
 
     public class AvailableLocationDTO

@@ -23,7 +23,10 @@ namespace EWMS.Services
         {
             var ctx = _uow.Inventories.Context;
 
-            var endingQuery = ctx.Inventories
+            var effectiveTo = to ?? DateTime.Now;
+
+            // Current ending quantities per product (as of now)
+            var currentEndingQuery = ctx.Inventories
                 .Include(i => i.Product)
                 .Include(i => i.Location)
                 .Where(i => i.Location.WarehouseId == warehouseId)
@@ -34,56 +37,90 @@ namespace EWMS.Services
                     g.Key.ProductName,
                     Unit = g.Key.Unit ?? string.Empty,
                     CostPrice = g.Key.CostPrice ?? 0m,
-                    EndQty = g.Sum(x => x.Quantity ?? 0)
+                    EndQtyNow = g.Sum(x => x.Quantity ?? 0)
                 });
 
-            var inQuery = ctx.StockInDetails
+            // Movements within the selected period [from, to]
+            var inWithinQuery = ctx.StockInDetails
                 .Include(d => d.StockIn)
                 .Where(d => d.StockIn.WarehouseId == warehouseId
-                            && (!from.HasValue || (d.StockIn.ReceivedDate ?? DateTime.MinValue) >= from.Value)
-                            && (!to.HasValue || (d.StockIn.ReceivedDate ?? DateTime.MaxValue) <= to.Value))
+                            && (!from.HasValue || ((d.StockIn.ReceivedDate ?? DateTime.MinValue) >= from.Value))
+                            && (((d.StockIn.ReceivedDate ?? DateTime.MaxValue) <= effectiveTo)))
                 .GroupBy(d => d.ProductId)
                 .Select(g => new
                 {
                     ProductId = g.Key,
-                    InQty = g.Sum(x => x.Quantity),
-                    InValue = g.Sum(x => (x.TotalPrice.HasValue ? x.TotalPrice.Value : x.UnitPrice * x.Quantity))
+                    InQty = g.Sum(x => x.Quantity)
                 });
 
-            var outQuery = ctx.StockOutDetails
+            var outWithinQuery = ctx.StockOutDetails
                 .Include(d => d.StockOut)
                 .Where(d => d.StockOut.WarehouseId == warehouseId
-                            && (!from.HasValue || (d.StockOut.IssuedDate ?? DateTime.MinValue) >= from.Value)
-                            && (!to.HasValue || (d.StockOut.IssuedDate ?? DateTime.MaxValue) <= to.Value))
+                            && (!from.HasValue || ((d.StockOut.IssuedDate ?? DateTime.MinValue) >= from.Value))
+                            && (((d.StockOut.IssuedDate ?? DateTime.MaxValue) <= effectiveTo)))
                 .GroupBy(d => d.ProductId)
                 .Select(g => new
                 {
                     ProductId = g.Key,
-                    OutQty = g.Sum(x => x.Quantity),
-                    OutValue = g.Sum(x => (x.TotalPrice.HasValue ? x.TotalPrice.Value : x.UnitPrice * x.Quantity))
+                    OutQty = g.Sum(x => x.Quantity)
                 });
 
-            var ending = await endingQuery.ToListAsync();
-            var ins = await inQuery.ToListAsync();
-            var outs = await outQuery.ToListAsync();
+            // Movements AFTER the 'to' date (to recompute ending as of 'to')
+            var inAfterToQuery = ctx.StockInDetails
+                .Include(d => d.StockIn)
+                .Where(d => d.StockIn.WarehouseId == warehouseId
+                            && (((d.StockIn.ReceivedDate ?? DateTime.MinValue) > effectiveTo)))
+                .GroupBy(d => d.ProductId)
+                .Select(g => new
+                {
+                    ProductId = g.Key,
+                    InQtyAfter = g.Sum(x => x.Quantity)
+                });
 
-            var productIds = ending.Select(e => e.ProductId)
-                .Union(ins.Select(i => i.ProductId))
-                .Union(outs.Select(o => o.ProductId))
+            var outAfterToQuery = ctx.StockOutDetails
+                .Include(d => d.StockOut)
+                .Where(d => d.StockOut.WarehouseId == warehouseId
+                            && (((d.StockOut.IssuedDate ?? DateTime.MinValue) > effectiveTo)))
+                .GroupBy(d => d.ProductId)
+                .Select(g => new
+                {
+                    ProductId = g.Key,
+                    OutQtyAfter = g.Sum(x => x.Quantity)
+                });
+
+            var currentEnding = await currentEndingQuery.ToListAsync();
+            var insWithin = await inWithinQuery.ToListAsync();
+            var outsWithin = await outWithinQuery.ToListAsync();
+            var insAfter = await inAfterToQuery.ToListAsync();
+            var outsAfter = await outAfterToQuery.ToListAsync();
+
+            var productIds = currentEnding.Select(e => e.ProductId)
+                .Union(insWithin.Select(i => i.ProductId))
+                .Union(outsWithin.Select(o => o.ProductId))
+                .Union(insAfter.Select(i => i.ProductId))
+                .Union(outsAfter.Select(o => o.ProductId))
                 .ToHashSet();
 
             var rows = new List<NXTReportRowViewModel>();
 
             foreach (var pid in productIds)
             {
-                var e = ending.FirstOrDefault(x => x.ProductId == pid);
-                var i = ins.FirstOrDefault(x => x.ProductId == pid);
-                var o = outs.FirstOrDefault(x => x.ProductId == pid);
+                var e = currentEnding.FirstOrDefault(x => x.ProductId == pid);
+                var iWithin = insWithin.FirstOrDefault(x => x.ProductId == pid);
+                var oWithin = outsWithin.FirstOrDefault(x => x.ProductId == pid);
+                var iAfter = insAfter.FirstOrDefault(x => x.ProductId == pid);
+                var oAfter = outsAfter.FirstOrDefault(x => x.ProductId == pid);
 
-                var endQty = e?.EndQty ?? 0;
-                var inQty = i?.InQty ?? 0;
-                var outQty = o?.OutQty ?? 0;
-                var beginQty = endQty - inQty + outQty;
+                var endNow = e?.EndQtyNow ?? 0;
+                var inAfterQty = iAfter?.InQtyAfter ?? 0;
+                var outAfterQty = oAfter?.OutQtyAfter ?? 0;
+
+                // Ending qty as of 'effectiveTo'
+                var endAtTo = endNow - inAfterQty + outAfterQty;
+
+                var inQty = iWithin?.InQty ?? 0;
+                var outQty = oWithin?.OutQty ?? 0;
+                var beginQty = endAtTo - inQty + outQty;
 
                 var cost = e?.CostPrice ?? 0m;
                 var pname = e?.ProductName ?? $"Product #{pid}";
@@ -96,12 +133,9 @@ namespace EWMS.Services
                     Unit = unit,
                     BeginQty = beginQty,
                     InQty = inQty,
-                    InValue = i?.InValue ?? 0m,
                     OutQty = outQty,
-                    OutValue = o?.OutValue ?? 0m,
-                    EndQty = endQty,
-                    EndValue = endQty * cost,
-                    CostPrice = cost
+                    EndQty = endAtTo,
+                    EndValue = endAtTo * cost
                 });
             }
 
@@ -111,9 +145,7 @@ namespace EWMS.Services
             {
                 BeginQty = rows.Sum(r => r.BeginQty),
                 InQty = rows.Sum(r => r.InQty),
-                InValue = rows.Sum(r => r.InValue),
                 OutQty = rows.Sum(r => r.OutQty),
-                OutValue = rows.Sum(r => r.OutValue),
                 EndQty = rows.Sum(r => r.EndQty),
                 EndValue = rows.Sum(r => r.EndValue)
             };
@@ -125,7 +157,7 @@ namespace EWMS.Services
                 WarehouseId = warehouseId,
                 WarehouseName = warehouseName,
                 FromDate = from,
-                ToDate = to,
+                ToDate = effectiveTo,
                 Rows = rows,
                 Totals = totals
             };

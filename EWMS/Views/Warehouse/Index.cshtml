@@ -147,32 +147,26 @@ else
                         <input type="text" class="form-control" id="modalWarehouseName" name="WarehouseName" required maxlength="100" placeholder="e.g., Hue City Warehouse" />
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-8">
-                            <div class="mb-3">
-                                <label for="modalAddress" class="form-label">
-                                    Address <span class="text-danger">*</span>
-                                </label>
-                                <input type="text" class="form-control" id="modalAddress" name="Address" required maxlength="255" placeholder="Street, District, City/Province" />
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="modalPrefix" class="form-label">
-                                    Warehouse Prefix <span class="text-danger">*</span>
-                                    <small class="text-muted">- for location codes</small>
-                                </label>
-                                <input type="text" class="form-control" id="modalPrefix" name="Prefix" required maxlength="5" pattern="[A-Z]{2,5}" style="font-family:'Courier New',monospace;text-transform:uppercase;" placeholder="e.g., HUE" />
-                                <small class="form-text text-muted">2-4 uppercase letters. Will auto-fill location codes below.</small>
-                            </div>
-                        </div>
+                    <div class="mb-3">
+                        <label for="modalAddress" class="form-label">
+                            Address <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="modalAddress" name="Address" required maxlength="255" placeholder="Street, District, City/Province" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Warehouse Prefix 
+                        </label>
+                        <input type="text" class="form-control" id="modalPrefix" readonly style="font-family:'Courier New',monospace;text-transform:uppercase;background-color:#f8f9fa;" />
+                 
                     </div>
 
                     <hr class="my-4" />
 
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <div class="section-label mb-0" style="font-size:0.85rem;font-weight:700;color:var(--navy);border-left:3px solid var(--blue);padding-left:8px;">
-                            Add Locations Now <small class="text-muted" style="font-weight:400;">(optional)</small>
+                            Add Locations
                         </div>
                     </div>
 
@@ -224,7 +218,6 @@ else
         // Auto-generate prefix from warehouse name
         document.getElementById('modalWarehouseName')?.addEventListener('input', function() {
             var prefixInput = document.getElementById('modalPrefix');
-            if (prefixInput.value) return; // Don't override if user already typed
 
             var words = this.value.trim().split(/\s+/);
             var prefix = '';
@@ -238,12 +231,6 @@ else
             }
             
             prefixInput.value = prefix.toUpperCase();
-            updateAllModalLocationPrefixes();
-        });
-
-        // Ensure uppercase for prefix
-        document.getElementById('modalPrefix')?.addEventListener('input', function() {
-            this.value = this.value.toUpperCase().replace(/[^A-Z]/g, '');
             updateAllModalLocationPrefixes();
         });
 
@@ -284,7 +271,7 @@ else
                 </div>
                 <div class="form-group" style="margin-bottom:0;">
                     <input type="number" name="Locations[${modalLocationRowCount - 1}].Capacity" class="form-control" 
-                        placeholder="200" min="1" style="font-size:0.82rem;padding:7px 10px;" />
+                        value="200" min="1" style="font-size:0.82rem;padding:7px 10px;" />
                 </div>
                 <button type="button" class="rm-btn" onclick="document.getElementById('${rowId}').remove()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:4px 6px;border-radius:6px;transition:all 0.2s;height:34px;align-self:flex-end;">
                     <i class="bi bi-x"></i>

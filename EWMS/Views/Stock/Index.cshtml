@@ -2,6 +2,9 @@
     ViewData["Title"] = "Inventory Management";
     var warehouseId = ViewBag.WarehouseId;
     var defaultRack = ViewBag.DefaultRack ?? "A";
+    // Use Purchasing layout if current user is Purchasing Staff
+    if (User.IsInRole("Purchasing Staff")) { Layout = "~/Views/Shared/_LayoutPurchasingStaff.cshtml"; }
+    else if (User.IsInRole("Sales Staff")) { Layout = "~/Views/Shared/_LayoutSalesStaff.cshtml"; }
 }
 
 <div class="container-fluid">

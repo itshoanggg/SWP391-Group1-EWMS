@@ -1,4 +1,7 @@
-﻿
+﻿@{
+    if (User.IsInRole("Purchasing Staff")) { Layout = "~/Views/Shared/_LayoutPurchasingStaff.cshtml"; }
+}
+
 @section Styles {
     <link rel="stylesheet" href="~/css/Inventory/InventoryDashboard.css" />
 }

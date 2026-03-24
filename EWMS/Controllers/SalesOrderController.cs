@@ -49,6 +49,9 @@ namespace EWMS.Controllers
             if (order == null)
                 return NotFound();
 
+            // Pass current user ID to view for permission check
+            ViewBag.CurrentUserId = _userService.GetCurrentUserId();
+
             return View(order);
         }
 
@@ -60,6 +63,14 @@ namespace EWMS.Controllers
 
             if (order == null)
                 return NotFound();
+
+            // Kiểm tra xem user hiện tại có phải là người tạo đơn không
+            var currentUserId = _userService.GetCurrentUserId();
+            if (order.CreatedBy != currentUserId)
+            {
+                TempData["ErrorMessage"] = "You can only cancel orders that you created.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
 
             if (order.Status != "Pending")
             {
@@ -150,19 +161,16 @@ namespace EWMS.Controllers
                     return RedirectToAction(nameof(Index));
                 }
 
+                // Nếu thất bại (ví dụ: insufficient stock, race condition), 
+                // redirect về Index để user thấy message rõ ràng
                 TempData["ErrorMessage"] = result.Message;
+                return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
                 TempData["ErrorMessage"] = $"System error: {ex.Message}";
+                return RedirectToAction(nameof(Index));
             }
-
-            var reloadProducts = await _salesOrderService.GetProductsForSelectionAsync();
-
-            ViewBag.Products = reloadProducts;
-            ViewBag.WarehouseId = warehouseId;
-
-            return View(model);
         }
 
         [HttpPost]

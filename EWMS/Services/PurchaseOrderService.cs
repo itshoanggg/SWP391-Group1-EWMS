@@ -85,7 +85,16 @@ namespace EWMS.Services
             return purchaseOrder;
         }
 
+        // Removed: MarkAsDeliveredAsync - This method was doing nothing (keeping status as "Ordered")
+        // Status is automatically updated when stock-in is performed via StockInService
         public async Task<bool> MarkAsDeliveredAsync(int id, int warehouseId)
+        {
+            // This endpoint is kept for backward compatibility but does nothing
+            // The actual status update happens in StockInService when goods are received
+            return await Task.FromResult(true);
+        }
+
+        public async Task<bool> CancelPurchaseOrderAsync(int id, int warehouseId, int userId)
         {
             var purchaseOrder = await _unitOfWork.PurchaseOrders.FirstOrDefaultAsync(
                 po => po.PurchaseOrderId == id && po.WarehouseId == warehouseId);
@@ -93,17 +102,8 @@ namespace EWMS.Services
             if (purchaseOrder == null || purchaseOrder.Status != "Ordered")
                 return false;
 
-            purchaseOrder.Status = "Ordered"; // Keep as Ordered, status will be updated when stock-in is performed
-            await _unitOfWork.SaveChangesAsync();
-            return true;
-        }
-
-        public async Task<bool> CancelPurchaseOrderAsync(int id, int warehouseId)
-        {
-            var purchaseOrder = await _unitOfWork.PurchaseOrders.FirstOrDefaultAsync(
-                po => po.PurchaseOrderId == id && po.WarehouseId == warehouseId);
-
-            if (purchaseOrder == null || purchaseOrder.Status != "Ordered")
+            // Chỉ cho phép người tạo đơn hủy
+            if (purchaseOrder.CreatedBy != userId)
                 return false;
 
             purchaseOrder.Status = "Cancelled";
@@ -111,11 +111,15 @@ namespace EWMS.Services
             return true;
         }
 
-        public async Task<bool> DeletePurchaseOrderAsync(int id, int warehouseId)
+        public async Task<bool> DeletePurchaseOrderAsync(int id, int warehouseId, int userId)
         {
             var purchaseOrder = await _unitOfWork.PurchaseOrders.GetByIdWithDetailsAsync(id, warehouseId);
 
             if (purchaseOrder == null || purchaseOrder.Status != "Ordered")
+                return false;
+
+            // Chỉ cho phép người tạo đơn xóa
+            if (purchaseOrder.CreatedBy != userId)
                 return false;
 
             _unitOfWork.PurchaseOrders.Delete(purchaseOrder);

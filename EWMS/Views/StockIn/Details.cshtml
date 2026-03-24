@@ -1,4 +1,7 @@
-﻿@model EWMS.Models.PurchaseOrder
+﻿@{
+    if (User.IsInRole("Purchasing Staff")) { Layout = "~/Views/Shared/_LayoutPurchasingStaff.cshtml"; }
+}
+@model EWMS.Models.PurchaseOrder
 
 @{
     ViewData["Title"] = "Stock-In Details";

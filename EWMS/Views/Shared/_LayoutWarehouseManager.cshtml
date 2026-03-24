@@ -254,18 +254,11 @@
                     <span>Warehouses</span>
                 </div>
             </a>
-            <a href="@Url.Action("LocationList", "Warehouse")"
-               class="sidebar-menu-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Warehouse" && ViewContext.RouteData.Values["action"]?.ToString() == "LocationList" ? "active" : "")">
-                <div>
-                    <i class="bi bi-geo-alt menu-icon"></i>
-                    <span>Locations</span>
-                </div>
-            </a>
             <a href="@Url.Action("NXT", "Reports")"
                class="sidebar-menu-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reports" ? "active" : "")">
                 <div>
                     <i class="bi bi-clipboard-data menu-icon"></i>
-                    <span>NXT Report</span>
+                    <span>Report</span>
                 </div>
             </a>
             <a href="@Url.Action("Index", "Transfer")"
