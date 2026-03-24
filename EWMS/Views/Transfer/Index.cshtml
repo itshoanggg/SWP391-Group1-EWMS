@@ -1,9 +1,18 @@
-﻿@model List<EWMS.Models.TransferRequest>
+@model List<EWMS.Models.TransferRequest>
 @{
-    Layout = "~/Views/Shared/_Layout.cshtml";
-    ViewData["Title"] = "Transfer";
     var isManager = ViewBag.IsManager == true;
     var userWarehouseId = ViewBag.UserWarehouseId ?? 0;
+    
+    if (isManager)
+    {
+        Layout = "~/Views/Shared/_LayoutWarehouseManager.cshtml";
+    }
+    else
+    {
+        Layout = "~/Views/Shared/_Layout.cshtml";
+    }
+    
+    ViewData["Title"] = "Transfer";
 }
 
 <style>
@@ -134,7 +143,6 @@
                 <th><i class="bi bi-hash me-2"></i>Code</th>
                 <th><i class="bi bi-box-arrow-right me-2"></i>From Warehouse</th>
                 <th><i class="bi bi-box-arrow-in-down me-2"></i>To Warehouse</th>
-                <th><i class="bi bi-tag me-2"></i>Type</th>
                 <th><i class="bi bi-person me-2"></i>Requested By</th>
                 <th><i class="bi bi-calendar me-2"></i>Date</th>
                 <th><i class="bi bi-info-circle me-2"></i>Status</th>
@@ -144,20 +152,20 @@
         <tbody>
             @foreach (var t in Model)
             {
-                var status = (t.Status ?? "Pending Approval").ToLowerInvariant();
+                var status = (t.Status ?? "Pending").ToLowerInvariant();
                 var statusClass = status switch
                 {
                     "approved" => "status-approved",
                     "rejected" => "status-rejected",
                     "in transit" => "status-transit",
-                    "pending approval" => "status-pending",
+                    "pending destination" => "status-pending",
+                    "pending" => "status-pending",
                     _ => "status-pending",
                 };
                 <tr>
                     <td><strong>TR-@t.TransferId.ToString("D4")</strong></td>
                     <td>@t.FromWarehouse?.WarehouseName</td>
                     <td>@t.ToWarehouse?.WarehouseName</td>
-                    <td><span class="badge bg-secondary">@t.TransferType</span></td>
                     <td>@(t.RequestedByNavigation?.FullName ?? t.RequestedBy.ToString())</td>
                     <td><small class="text-muted">@t.RequestedDate?.ToString("dd/MM/yyyy HH:mm")</small></td>
                     <td>

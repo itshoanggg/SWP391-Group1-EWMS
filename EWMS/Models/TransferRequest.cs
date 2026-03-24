@@ -16,7 +16,7 @@ public partial class TransferRequest
     public int FromWarehouseId { get; set; }
 
     [Column("ToWarehouseID")]
-    public int ToWarehouseId { get; set; }
+    public int? ToWarehouseId { get; set; }
 
     [StringLength(30)]
     public string TransferType { get; set; } = null!;

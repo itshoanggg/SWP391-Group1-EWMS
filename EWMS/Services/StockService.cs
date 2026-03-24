@@ -44,7 +44,7 @@ namespace EWMS.Services
                 Rack = l.Rack,
                 Capacity = l.Capacity,
                 CurrentStock = l.Inventories.Sum(i => i.Quantity ?? 0),
-                ProductCount = l.Inventories.Count(i => i.Quantity > 0)
+                ProductCount = l.Inventories.Count(i => (i.Quantity ?? 0) > 0)
             }).ToList();
         }
 
@@ -54,7 +54,7 @@ namespace EWMS.Services
                 .Include(i => i.Product)
                     .ThenInclude(p => p.Category)
                 .Include(i => i.Location)
-                .Where(i => i.LocationId == locationId && i.Quantity > 0)
+                .Where(i => i.LocationId == locationId && (i.Quantity ?? 0) > 0)
                 .ToListAsync();
 
             return inventories.Select(i => new ProductInLocationDTO
@@ -79,7 +79,7 @@ namespace EWMS.Services
             var totalLocations = locations.Count();
             var totalCapacity = locations.Sum(l => l.Capacity);
             var totalStock = inventories.Sum(i => i.Quantity ?? 0);
-            var totalProducts = inventories.Where(i => i.Quantity > 0).Select(i => i.ProductId).Distinct().Count();
+            var totalProducts = inventories.Where(i => (i.Quantity ?? 0) > 0).Select(i => i.ProductId).Distinct().Count();
 
             var utilizationRate = totalCapacity > 0
                 ? Math.Round((double)totalStock / totalCapacity * 100, 2)

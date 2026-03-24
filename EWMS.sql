@@ -225,11 +225,17 @@ CREATE TABLE TransferDetails (
     TransferID INT NOT NULL,
     ProductID INT NOT NULL,
     Quantity INT NOT NULL,
+    FromLocationID INT NULL,
+    ToLocationID INT NULL,
 
     CONSTRAINT FK_TransferDetails_Transfer
         FOREIGN KEY (TransferID) REFERENCES TransferRequests(TransferID) ON DELETE CASCADE,
     CONSTRAINT FK_TransferDetails_Product
-        FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
+        FOREIGN KEY (ProductID) REFERENCES Products(ProductID),
+    CONSTRAINT FK_TransferDetails_FromLocation
+        FOREIGN KEY (FromLocationID) REFERENCES Locations(LocationID),
+    CONSTRAINT FK_TransferDetails_ToLocation
+        FOREIGN KEY (ToLocationID) REFERENCES Locations(LocationID)
 );
 
 /* =========================================================

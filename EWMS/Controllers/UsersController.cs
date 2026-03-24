@@ -347,7 +347,7 @@ namespace EWMS.Controllers
 
             if (user == null) return NotFound();
 
-            ViewBag.IsManager = user.Role?.RoleName == "Admin" || user.Role?.RoleName == "Warehouse Manager";
+            ViewBag.IsAdmin = user.Role?.RoleName == "Admin";
 
             var warehouses = await _db.Warehouses.OrderBy(w => w.WarehouseName).ToListAsync();
             var model = new AssignDepartmentsViewModel
@@ -376,9 +376,9 @@ namespace EWMS.Controllers
             var user = await _db.Users.Include(u => u.UserWarehouses).Include(u => u.Role).SingleOrDefaultAsync(u => u.UserId == model.UserId);
             if (user == null) return NotFound();
 
-            // check warehouse restriction for non-managers
-            bool isManager = user.Role?.RoleName == "Admin" || user.Role?.RoleName == "Warehouse Manager";
-            if (!isManager)
+            // check warehouse restriction - only Admin can select multiple warehouses
+            bool isAdmin = user.Role?.RoleName == "Admin";
+            if (!isAdmin)
             {
                 if (model.SelectedWarehouseIds == null || model.SelectedWarehouseIds.Count == 0)
                 {
