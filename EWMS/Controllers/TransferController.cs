@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using EWMS.Services;
+using EWMS.Services.Interfaces;
 using EWMS.Models;
 
 namespace EWMS.Controllers
@@ -13,13 +14,13 @@ namespace EWMS.Controllers
     /// User Story: As an inventory staff, I want to manage transfer requests so that inventory movement is controlled.
     /// Authorization: Admin, Inventory Staff, Warehouse Manager
     /// </summary>
-    [Authorize(Roles = "Admin,Inventory Staff,Warehouse Manager")]
+    [Authorize(Roles = "Inventory Staff,Warehouse Manager")]
     public class TransferController : Controller
     {
         private readonly TransferService _transferService;
-        private readonly UserService _userService;
+        private readonly IUserService _userService;
 
-        public TransferController(TransferService transferService, UserService userService)
+        public TransferController(TransferService transferService, IUserService userService)
         {
             _transferService = transferService;
             _userService = userService;
@@ -30,12 +31,13 @@ namespace EWMS.Controllers
             var userId = _userService.GetCurrentUserId();
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             
-            var isManager = User.IsInRole("Warehouse Manager") || User.IsInRole("Admin");
+            var isAdmin = User.IsInRole("Admin");
+            var isManager = User.IsInRole("Warehouse Manager");
             
             List<TransferRequest> transfers;
-            if (isManager && warehouseId > 0)
+            if (isAdmin || isManager)
             {
-                transfers = await _transferService.GetTransfersForWarehouseAsync(warehouseId);
+                transfers = await _transferService.GetAllTransfersAsync();
             }
             else
             {
@@ -43,7 +45,8 @@ namespace EWMS.Controllers
             }
             
             ViewBag.UserWarehouseId = warehouseId;
-            ViewBag.IsManager = isManager;
+            ViewBag.IsManager = isManager || isAdmin;
+            ViewBag.IsAdmin = isAdmin;
             
             return View(transfers);
         }
@@ -53,22 +56,29 @@ namespace EWMS.Controllers
         {
             var userId = _userService.GetCurrentUserId();
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
-            ViewBag.UserWarehouseId = warehouseId;
             
             var warehouses = await _transferService.GetWarehousesAsync();
-            if (warehouseId > 0)
-            {
-                warehouses = warehouses.Where(w => w.WarehouseId != warehouseId).ToList();
-            }
+            var userWarehouse = warehouses.FirstOrDefault(w => w.WarehouseId == warehouseId);
+            var locations = warehouseId > 0 ? await _transferService.GetLocationsByWarehouseAsync(warehouseId) : new List<Location>();
+            
+            ViewBag.UserWarehouse = userWarehouse;
+            ViewBag.UserWarehouseId = warehouseId;
             ViewBag.Warehouses = warehouses;
+            ViewBag.Locations = locations;
             ViewBag.Products = await _transferService.GetProductsAsync();
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(int FromWarehouseId, int ToWarehouseId, string TransferType, int ProductID, int Quantity, string? Reason)
+        public async Task<IActionResult> Create(int FromWarehouseId, int FromLocationId, int ProductID, int Quantity, string? Reason)
         {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userId = int.TryParse(userIdClaim, out var id) ? id : 0;
+            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            
+            FromWarehouseId = warehouseId;
+            
             ModelState.Remove("FromWarehouse");
             ModelState.Remove("ToWarehouse");
             ModelState.Remove("RequestedByNavigation");
@@ -76,33 +86,15 @@ namespace EWMS.Controllers
 
             if (FromWarehouseId == 0)
             {
-                ModelState.AddModelError("", "Please select source warehouse.");
+                ModelState.AddModelError("", "You are not assigned to any warehouse.");
                 ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
-                ViewBag.Products = await _transferService.GetProductsAsync();
                 return View();
             }
 
-            if (ToWarehouseId == 0)
+            if (FromLocationId == 0)
             {
-                ModelState.AddModelError("", "Please select destination warehouse.");
+                ModelState.AddModelError("", "Please select source location.");
                 ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
-                ViewBag.Products = await _transferService.GetProductsAsync();
-                return View();
-            }
-
-            if (FromWarehouseId == ToWarehouseId)
-            {
-                ModelState.AddModelError("", "Source warehouse and destination warehouse must be different.");
-                ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
-                ViewBag.Products = await _transferService.GetProductsAsync();
-                return View();
-            }
-
-            if (string.IsNullOrEmpty(TransferType))
-            {
-                ModelState.AddModelError("", "Please select transfer type.");
-                ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
-                ViewBag.Products = await _transferService.GetProductsAsync();
                 return View();
             }
 
@@ -110,7 +102,6 @@ namespace EWMS.Controllers
             {
                 ModelState.AddModelError("", "Please select a product.");
                 ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
-                ViewBag.Products = await _transferService.GetProductsAsync();
                 return View();
             }
 
@@ -118,18 +109,13 @@ namespace EWMS.Controllers
             {
                 ModelState.AddModelError("", "Quantity must be greater than 0.");
                 ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
-                ViewBag.Products = await _transferService.GetProductsAsync();
                 return View();
             }
-
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var userId = int.TryParse(userIdClaim, out var id) ? id : 0;
 
             if (userId == 0)
             {
                 ModelState.AddModelError("", "User not logged in.");
                 ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
-                ViewBag.Products = await _transferService.GetProductsAsync();
                 return View();
             }
 
@@ -138,20 +124,24 @@ namespace EWMS.Controllers
                 var model = new TransferRequest
                 {
                     FromWarehouseId = FromWarehouseId,
-                    ToWarehouseId = ToWarehouseId,
-                    TransferType = TransferType,
+                    ToWarehouseId = null,
+                    TransferType = "Transfer",
                     Reason = Reason
                 };
 
-                await _transferService.CreateTransferAsync(model, ProductID, Quantity, userId);
-                TempData["SuccessMessage"] = "Transfer request created successfully! Waiting for destination warehouse manager approval.";
+                await _transferService.CreateTransferAsync(model, ProductID, Quantity, userId, FromLocationId);
+                TempData["SuccessMessage"] = "Transfer request created successfully! Waiting for warehouse manager to select destination and confirm.";
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
-                ModelState.AddModelError("", $"Error creating transfer: {ex.Message}");
+                var errorMsg = ex.Message;
+                if (ex.InnerException != null)
+                {
+                    errorMsg += " - " + ex.InnerException.Message;
+                }
+                ModelState.AddModelError("", $"Error creating transfer: {errorMsg}");
                 ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
-                ViewBag.Products = await _transferService.GetProductsAsync();
                 return View();
             }
         }
@@ -164,19 +154,33 @@ namespace EWMS.Controllers
 
             var userId = _userService.GetCurrentUserId();
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
-            var isManager = User.IsInRole("Warehouse Manager") || User.IsInRole("Admin");
+            var isAdmin = User.IsInRole("Admin");
+            var isManager = User.IsInRole("Warehouse Manager");
             
+            var warehouses = await _transferService.GetWarehousesAsync();
+            ViewBag.Warehouses = warehouses;
             ViewBag.UserWarehouseId = warehouseId;
             ViewBag.IsManager = isManager;
-            ViewBag.CanApprove = isManager && transfer.ToWarehouseId == warehouseId && transfer.Status == "Pending Approval";
+            
+            var canSelectDestination = isManager && transfer.Status == "Pending Destination" && transfer.FromWarehouseId == warehouseId;
+            var canApproveAtDestination = isManager && transfer.Status == "Pending" && transfer.ToWarehouseId == warehouseId;
+            ViewBag.CanApprove = canApproveAtDestination;
+
+            // For Manager approve form: provide destination warehouse id if known
+            if (canSelectDestination || canApproveAtDestination)
+            {
+                var destWarehouseId = canApproveAtDestination ? transfer.ToWarehouseId : null;
+                if (destWarehouseId.HasValue)
+                    ViewBag.DestWarehouseId = destWarehouseId.Value;
+            }
 
             return View(transfer);
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin,Warehouse Manager")]
+        [Authorize(Roles = "Warehouse Manager")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Approve(int id)
+        public async Task<IActionResult> Approve(int id, int? ToWarehouseId, int? ToLocationId)
         {
             try
             {
@@ -190,8 +194,8 @@ namespace EWMS.Controllers
                     return RedirectToAction(nameof(Details), new { id });
                 }
 
-                await _transferService.ApproveTransferAsync(id, userId, warehouseId);
-                TempData["SuccessMessage"] = "Transfer request approved successfully!";
+                await _transferService.ApproveTransferAsync(id, userId, warehouseId, false, ToWarehouseId, ToLocationId);
+                TempData["SuccessMessage"] = "Transfer confirmed successfully! Goods will be sent to the destination warehouse.";
                 return RedirectToAction(nameof(Details), new { id });
             }
             catch (Exception ex)
@@ -202,7 +206,7 @@ namespace EWMS.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin,Warehouse Manager")]
+        [Authorize(Roles = "Warehouse Manager")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Reject(int id, string? rejectionReason)
         {

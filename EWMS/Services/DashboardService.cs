@@ -260,10 +260,10 @@ namespace EWMS.Services
             var totalStock = inventories.Sum(i => i.Quantity ?? 0);
 
             var lowStockCount = inventories
-                .Count(i => i.Quantity > 0 && i.Quantity < 10);
+                .Count(i => (i.Quantity ?? 0) > 0 && (i.Quantity ?? 0) < 10);
 
             var outOfStockCount = inventories
-                .Count(i => i.Quantity == 0);
+                .Count(i => (i.Quantity ?? 0) == 0);
 
             return new InventoryStatsDTO
             {

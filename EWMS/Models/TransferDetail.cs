@@ -20,6 +20,12 @@ public partial class TransferDetail
 
     public int Quantity { get; set; }
 
+    [Column("FromLocationID")]
+    public int? FromLocationId { get; set; }
+
+    [Column("ToLocationID")]
+    public int? ToLocationId { get; set; }
+
     [ForeignKey("ProductId")]
     [InverseProperty("TransferDetails")]
     public virtual Product Product { get; set; } = null!;

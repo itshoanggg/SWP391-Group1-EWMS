@@ -44,7 +44,7 @@ namespace EWMS.Services
                 Rack = l.Rack,
                 Capacity = l.Capacity,
                 CurrentStock = l.Inventories.Sum(i => i.Quantity ?? 0),
-                ProductCount = l.Inventories.Count(i => i.Quantity > 0)
+                ProductCount = l.Inventories.Count(i => (i.Quantity ?? 0) > 0)
             }).ToList();
         }
 
@@ -54,7 +54,7 @@ namespace EWMS.Services
                 .Include(i => i.Product)
                     .ThenInclude(p => p.Category)
                 .Include(i => i.Location)
-                .Where(i => i.LocationId == locationId && i.Quantity > 0)
+                .Where(i => i.LocationId == locationId && (i.Quantity ?? 0) > 0)
                 .ToListAsync();
 
             return inventories.Select(i => new ProductInLocationDTO
@@ -69,6 +69,31 @@ namespace EWMS.Services
                 Rack = i.Location.Rack,
                 LastUpdated = i.LastUpdated
             }).OrderBy(p => p.ProductName).ToList();
+        }
+
+        public async Task<StockSummaryDTO> GetStockSummaryAsync(int warehouseId)
+        {
+            var locations = await _unitOfWork.Locations.GetByWarehouseIdAsync(warehouseId);
+            var inventories = await _unitOfWork.Inventories.GetByWarehouseIdAsync(warehouseId);
+
+            var totalLocations = locations.Count();
+            var totalCapacity = locations.Sum(l => l.Capacity);
+            var totalStock = inventories.Sum(i => i.Quantity ?? 0);
+            var totalProducts = inventories.Where(i => (i.Quantity ?? 0) > 0).Select(i => i.ProductId).Distinct().Count();
+
+            var utilizationRate = totalCapacity > 0
+                ? Math.Round((double)totalStock / totalCapacity * 100, 2)
+                : 0;
+
+            return new StockSummaryDTO
+            {
+                TotalLocations = totalLocations,
+                TotalCapacity = totalCapacity,
+                TotalStock = totalStock,
+                TotalProducts = totalProducts,
+                AvailableSpace = totalCapacity - totalStock,
+                UtilizationRate = utilizationRate
+            };
         }
 
         public async Task<bool> PerformInternalTransferAsync(int warehouseId, int fromLocationId, int toLocationId, int productId, int quantity, int userId, string? reason)

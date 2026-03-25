@@ -1,16 +1,32 @@
-﻿@model EWMS.Models.TransferRequest
+@model EWMS.Models.TransferRequest
 @{
-    Layout = "~/Views/Shared/_Layout.cshtml";
-    var isPending = Model.Status?.ToLower() == "pending approval";
+    var isManager = ViewBag.IsManager == true || User.IsInRole("Warehouse Manager");
+    var isInventoryStaff = User.IsInRole("Inventory Staff");
+    
+    if (isManager)
+    {
+        Layout = "~/Views/Shared/_LayoutWarehouseManager.cshtml";
+    }
+    else
+    {
+        Layout = "~/Views/Shared/_Layout.cshtml";
+    }
+    
+    var isPendingDestination = Model.Status?.ToLower() == "pending destination";
+    var isPending = Model.Status?.ToLower() == "pending";
+    var canSelectDestination = isManager && isPendingDestination && ViewBag.UserWarehouseId == Model.FromWarehouseId;
     var canApprove = ViewBag.CanApprove == true;
     var statusColor = Model.Status?.ToLower() switch
     {
-        "pending approval" => "bg-yellow-100 text-yellow-800 border-yellow-300",
+        "pending destination" => "bg-yellow-100 text-yellow-800 border-yellow-300",
+        "pending" => "bg-yellow-100 text-yellow-800 border-yellow-300",
         "approved" => "bg-green-100 text-green-800 border-green-300",
         "rejected" => "bg-red-100 text-red-800 border-red-300",
         "in transit" => "bg-blue-100 text-blue-800 border-blue-300",
         _ => "bg-gray-100 text-gray-800 border-gray-300"
     };
+    
+    var warehouses = ViewBag.Warehouses as List<EWMS.Models.Warehouse> ?? new List<EWMS.Models.Warehouse>();
 }
 
 @if (TempData["SuccessMessage"] != null)
@@ -111,19 +127,18 @@
                 To Warehouse
             </div>
             <div class="detail-value">
-                <strong>@Model.ToWarehouse?.WarehouseName</strong>
+                @if (Model.ToWarehouseId > 0)
+                {
+                    <strong>@Model.ToWarehouse?.WarehouseName</strong>
+                }
+                else
+                {
+                    <span class="text-muted"><em>Not selected yet</em></span>
+                }
+            </div>
             </div>
         </div>
 
-        <div class="detail-row">
-            <div class="detail-label">
-                <i class="fas fa-tag text-info"></i>
-                Transfer Type
-            </div>
-            <div class="detail-value">
-                <span class="badge bg-light text-dark">@Model.TransferType</span>
-            </div>
-        </div>
 
         <div class="detail-row">
             <div class="detail-label">
@@ -189,43 +204,59 @@
         </div>
     </div>
 
-    <!-- Action Buttons (if pending and can approve) -->
-    @if (isPending && canApprove)
+    <!-- Action Buttons: Select Destination Warehouse -->
+    @if (canSelectDestination)
     {
         <div class="detail-card">
-            <h5 class="mb-3"><i class="fas fa-tasks me-2 text-primary"></i>Actions</h5>
-            <p class="text-muted mb-3">You can approve or reject this transfer request as the destination warehouse manager.</p>
+            <h5 class="mb-3"><i class="fas fa-warehouse me-2 text-primary"></i>Select Destination & Confirm</h5>
+            <p class="text-muted mb-3">As the source warehouse manager, please select the destination warehouse, rack, and location before confirming this transfer.</p>
             
-            <div class="d-flex gap-2 mb-3">
-                <form asp-action="Approve" asp-route-id="@Model.TransferId" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to approve this transfer request?');">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-check-circle me-2"></i>Approve Transfer
+            <form asp-action="Approve" asp-route-id="@Model.TransferId" method="post">
+                @Html.AntiForgeryToken()
+                <div class="mb-3">
+                    <label for="ToWarehouseId" class="form-label"><i class="fas fa-building me-2"></i>Destination Warehouse (*)</label>
+                    <select id="toWarehouseSelect" name="ToWarehouseId" class="form-select" required>
+                        <option value="">-- Select Destination Warehouse --</option>
+                        @foreach (var w in warehouses)
+                        {
+                            if (w.WarehouseId != Model.FromWarehouseId)
+                            {
+                                <option value="@w.WarehouseId">@w.WarehouseName</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label"><i class="fas fa-th me-2"></i>Destination Rack (*)</label>
+                        <select id="toRackSelect" class="form-select" disabled>
+                            <option value="">-- Select Warehouse First --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label"><i class="fas fa-map-marker-alt me-2"></i>Destination Location (*)</label>
+                        <select id="toLocationSelect" name="ToLocationId" class="form-select" disabled>
+                            <option value="">-- Select Rack First --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success" onclick="return confirm('Are you sure you want to confirm this transfer and send goods to the selected warehouse?');">
+                        <i class="fas fa-check-circle me-2"></i>Confirm & Send
                     </button>
-                </form>
-                
-                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
-                    <i class="fas fa-times-circle me-2"></i>Reject Transfer
-                </button>
-            </div>
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                        <i class="fas fa-times-circle me-2"></i>Reject
+                    </button>
+                </div>
+            </form>
             
-            <div class="alert alert-warning mb-0">
+            <div class="alert alert-warning mt-3 mb-0">
                 <i class="fas fa-exclamation-triangle me-2"></i>
-                <strong>Note:</strong> Once approved or rejected, this action cannot be undone. Approved transfers can proceed to stock out/in operations.
+                <strong>Note:</strong> Once confirmed, goods will be sent to the destination warehouse. The destination inventory staff will then process the stock in.
             </div>
         </div>
 
-        @if (!canApprove && isPending)
-    {
-        <div class="detail-card">
-            <div class="alert alert-info mb-0">
-                <i class="fas fa-info-circle me-2"></i>
-                <strong>Pending Approval:</strong> This transfer is waiting for approval from the destination warehouse manager.
-            </div>
-        </div>
-    }
-
-    <!-- Reject Modal -->
+        <!-- Reject Modal -->
         <div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -261,4 +292,123 @@
             </div>
         </div>
     }
+
+    <!-- Action Buttons: Confirm for Approved status (if pending approval at destination) -->
+    @if (isPending && canApprove)
+    {
+        <div class="detail-card">
+            <h5 class="mb-3"><i class="fas fa-tasks me-2 text-primary"></i>Actions</h5>
+            <p class="text-muted mb-3">You can approve or reject this transfer request as the destination warehouse manager.</p>
+            
+            <div class="d-flex gap-2 mb-3">
+                <form asp-action="Approve" asp-route-id="@Model.TransferId" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to approve this transfer request?');">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check-circle me-2"></i>Approve Transfer
+                    </button>
+                </form>
+                
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal2">
+                    <i class="fas fa-times-circle me-2"></i>Reject Transfer
+                </button>
+            </div>
+            
+            <div class="alert alert-warning mb-0">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Note:</strong> Once approved or rejected, this action cannot be undone. Approved transfers can proceed to stock out/in operations.
+            </div>
+        </div>
+
+        <!-- Reject Modal 2 -->
+        <div class="modal fade" id="rejectModal2" tabindex="-1" aria-labelledby="rejectModalLabel2" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form asp-action="Reject" asp-route-id="@Model.TransferId" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="rejectModalLabel2">
+                                <i class="fas fa-times-circle me-2 text-danger"></i>Reject Transfer Request
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                You are about to reject transfer request <strong>TR-@Model.TransferId.ToString("D4")</strong>
+                            </div>
+                            <div class="mb-3">
+                                <label for="rejectionReason" class="form-label">Rejection Reason (Optional)</label>
+                                <textarea class="form-control" id="rejectionReason2" name="rejectionReason" rows="3" placeholder="Enter reason for rejection..."></textarea>
+                                <small class="text-muted">Providing a reason helps the requester understand why the transfer was rejected.</small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                <i class="fas fa-arrow-left me-2"></i>Cancel
+                            </button>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-times-circle me-2"></i>Confirm Rejection
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Pending Destination Status Message -->
+    @if (isPendingDestination && !canSelectDestination)
+    {
+        <div class="detail-card">
+            <div class="alert alert-info mb-0">
+                <i class="fas fa-clock me-2"></i>
+                <strong>Pending Destination:</strong> This transfer is waiting for the source warehouse manager to select destination and confirm.
+            </div>
+        </div>
+    }
 </div>
+
+@section Scripts {
+    @if (canSelectDestination)
+    {
+        <script>
+            $(document).ready(function () {
+                // Warehouse → Rack cascade
+                $('#toWarehouseSelect').change(function () {
+                    const whId = $(this).val();
+                    $('#toRackSelect').html('<option value="">-- Select Rack --</option>').prop('disabled', true);
+                    $('#toLocationSelect').html('<option value="">-- Select Rack First --</option>').prop('disabled', true);
+
+                    if (whId) {
+                        $.get(`/Stock/GetRacks?warehouseId=${whId}`, function (data) {
+                            if (data && !data.error) {
+                                data.forEach(function (r) {
+                                    $('#toRackSelect').append(`<option value="${r.rack}">${r.rack}</option>`);
+                                });
+                                $('#toRackSelect').prop('disabled', false);
+                            }
+                        });
+                    }
+                });
+
+                // Rack → Location cascade
+                $('#toRackSelect').change(function () {
+                    const rack = $(this).val();
+                    const whId = $('#toWarehouseSelect').val();
+                    $('#toLocationSelect').html('<option value="">-- Select Location --</option>').prop('disabled', true);
+
+                    if (rack && whId) {
+                        $.get(`/Stock/GetLocationsByRack?warehouseId=${whId}&rack=${rack}`, function (data) {
+                            if (data && !data.error) {
+                                data.forEach(function (l) {
+                                    $('#toLocationSelect').append(`<option value="${l.locationId}">${l.locationCode} (${l.locationName || 'N/A'})</option>`);
+                                });
+                                $('#toLocationSelect').prop('disabled', false);
+                            }
+                        });
+                    }
+                });
+            });
+        </script>
+    }
+}

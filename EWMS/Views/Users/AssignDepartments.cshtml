@@ -24,7 +24,7 @@
             }
         </div>
         <span asp-validation-for="SelectedWarehouseIds" class="text-danger small d-block mt-1"></span>
-        <small class="text-muted d-block mt-1">Non-manager roles can only be assigned to 1 warehouse</small>
+        <small class="text-muted d-block mt-1">Only Admin can assign multiple warehouses. Other roles can only be assigned to 1 warehouse.</small>
     </div>
 
     <div class="text-end">
@@ -36,10 +36,10 @@
 @section Scripts {
     <script>
         $(document).ready(function () {
-            var isManager = @((ViewBag.IsManager ?? false).ToString().ToLower());
+            var isAdmin = @((ViewBag.IsAdmin ?? false).ToString().ToLower());
 
             function updateWarehouseCheckboxes() {
-                if (!isManager) {
+                if (!isAdmin) {
                     var checkedCount = $('input[name="SelectedWarehouseIds"]:checked').length;
 
                     if (checkedCount >= 1) {
