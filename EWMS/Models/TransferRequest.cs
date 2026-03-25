@@ -19,7 +19,13 @@ public partial class TransferRequest
     public int? ToWarehouseId { get; set; }
 
     [StringLength(30)]
-    public string TransferType { get; set; } = null!;
+    public string? TransferType { get; set; }
+
+    [StringLength(20)]
+    public string? FromRack { get; set; }
+
+    [StringLength(20)]
+    public string? ToRack { get; set; }
 
     public int RequestedBy { get; set; }
 

@@ -133,7 +133,7 @@
 }
 
 <div class="mb-4">
-    <input id="transferSearch" type="search" placeholder="Search by code, warehouse, type..." class="search-box w-100" style="max-width: 400px;" />
+    <input id="transferSearch" type="search" placeholder="Search by code, warehouse, rack..." class="search-box w-100" style="max-width: 400px;" />
 </div>
 
 <div class="transfer-card">
@@ -142,7 +142,12 @@
             <tr>
                 <th><i class="bi bi-hash me-2"></i>Code</th>
                 <th><i class="bi bi-box-arrow-right me-2"></i>From Warehouse</th>
+                <th><i class="bi bi-layer-group me-2"></i>From Rack</th>
                 <th><i class="bi bi-box-arrow-in-down me-2"></i>To Warehouse</th>
+<<<<<<< Updated upstream
+=======
+                <th><i class="bi bi-layer-group me-2"></i>To Rack</th>
+>>>>>>> Stashed changes
                 <th><i class="bi bi-person me-2"></i>Requested By</th>
                 <th><i class="bi bi-calendar me-2"></i>Date</th>
                 <th><i class="bi bi-info-circle me-2"></i>Status</th>
@@ -165,7 +170,21 @@
                 <tr>
                     <td><strong>TR-@t.TransferId.ToString("D4")</strong></td>
                     <td>@t.FromWarehouse?.WarehouseName</td>
+                    <td><span class="badge bg-primary">@t.FromRack</span></td>
                     <td>@t.ToWarehouse?.WarehouseName</td>
+<<<<<<< Updated upstream
+=======
+                    <td>
+                        @if (!string.IsNullOrEmpty(t.ToRack))
+                        {
+                            <span class="badge bg-success">@t.ToRack</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Pending</span>
+                        }
+                    </td>
+>>>>>>> Stashed changes
                     <td>@(t.RequestedByNavigation?.FullName ?? t.RequestedBy.ToString())</td>
                     <td><small class="text-muted">@t.RequestedDate?.ToString("dd/MM/yyyy HH:mm")</small></td>
                     <td>
