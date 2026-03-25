@@ -107,10 +107,10 @@
 
             <div class="col-md-6">
                 <label class="form-label"><i class="bi bi-box-arrow-in-down me-2"></i>Destination Warehouse</label>
-<<<<<<< Updated upstream
                 <div class="form-control" style="background: #e9ecef;">
                     <i class="bi bi-info-circle me-2"></i>Will be selected by Warehouse Manager
                 </div>
+            </div>
             </div>
         </div>
 
@@ -126,28 +126,14 @@
                 <select id="fromLocation" name="FromLocationId" class="form-select" required>
                     <option value="">-- Select Location --</option>
                 </select>
-=======
-                <input type="text" class="form-control" value="Will be selected by manager" readonly />
-                <small class="text-muted">Destination warehouse will be selected by the manager after approval.</small>
->>>>>>> Stashed changes
             </div>
         </div>
 
         <div class="row mb-4">
             <div class="col-md-6">
-<<<<<<< Updated upstream
                 <label class="form-label"><i class="bi bi-box me-2"></i>Product (*)</label>
                 <select id="productSelect" name="ProductID" class="form-select" required>
                     <option value="">-- Select Source Location First --</option>
-=======
-                <label class="form-label"><i class="bi bi-tag me-2"></i>Source Rack</label>
-                <select name="FromRack" class="form-select" required>
-                    <option value="">-- Select Source Rack --</option>
-                    @foreach (var r in fromRacks)
-                    {
-                        <option value="@r">@r</option>
-                    }
->>>>>>> Stashed changes
                 </select>
                 <small class="text-muted" id="availableStock">Available Quantity: 0</small>
             </div>

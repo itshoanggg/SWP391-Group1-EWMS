@@ -64,12 +64,13 @@ namespace EWMS.Services
             return await _db.Products.ToListAsync();
         }
 
-<<<<<<< Updated upstream
         public async Task<List<Location>> GetLocationsByWarehouseAsync(int warehouseId)
         {
             return await _db.Locations
                 .Where(l => l.WarehouseId == warehouseId)
-=======
+                .ToListAsync();
+        }
+
         public async Task<List<string>> GetRacksByWarehouseAsync(int warehouseId)
         {
             return await _db.Locations
@@ -77,7 +78,6 @@ namespace EWMS.Services
                 .Select(l => l.Rack!)
                 .Distinct()
                 .OrderBy(r => r)
->>>>>>> Stashed changes
                 .ToListAsync();
         }
 
@@ -101,8 +101,6 @@ namespace EWMS.Services
                 throw new InvalidOperationException("Product not found.");
             }
 
-<<<<<<< Updated upstream
-=======
             if (!string.IsNullOrEmpty(request.FromRack))
             {
                 var rackExists = await _db.Locations
@@ -136,7 +134,6 @@ namespace EWMS.Services
                 }
             }
 
->>>>>>> Stashed changes
             request.RequestedBy = requestedBy;
             request.RequestedDate = DateTime.Now;
             request.Status = "Pending Destination";
@@ -158,11 +155,7 @@ namespace EWMS.Services
             return request.TransferId;
         }
 
-<<<<<<< Updated upstream
         public async Task<bool> ApproveTransferAsync(int transferId, int approvedBy, int userWarehouseId, bool isAdmin = false, int? toWarehouseId = null, int? toLocationId = null)
-=======
-        public async Task<bool> ApproveTransferAsync(int transferId, int approvedBy, int userWarehouseId, int toWarehouseId)
->>>>>>> Stashed changes
         {
             var transfer = await _db.TransferRequests.FindAsync(transferId);
             if (transfer == null)
@@ -331,24 +324,7 @@ namespace EWMS.Services
                 throw new InvalidOperationException($"Cannot approve transfer with status: {transfer.Status}");
             }
 
-<<<<<<< Updated upstream
-=======
-            if (toWarehouseId == 0)
-            {
-                throw new InvalidOperationException("Please select destination warehouse.");
-            }
-
-            if (transfer.FromWarehouseId == toWarehouseId)
-            {
-                throw new InvalidOperationException("Destination warehouse must be different from source warehouse.");
-            }
-
-            transfer.Status = "Approved";
-            transfer.ApprovedBy = approvedBy;
-            transfer.ApprovedDate = DateTime.Now;
-            transfer.ToWarehouseId = toWarehouseId;
-
->>>>>>> Stashed changes
+        public async Task<bool> ApproveTransferAsync(int transferId, int approvedBy, int userWarehouseId, int toWarehouseId)
             _db.TransferRequests.Update(transfer);
             await _db.SaveChangesAsync();
 
