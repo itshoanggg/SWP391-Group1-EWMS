@@ -44,7 +44,7 @@ namespace EWMS.Controllers
                     ProductName = p.ProductName,
                     CategoryName = p.Category?.CategoryName ?? "N/A",
                     CategoryId = p.CategoryId ?? 0,
-                    SupplierName = p.Category?.Supplier?.SupplierName,
+                    SupplierName = p.ProductSuppliers?.FirstOrDefault()?.Supplier?.SupplierName,
                     Unit = p.Unit ?? "Unit",
                     TotalStock = p.Inventories?.Sum(i => i.Quantity ?? 0) ?? 0
                 }).ToList(),
@@ -56,7 +56,7 @@ namespace EWMS.Controllers
                 FilterSupplierId = supplierId
             };
 
-            // Pass categories and suppliers for filters
+            // Pass categories for filters
             ViewBag.Categories = await _productRepository.GetAllCategoriesWithSupplierAsync();
             ViewBag.Suppliers = await _supplierRepository.GetAllOrderedByNameAsync();
 
@@ -82,7 +82,7 @@ namespace EWMS.Controllers
                 ProductName = product.ProductName,
                 CategoryName = product.Category?.CategoryName ?? "N/A",
                 CategoryId = product.CategoryId ?? 0,
-                SupplierName = product.Category?.Supplier?.SupplierName,
+                SupplierName = product.ProductSuppliers?.FirstOrDefault()?.Supplier?.SupplierName,
                 Unit = product.Unit ?? "Unit",
                 InventoryByWarehouse = inventoryItems
                     .GroupBy(i => new { i.Location.WarehouseId, i.Location.Warehouse.WarehouseName })
@@ -131,36 +131,11 @@ namespace EWMS.Controllers
             {
                 var newCategory = new ProductCategory
                 {
-                    CategoryName = model.NewCategoryName.Trim(),
-                    SupplierId = model.SupplierId
+                    CategoryName = model.NewCategoryName.Trim()
                 };
                 await _productRepository.Context.ProductCategories.AddAsync(newCategory);
                 await _productRepository.Context.SaveChangesAsync();
                 categoryId = newCategory.CategoryId;
-            }
-
-            // Handle new supplier creation
-            int? supplierId = model.SupplierId;
-            if (!string.IsNullOrWhiteSpace(model.NewSupplierName))
-            {
-                var newSupplier = new Supplier
-                {
-                    SupplierName = model.NewSupplierName.Trim()
-                };
-                await _supplierRepository.AddAsync(newSupplier);
-                await _supplierRepository.SaveAsync();
-                supplierId = newSupplier.SupplierId;
-
-                // Update category with new supplier if category was also new
-                if (!string.IsNullOrWhiteSpace(model.NewCategoryName) && categoryId.HasValue)
-                {
-                    var category = await _productRepository.Context.ProductCategories.FindAsync(categoryId.Value);
-                    if (category != null)
-                    {
-                        category.SupplierId = supplierId;
-                        await _productRepository.Context.SaveChangesAsync();
-                    }
-                }
             }
 
             // Determine unit
@@ -227,7 +202,7 @@ namespace EWMS.Controllers
                 ProductId = product.ProductId,
                 ProductName = product.ProductName,
                 CategoryId = product.CategoryId,
-                SupplierId = product.Category?.SupplierId,
+                SupplierId = null, // Removed - now managed via ProductSuppliers
                 Unit = product.Unit ?? "Piece",
                 Categories = await GetCategoryOptionsAsync(),
                 Suppliers = await GetSupplierOptionsAsync(),
@@ -261,47 +236,11 @@ namespace EWMS.Controllers
             {
                 var newCategory = new ProductCategory
                 {
-                    CategoryName = model.NewCategoryName.Trim(),
-                    SupplierId = model.SupplierId
+                    CategoryName = model.NewCategoryName.Trim()
                 };
                 await _productRepository.Context.ProductCategories.AddAsync(newCategory);
                 await _productRepository.Context.SaveChangesAsync();
                 categoryId = newCategory.CategoryId;
-            }
-
-            // Handle new supplier creation
-            int? supplierId = model.SupplierId;
-            if (!string.IsNullOrWhiteSpace(model.NewSupplierName))
-            {
-                var newSupplier = new Supplier
-                {
-                    SupplierName = model.NewSupplierName.Trim()
-                };
-                await _supplierRepository.AddAsync(newSupplier);
-                await _supplierRepository.SaveAsync();
-                supplierId = newSupplier.SupplierId;
-
-                // Update category with new supplier if category was also new
-                if (!string.IsNullOrWhiteSpace(model.NewCategoryName) && categoryId.HasValue)
-                {
-                    var category = await _productRepository.Context.ProductCategories.FindAsync(categoryId.Value);
-                    if (category != null)
-                    {
-                        category.SupplierId = supplierId;
-                        await _productRepository.Context.SaveChangesAsync();
-                    }
-                }
-            }
-
-            // Update existing category's supplier if changed
-            if (categoryId.HasValue && supplierId.HasValue && string.IsNullOrWhiteSpace(model.NewCategoryName))
-            {
-                var category = await _productRepository.Context.ProductCategories.FindAsync(categoryId.Value);
-                if (category != null && category.SupplierId != supplierId)
-                {
-                    category.SupplierId = supplierId;
-                    await _productRepository.Context.SaveChangesAsync();
-                }
             }
 
             // Determine unit
@@ -438,8 +377,8 @@ namespace EWMS.Controllers
             {
                 categoryId = category.CategoryId,
                 categoryName = category.CategoryName,
-                supplierId = category.SupplierId,
-                supplierName = category.Supplier?.SupplierName ?? "N/A",
+                supplierId = (int?)null, // Removed - now managed via ProductSuppliers
+                supplierName = "N/A",
                 suggestedMarkup = markupPercent
             });
         }
@@ -452,8 +391,8 @@ namespace EWMS.Controllers
             {
                 CategoryId = c.CategoryId,
                 CategoryName = c.CategoryName,
-                SupplierName = c.Supplier?.SupplierName,
-                SupplierId = c.SupplierId,
+                SupplierName = null, // Removed - now managed via ProductSuppliers
+                SupplierId = null,
                 SuggestedMarkupPercent = GetSuggestedMarkupForCategory(c.CategoryName)
             }).ToList();
         }

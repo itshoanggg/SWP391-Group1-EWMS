@@ -129,16 +129,17 @@ namespace EWMS.Services
 
         public async Task<IEnumerable<ProductBySupplierDTO>> GetProductsBySupplierAsync(int supplierId)
         {
-            // Query directly from DB with filter by SupplierId via Category to avoid loading all products
+            // Query using ProductSuppliers many-to-many table
             var filtered = await _unitOfWork.Products.Context.Products
                 .Include(p => p.Category)
-                .Where(p => p.Category != null && p.Category.SupplierId == supplierId)
+                .Include(p => p.ProductSuppliers)
+                .Where(p => p.ProductSuppliers.Any(ps => ps.SupplierId == supplierId))
                 .OrderBy(p => p.ProductName)
                 .Select(p => new ProductBySupplierDTO
                 {
                     ProductId = p.ProductId,
                     ProductName = p.ProductName,
-                    CategoryName = p.Category!.CategoryName,
+                    CategoryName = p.Category != null ? p.Category.CategoryName : "N/A",
                     CostPrice = p.CostPrice ?? 0
                 })
                 .ToListAsync();

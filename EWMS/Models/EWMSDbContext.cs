@@ -25,6 +25,8 @@ public partial class EWMSDbContext : DbContext
 
     public virtual DbSet<ProductCategory> ProductCategories { get; set; }
 
+    public virtual DbSet<ProductSupplier> ProductSuppliers { get; set; }
+
     public virtual DbSet<PurchaseOrder> PurchaseOrders { get; set; }
 
     public virtual DbSet<PurchaseOrderDetail> PurchaseOrderDetails { get; set; }
@@ -111,12 +113,24 @@ public partial class EWMSDbContext : DbContext
         modelBuilder.Entity<ProductCategory>(entity =>
         {
             entity.HasKey(e => e.CategoryId).HasName("PK__ProductC__19093A2B5BEBEBCB");
+        });
 
-            // Configure optional relationship to Supplier via SuplierID column
+        modelBuilder.Entity<ProductSupplier>(entity =>
+        {
+            entity.HasKey(e => new { e.ProductId, e.SupplierId })
+                .HasName("PK_ProductSuppliers");
+
+            entity.HasOne(d => d.Product)
+                .WithMany(p => p.ProductSuppliers)
+                .HasForeignKey(d => d.ProductId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_PS_Product");
+
             entity.HasOne(d => d.Supplier)
-                  .WithMany(p => p.ProductCategories)
-                  .HasForeignKey(d => d.SupplierId)
-                  .HasConstraintName("FK_ProductCategories_Suppliers");
+                .WithMany(p => p.ProductSuppliers)
+                .HasForeignKey(d => d.SupplierId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_PS_Supplier");
         });
 
         modelBuilder.Entity<PurchaseOrder>(entity =>

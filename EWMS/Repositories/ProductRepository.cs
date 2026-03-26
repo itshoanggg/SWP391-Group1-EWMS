@@ -41,7 +41,8 @@ namespace EWMS.Repositories
         {
             return await _context.Products
                 .Include(p => p.Category)
-                    .ThenInclude(c => c.Supplier)
+                .Include(p => p.ProductSuppliers)
+                    .ThenInclude(ps => ps.Supplier)
                 .FirstOrDefaultAsync(p => p.ProductId == productId);
         }
 
@@ -58,7 +59,6 @@ namespace EWMS.Repositories
         public async Task<List<ProductCategory>> GetAllCategoriesWithSupplierAsync()
         {
             return await _context.ProductCategories
-                .Include(c => c.Supplier)
                 .OrderBy(c => c.CategoryName)
                 .ToListAsync();
         }
@@ -72,8 +72,9 @@ namespace EWMS.Repositories
         {
             var query = _context.Products
                 .Include(p => p.Category)
-                    .ThenInclude(c => c.Supplier)
                 .Include(p => p.Inventories)
+                .Include(p => p.ProductSuppliers)
+                    .ThenInclude(ps => ps.Supplier)
                 .AsQueryable();
 
             // Apply filters
@@ -92,7 +93,8 @@ namespace EWMS.Repositories
 
             if (supplierId.HasValue)
             {
-                query = query.Where(p => p.Category != null && p.Category.SupplierId == supplierId.Value);
+                // Supplier filter now uses ProductSuppliers many-to-many table
+                query = query.Where(p => p.ProductSuppliers.Any(ps => ps.SupplierId == supplierId.Value));
             }
 
             var totalCount = await query.CountAsync();
