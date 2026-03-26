@@ -1,0 +1,191 @@
+@model EWMS.ViewModels.TransferStockOutPageViewModel
+@{
+    ViewData["Title"] = "Transfer Stock Out";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/stockoutreceipt.css" asp-append-version="true" />
+}
+
+<div class="page-header">
+    <div>
+        <h1>Transfer Stock Out</h1>
+        <p>Transfer: <strong>TR-@Model.TransferId.ToString("D4")</strong></p>
+    </div>
+    <div>
+        <a href="@Url.Action("Details", "Transfer", new { id = Model.TransferId })" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
+</div>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="CreateTransfer" method="post" id="transferStockOutForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="TransferId" value="@Model.TransferId" />
+            <input type="hidden" name="WarehouseId" value="@Model.WarehouseId" />
+
+            <div class="detail-section">
+                <h4>Transfer Information</h4>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Source Warehouse:</div>
+                        <div class="detail-value">@Model.WarehouseName</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Destination Warehouse:</div>
+                        <div class="detail-value">@Model.DestinationWarehouseName</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <label for="IssuedDate" class="form-label">Actual Issue Date <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control" id="IssuedDate" name="IssuedDate"
+                           value="@DateTime.Now.ToString("yyyy-MM-dd")" required />
+                </div>
+            </div>
+
+            <div class="detail-section">
+                <h4>Select Stock Out Location</h4>
+                <div id="locationLines">
+                    @for (int i = 0; i < Model.Details.Count; i++)
+                    {
+                        var detail = Model.Details[i];
+                        <div class="location-line mb-3">
+                            <input type="hidden" name="Details[@i].ProductId" value="@detail.ProductId" />
+                            <input type="hidden" name="Details[@i].UnitPrice" value="@detail.UnitPrice" />
+                            <input type="hidden" name="Details[@i].Quantity" value="@detail.Quantity" />
+
+                            <div class="row align-items-end">
+                                <div class="col-md-4">
+                                    <label class="form-label">Product</label>
+                                    <input type="text" class="form-control" value="@detail.ProductName" readonly />
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Quantity</label>
+                                    <input type="number" class="form-control" value="@detail.Quantity" readonly />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Pickup Location <span class="text-danger">*</span></label>
+                                    <select class="form-select location-select"
+                                            name="Details[@i].LocationId"
+                                            data-product-id="@detail.ProductId"
+                                            data-quantity="@detail.Quantity"
+                                            required
+                                            onchange="updateInventoryStatus()">
+                                        <option value="">-- Select location --</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="inventory-status mb-4">
+                <h5><i class="bi bi-box-seam"></i> Inventory Status</h5>
+                <div id="inventoryStatus" class="mt-3">
+                    <p class="text-muted">Select location to view inventory status</p>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="@Url.Action("Details", "Transfer", new { id = Model.TransferId })" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+                <button type="submit" class="btn btn-success" id="submitBtn">
+                    <i class="bi bi-check-circle"></i> Confirm Stock Out
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const warehouseId = @Model.WarehouseId;
+
+        async function loadAvailableLocations() {
+            const selects = document.querySelectorAll('.location-select');
+
+            for (const select of selects) {
+                const productId = select.getAttribute('data-product-id');
+
+                try {
+                    const response = await fetch(`/StockOutReceipt/GetAvailableLocations?warehouseId=${warehouseId}&productId=${productId}`);
+                    const locations = await response.json();
+
+                    locations.forEach(loc => {
+                        const option = document.createElement('option');
+                        option.value = loc.locationId;
+                        option.textContent = `${loc.locationCode} (Existing: ${loc.availableQuantity})`;
+                        option.setAttribute('data-available', loc.availableQuantity);
+                        select.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Error loading locations:', error);
+                }
+            }
+        }
+
+        function updateInventoryStatus() {
+            const container = document.getElementById('inventoryStatus');
+            const selects = document.querySelectorAll('.location-select');
+            const submitBtn = document.getElementById('submitBtn');
+
+            let statusHTML = '';
+            let allValid = true;
+
+            selects.forEach(select => {
+                const row = select.closest('.location-line');
+                const productName = row.querySelector('input[readonly]').value;
+                const requiredQty = parseInt(select.getAttribute('data-quantity'));
+                const selectedOption = select.options[select.selectedIndex];
+
+                if (!select.value) {
+                    allValid = false;
+                    statusHTML += `<div class="inventory-item"><div><strong>${productName}</strong></div><div class="text-warning">Location not selected</div></div>`;
+                    return;
+                }
+
+                const available = parseInt(selectedOption.getAttribute('data-available') || '0');
+                const isValid = available >= requiredQty;
+                if (!isValid) {
+                    allValid = false;
+                }
+
+                statusHTML += `
+                    <div class="inventory-item">
+                        <div>
+                            <strong>${productName}</strong><br>
+                            <small class="text-muted">${selectedOption.text}</small>
+                        </div>
+                        <div class="text-end ${isValid ? 'text-success' : 'text-danger'} fw-bold">
+                            ${available} available / ${requiredQty} required
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = statusHTML || '<p class="text-muted">Select location to view inventory status</p>';
+            submitBtn.disabled = !allValid;
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadAvailableLocations();
+            updateInventoryStatus();
+        });
+    </script>
+}

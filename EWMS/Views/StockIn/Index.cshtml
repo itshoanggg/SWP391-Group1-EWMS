@@ -3,6 +3,8 @@
 
     ViewData["Title"] = "Stock-In Management";
     var warehouseId = ViewBag.WarehouseId;
+    var pendingTransfers = ViewBag.PendingTransferStockIns as List<EWMS.ViewModels.PendingTransferReceiptViewModel>
+        ?? new List<EWMS.ViewModels.PendingTransferReceiptViewModel>();
 }
 
 @section Styles {
@@ -27,6 +29,63 @@
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="fas fa-exclamation-circle"></i> @TempData["Error"]
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (pendingTransfers.Any())
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-right-left text-success"></i> Pending Transfer Stock-In
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>TRANSFER</th>
+                                <th>SOURCE WAREHOUSE</th>
+                                <th>PRODUCTS</th>
+                                <th class="text-end">QTY</th>
+                                <th>STATUS</th>
+                                <th>ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var transfer in pendingTransfers)
+                            {
+                                <tr>
+                                    <td><strong>TR-@transfer.TransferId.ToString("D4")</strong></td>
+                                    <td>@transfer.CounterpartyWarehouseName</td>
+                                    <td>@transfer.ProductSummary</td>
+                                    <td class="text-end">@transfer.TotalQuantity</td>
+                                    <td>
+                                        <span class="badge @(transfer.IsProcessed ? "bg-success" : "bg-warning text-dark")">
+                                            @(transfer.IsProcessed ? "Processed" : transfer.Status)
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (transfer.IsProcessed)
+                                        {
+                                            <a class="btn btn-outline-secondary btn-sm" href="@Url.Action("Details", "Transfer", new { id = transfer.TransferId })">
+                                                <i class="fas fa-eye"></i> View Transfer
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <a class="btn btn-success btn-sm" href="@Url.Action("TransferDetails", new { transferId = transfer.TransferId })">
+                                                <i class="fas fa-box-arrow-in-down"></i> Process Stock-In
+                                            </a>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     }
 

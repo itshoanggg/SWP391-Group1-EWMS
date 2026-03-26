@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using EWMS.Services;
 using EWMS.Services.Interfaces;
 using EWMS.ViewModels;
 
@@ -11,13 +12,16 @@ namespace EWMS.Controllers
     {
         private readonly IStockInService _stockInService;
         private readonly IUserService _userService;
+        private readonly TransferService _transferService;
 
         public StockInController(
             IStockInService stockInService,
-            IUserService userService)
+            IUserService userService,
+            TransferService transferService)
         {
             _stockInService = stockInService;
             _userService = userService;
+            _transferService = transferService;
         }
 
         // GET: StockIn/Index
@@ -35,6 +39,7 @@ namespace EWMS.Controllers
             }
 
             ViewBag.WarehouseId = warehouseId;
+            ViewBag.PendingTransferStockIns = await _transferService.GetPendingTransferStockInAsync(warehouseId);
             return View();
         }
 
@@ -121,6 +126,32 @@ namespace EWMS.Controllers
             ViewBag.UserId = userId;
 
             return View(purchaseOrder);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> TransferDetails(int transferId)
+        {
+            var userId = _userService.GetCurrentUserId();
+            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+
+            try
+            {
+                var transfer = await _transferService.GetTransferStockInAsync(transferId, warehouseId);
+                if (transfer == null)
+                {
+                    TempData["Error"] = "Transfer not found or cannot be processed.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                ViewBag.WarehouseId = warehouseId;
+                ViewBag.UserId = userId;
+                return View("TransferDetails", transfer);
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = ex.Message;
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         // GET: StockIn/DetailsReadOnly/{id} - Reuse Stock-In details UI in read-only mode
@@ -254,6 +285,31 @@ namespace EWMS.Controllers
                 {
                     success = true,
                     message = $"Stock-in successful! Receipt code: SI-{stockInReceipt.StockInId:D4}"
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ConfirmTransferStockIn([FromBody] ConfirmTransferStockInRequest request)
+        {
+            try
+            {
+                var userId = _userService.GetCurrentUserId();
+                var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+
+                if (request.WarehouseId != warehouseId)
+                    return Json(new { success = false, error = "Không có quyền truy cập" });
+
+                var stockInReceiptId = await _transferService.ProcessTransferStockInAsync(request, userId);
+
+                return Json(new
+                {
+                    success = true,
+                    message = $"Transfer stock-in successful! Receipt code: SI-{stockInReceiptId:D4}"
                 });
             }
             catch (Exception ex)

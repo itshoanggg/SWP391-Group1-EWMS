@@ -1,0 +1,188 @@
+@model EWMS.ViewModels.TransferStockInPageViewModel
+
+@{
+    ViewData["Title"] = "Transfer Stock-In Details";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/Inventory/StockInDetails.css" />
+}
+
+<div class="container-fluid">
+    <div class="header-section">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <a href="@Url.Action("Index", "StockIn")" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+                <div>
+                    <h2 class="mb-0">Transfer Stock-In Details</h2>
+                    <small class="text-muted">Confirm goods received for transfer TR-@Model.TransferId.ToString("D4")</small>
+                </div>
+            </div>
+            <button class="btn btn-success" id="btn-confirm" onclick="confirmTransferStockIn()">
+                <i class="fas fa-check-circle"></i> Confirm Stock-In
+            </button>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="card info-card">
+                <div class="card-header">
+                    <i class="fas fa-right-left"></i> Transfer Information
+                </div>
+                <div class="card-body">
+                    <div class="info-row">
+                        <span class="label">Transfer Number:</span>
+                        <span class="value">TR-@Model.TransferId.ToString("D4")</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">Source Warehouse:</span>
+                        <span class="value">@Model.SourceWarehouseName</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">Destination Warehouse:</span>
+                        <span class="value">@Model.WarehouseName</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-boxes"></i> Product List
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="products-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 10%">SKU</th>
+                            <th style="width: 25%">PRODUCT NAME</th>
+                            <th style="width: 10%">TRANSFER QTY</th>
+                            <th style="width: 10%">ACTUAL RECEIVED</th>
+                            <th style="width: 35%">STORAGE LOCATION</th>
+                        </tr>
+                    </thead>
+                    <tbody id="products-tbody">
+                        @for (int i = 0; i < Model.Details.Count; i++)
+                        {
+                            var detail = Model.Details[i];
+                            var rowId = $"product-{detail.ProductId}-{i}";
+                            <tr id="@rowId">
+                                <td><div class="sku-badge">SKU-@detail.ProductId.ToString("D5")</div></td>
+                                <td>
+                                    <div class="product-name">@detail.ProductName</div>
+                                </td>
+                                <td><span class="badge bg-secondary">@detail.Quantity</span></td>
+                                <td>
+                                    <input type="number"
+                                           class="form-control qty-input"
+                                           id="qty-@rowId"
+                                           data-product-id="@detail.ProductId"
+                                           data-row-id="@rowId"
+                                           value="@detail.Quantity"
+                                           min="0"
+                                           max="@detail.Quantity"
+                                           onchange="handleQuantityChange(this)">
+                                </td>
+                                <td>
+                                    <select class="form-select location-select"
+                                            id="location-@rowId"
+                                            data-product-id="@detail.ProductId"
+                                            data-row-id="@rowId"
+                                            onchange="handleLocationChange(this)">
+                                        <option value="">-- Select Location --</option>
+                                    </select>
+                                    <div class="location-info mt-1" id="location-info-@rowId"></div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="summary-item">
+                        <span>Total SKUs:</span>
+                        <strong id="total-sku">@Model.Details.Count</strong>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="summary-item">
+                        <span>Total Transfer Qty:</span>
+                        <strong id="total-ordered">@Model.Details.Sum(x => x.Quantity)</strong>
+                    </div>
+                    <div class="summary-item">
+                        <span>Total Actual Received:</span>
+                        <strong id="total-received" class="text-primary">@Model.Details.Sum(x => x.Quantity)</strong>
+                    </div>
+                    <div class="summary-item">
+                        <span>Status:</span>
+                        <strong id="receipt-status" class="text-success">Enough Items</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="alertModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" id="alertModalHeader">
+                <h5 class="modal-title" id="alertModalLabel">
+                    <i class="fas fa-info-circle me-2" id="alertModalIcon"></i>
+                    <span id="alertModalTitle">Notification</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="alertModalBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">
+                    <i class="fas fa-question-circle me-2"></i>
+                    Confirmation
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="confirmModalBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmModalOkBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const transferId = @Model.TransferId;
+        const warehouseId = @Model.WarehouseId;
+        const productsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            Model.Details.Select(d => new {
+                productId = d.ProductId,
+                productName = d.ProductName,
+                categoryName = "",
+                orderedQty = d.Quantity,
+                remainingQty = d.Quantity,
+                unitPrice = d.UnitPrice,
+                sku = $"SKU-{d.ProductId:D5}"
+            })));
+        window.readOnlyMode = false;
+    </script>
+    <script src="~/js/Inventory/TransferStockInDetails.js"></script>
+}
