@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using EWMS.Models;
+using EWMS.ViewModels;
 
 namespace EWMS.Services
 {
@@ -93,7 +95,29 @@ namespace EWMS.Services
                 .FirstOrDefaultAsync(t => t.TransferId == id);
         }
 
-        public async Task<int> CreateTransferAsync(TransferRequest request, int productId, int quantity, int requestedBy, int fromLocationId)
+        public async Task<List<TransferProductStockViewModel>> GetAvailableProductsByWarehouseAsync(int warehouseId)
+        {
+            return await _db.Inventories
+                .Include(i => i.Product)
+                .Include(i => i.Location)
+                .Where(i => i.Location.WarehouseId == warehouseId && (i.Quantity ?? 0) > 0)
+                .GroupBy(i => new
+                {
+                    i.ProductId,
+                    i.Product.ProductName
+                })
+                .Select(g => new TransferProductStockViewModel
+                {
+                    ProductId = g.Key.ProductId,
+                    ProductName = g.Key.ProductName,
+                    Sku = $"SKU-{g.Key.ProductId:D5}",
+                    AvailableQuantity = g.Sum(x => x.Quantity ?? 0)
+                })
+                .OrderBy(x => x.ProductName)
+                .ToListAsync();
+        }
+
+        public async Task<int> CreateTransferAsync(TransferRequest request, int productId, int quantity, int requestedBy, int? fromLocationId = null)
         {
             var product = await _db.Products.FindAsync(productId);
             if (product == null)
@@ -101,37 +125,14 @@ namespace EWMS.Services
                 throw new InvalidOperationException("Product not found.");
             }
 
-            if (!string.IsNullOrEmpty(request.FromRack))
+            var totalAvailable = await _db.Inventories
+                .Include(i => i.Location)
+                .Where(i => i.ProductId == productId && i.Location.WarehouseId == request.FromWarehouseId)
+                .SumAsync(i => i.Quantity ?? 0);
+
+            if (totalAvailable < quantity)
             {
-                var rackExists = await _db.Locations
-                    .AnyAsync(l => l.WarehouseId == request.FromWarehouseId && l.Rack == request.FromRack);
-                
-                if (!rackExists)
-                {
-                    throw new InvalidOperationException($"Rack '{request.FromRack}' not found in source warehouse.");
-                }
-
-                var availableInRack = await _db.Inventories
-                    .Include(i => i.Location)
-                    .Where(i => i.ProductId == productId && i.Location.WarehouseId == request.FromWarehouseId && i.Location.Rack == request.FromRack)
-                    .SumAsync(i => i.Quantity ?? 0);
-
-                if (availableInRack < quantity)
-                {
-                    throw new InvalidOperationException($"Insufficient inventory in rack {request.FromRack}. Available: {availableInRack}, Requested: {quantity}");
-                }
-            }
-            else
-            {
-                var totalAvailable = await _db.Inventories
-                    .Include(i => i.Location)
-                    .Where(i => i.ProductId == productId && i.Location.WarehouseId == request.FromWarehouseId)
-                    .SumAsync(i => i.Quantity ?? 0);
-
-                if (totalAvailable < quantity)
-                {
-                    throw new InvalidOperationException($"Insufficient inventory. Available: {totalAvailable}, Requested: {quantity}");
-                }
+                throw new InvalidOperationException($"Insufficient inventory. Available: {totalAvailable}, Requested: {quantity}");
             }
 
             request.RequestedBy = requestedBy;
@@ -157,7 +158,12 @@ namespace EWMS.Services
 
         public async Task<bool> ApproveTransferAsync(int transferId, int approvedBy, int userWarehouseId, bool isAdmin = false, int? toWarehouseId = null, int? toLocationId = null)
         {
-            var transfer = await _db.TransferRequests.FindAsync(transferId);
+            using var transaction = await _db.Database.BeginTransactionAsync();
+
+            var transfer = await _db.TransferRequests
+                .Include(t => t.TransferDetails)
+                .FirstOrDefaultAsync(t => t.TransferId == transferId);
+
             if (transfer == null)
             {
                 throw new InvalidOperationException("Transfer request not found.");
@@ -181,21 +187,9 @@ namespace EWMS.Services
                 }
 
                 transfer.ToWarehouseId = toWarehouseId.Value;
-                transfer.Status = "Pending";
+                transfer.Status = "Approved";
                 transfer.ApprovedBy = approvedBy;
                 transfer.ApprovedDate = DateTime.Now;
-
-                // Save destination location to each transfer detail if provided
-                if (toLocationId.HasValue)
-                {
-                    var details = await _db.TransferDetails
-                        .Where(td => td.TransferId == transferId)
-                        .ToListAsync();
-                    foreach (var td in details)
-                    {
-                        td.ToLocationId = toLocationId.Value;
-                    }
-                }
             }
             else if (transfer.Status == "Pending")
             {
@@ -207,127 +201,372 @@ namespace EWMS.Services
                 transfer.Status = "Approved";
                 transfer.ApprovedBy = approvedBy;
                 transfer.ApprovedDate = DateTime.Now;
-
-                var transferDetails = await _db.TransferDetails
-                    .Where(td => td.TransferId == transferId)
-                    .ToListAsync();
-
-                var stockOutReceipt = new StockOutReceipt
-                {
-                    WarehouseId = transfer.FromWarehouseId,
-                    IssuedBy = approvedBy,
-                    IssuedDate = DateTime.Now,
-                    Reason = "Transfer Out",
-                    TransferId = transferId,
-                    CreatedAt = DateTime.Now
-                };
-                _db.StockOutReceipts.Add(stockOutReceipt);
-                await _db.SaveChangesAsync();
-
-                foreach (var td in transferDetails)
-                {
-                    var stockOutDetail = new StockOutDetail
-                    {
-                        StockOutId = stockOutReceipt.StockOutId,
-                        ProductId = td.ProductId,
-                        Quantity = td.Quantity
-                    };
-                    _db.StockOutDetails.Add(stockOutDetail);
-
-                    // Deduct from the specific source location
-                    var inventory = td.FromLocationId.HasValue
-                        ? await _db.Inventories.FirstOrDefaultAsync(i => i.ProductId == td.ProductId && i.LocationId == td.FromLocationId.Value)
-                        : await _db.Inventories
-                            .Include(i => i.Location)
-                            .FirstOrDefaultAsync(i => i.ProductId == td.ProductId && i.Location.WarehouseId == transfer.FromWarehouseId);
-
-                    if (inventory != null && (inventory.Quantity ?? 0) >= td.Quantity)
-                    {
-                        inventory.Quantity -= td.Quantity;
-                    }
-                }
-
-                var stockInReceipt = new StockInReceipt
-                {
-                    WarehouseId = transfer.ToWarehouseId.Value,
-                    ReceivedBy = approvedBy,
-                    ReceivedDate = DateTime.Now,
-                    Reason = "Transfer In",
-                    TransferId = transferId,
-                    CreatedAt = DateTime.Now
-                };
-                _db.StockInReceipts.Add(stockInReceipt);
-                await _db.SaveChangesAsync();
-
-                foreach (var td in transferDetails)
-                {
-                    var stockInDetail = new StockInDetail
-                    {
-                        StockInId = stockInReceipt.StockInId,
-                        ProductId = td.ProductId,
-                        Quantity = td.Quantity
-                    };
-                    _db.StockInDetails.Add(stockInDetail);
-
-                    // Add to the specific destination location if saved, otherwise find existing
-                    int? destLocationId = td.ToLocationId;
-
-                    if (destLocationId.HasValue)
-                    {
-                        var destInventory = await _db.Inventories
-                            .FirstOrDefaultAsync(i => i.ProductId == td.ProductId && i.LocationId == destLocationId.Value);
-
-                        if (destInventory != null)
-                        {
-                            destInventory.Quantity = (destInventory.Quantity ?? 0) + td.Quantity;
-                        }
-                        else
-                        {
-                            _db.Inventories.Add(new Inventory
-                            {
-                                ProductId = td.ProductId,
-                                LocationId = destLocationId.Value,
-                                Quantity = td.Quantity
-                            });
-                        }
-                    }
-                    else
-                    {
-                        var existingInventory = await _db.Inventories
-                            .Include(i => i.Location)
-                            .FirstOrDefaultAsync(i => i.ProductId == td.ProductId && i.Location.WarehouseId == transfer.ToWarehouseId);
-
-                        if (existingInventory != null)
-                        {
-                            existingInventory.Quantity = (existingInventory.Quantity ?? 0) + td.Quantity;
-                        }
-                        else
-                        {
-                            var location = await _db.Locations
-                                .FirstOrDefaultAsync(l => l.WarehouseId == transfer.ToWarehouseId);
-
-                            if (location != null)
-                            {
-                                _db.Inventories.Add(new Inventory
-                                {
-                                    ProductId = td.ProductId,
-                                    LocationId = location.LocationId,
-                                    Quantity = td.Quantity
-                                });
-                            }
-                        }
-                    }
-                }
             }
             else
             {
                 throw new InvalidOperationException($"Cannot approve transfer with status: {transfer.Status}");
             }
 
+            var existingStockOut = await _db.StockOutReceipts
+                .FirstOrDefaultAsync(x => x.TransferId == transferId);
+            if (existingStockOut == null)
+            {
+                _db.StockOutReceipts.Add(new StockOutReceipt
+                {
+                    WarehouseId = transfer.FromWarehouseId,
+                    IssuedBy = approvedBy,
+                    IssuedDate = DateTime.Now,
+                    Reason = "Transfer Out",
+                    TransferId = transferId,
+                    CreatedAt = DateTime.Now,
+                    TotalAmount = 0
+                });
+            }
+
+            var existingStockIn = await _db.StockInReceipts
+                .FirstOrDefaultAsync(x => x.TransferId == transferId);
+            if (existingStockIn == null)
+            {
+                _db.StockInReceipts.Add(new StockInReceipt
+                {
+                    WarehouseId = transfer.ToWarehouseId!.Value,
+                    ReceivedBy = approvedBy,
+                    ReceivedDate = null,
+                    Reason = "Transfer In",
+                    TransferId = transferId,
+                    CreatedAt = DateTime.Now,
+                    TotalAmount = 0
+                });
+            }
+
             _db.TransferRequests.Update(transfer);
             await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return true;
+        }
+
+        public async Task<List<PendingTransferReceiptViewModel>> GetPendingTransferStockOutAsync(int warehouseId)
+        {
+            return await _db.TransferRequests
+                .Include(t => t.ToWarehouse)
+                .Include(t => t.TransferDetails)
+                    .ThenInclude(d => d.Product)
+                .Include(t => t.StockOutReceipts)
+                    .ThenInclude(r => r.StockOutDetails)
+                .Where(t => t.FromWarehouseId == warehouseId && (t.Status == "Approved" || t.Status == "In Transit"))
+                .OrderByDescending(t => t.RequestedDate)
+                .Select(t => new PendingTransferReceiptViewModel
+                {
+                    TransferId = t.TransferId,
+                    WarehouseId = t.FromWarehouseId,
+                    WarehouseName = t.FromWarehouse.WarehouseName,
+                    CounterpartyWarehouseName = t.ToWarehouse.WarehouseName,
+                    ProductSummary = string.Join(", ", t.TransferDetails.Select(d => d.Product.ProductName)),
+                    TotalQuantity = t.TransferDetails.Sum(d => d.Quantity),
+                    RequestedDate = t.RequestedDate,
+                    Status = t.Status ?? string.Empty,
+                    IsProcessed = t.StockOutReceipts.Any(r => r.StockOutDetails.Any())
+                })
+                .ToListAsync();
+        }
+
+        public async Task<List<PendingTransferReceiptViewModel>> GetPendingTransferStockInAsync(int warehouseId)
+        {
+            return await _db.TransferRequests
+                .Include(t => t.FromWarehouse)
+                .Include(t => t.TransferDetails)
+                    .ThenInclude(d => d.Product)
+                .Include(t => t.StockOutReceipts)
+                    .ThenInclude(r => r.StockOutDetails)
+                .Include(t => t.StockInReceipts)
+                    .ThenInclude(r => r.StockInDetails)
+                .Where(t => t.ToWarehouseId == warehouseId && (t.Status == "Approved" || t.Status == "In Transit"))
+                .OrderByDescending(t => t.RequestedDate)
+                .Select(t => new PendingTransferReceiptViewModel
+                {
+                    TransferId = t.TransferId,
+                    WarehouseId = t.ToWarehouseId ?? 0,
+                    WarehouseName = t.ToWarehouse.WarehouseName,
+                    CounterpartyWarehouseName = t.FromWarehouse.WarehouseName,
+                    ProductSummary = string.Join(", ", t.TransferDetails.Select(d => d.Product.ProductName)),
+                    TotalQuantity = t.TransferDetails.Sum(d => d.Quantity),
+                    RequestedDate = t.RequestedDate,
+                    Status = t.Status ?? string.Empty,
+                    IsProcessed = t.StockInReceipts.Any(r => r.StockInDetails.Any())
+                })
+                .ToListAsync();
+        }
+
+        public async Task<TransferStockOutPageViewModel?> GetTransferStockOutAsync(int transferId, int warehouseId)
+        {
+            var transfer = await _db.TransferRequests
+                .Include(t => t.FromWarehouse)
+                .Include(t => t.ToWarehouse)
+                .Include(t => t.TransferDetails)
+                    .ThenInclude(d => d.Product)
+                .FirstOrDefaultAsync(t => t.TransferId == transferId && t.FromWarehouseId == warehouseId);
+
+            if (transfer == null || (transfer.Status != "Approved" && transfer.Status != "In Transit"))
+            {
+                return null;
+            }
+
+            return new TransferStockOutPageViewModel
+            {
+                TransferId = transfer.TransferId,
+                WarehouseId = warehouseId,
+                WarehouseName = transfer.FromWarehouse.WarehouseName,
+                DestinationWarehouseName = transfer.ToWarehouse?.WarehouseName ?? "Unknown",
+                Reason = transfer.Reason,
+                Details = transfer.TransferDetails.Select(d => new TransferStockOutItemViewModel
+                {
+                    ProductId = d.ProductId,
+                    ProductName = d.Product.ProductName,
+                    Quantity = d.Quantity,
+                    Unit = d.Product.Unit ?? string.Empty,
+                    UnitPrice = d.Product.SellingPrice ?? 0
+                }).ToList()
+            };
+        }
+
+        public async Task<TransferStockInPageViewModel?> GetTransferStockInAsync(int transferId, int warehouseId)
+        {
+            var transfer = await _db.TransferRequests
+                .Include(t => t.FromWarehouse)
+                .Include(t => t.ToWarehouse)
+                .Include(t => t.TransferDetails)
+                    .ThenInclude(d => d.Product)
+                .Include(t => t.StockOutReceipts)
+                    .ThenInclude(r => r.StockOutDetails)
+                .FirstOrDefaultAsync(t => t.TransferId == transferId && t.ToWarehouseId == warehouseId);
+
+            if (transfer == null || (transfer.Status != "Approved" && transfer.Status != "In Transit"))
+            {
+                return null;
+            }
+
+            var stockOutDetails = transfer.StockOutReceipts
+                .SelectMany(r => r.StockOutDetails)
+                .ToList();
+
+            if (!stockOutDetails.Any())
+            {
+                throw new InvalidOperationException("Transfer stock-out has not been processed yet.");
+            }
+
+            return new TransferStockInPageViewModel
+            {
+                TransferId = transfer.TransferId,
+                WarehouseId = warehouseId,
+                WarehouseName = transfer.ToWarehouse?.WarehouseName ?? "Unknown",
+                SourceWarehouseName = transfer.FromWarehouse.WarehouseName,
+                Reason = transfer.Reason,
+                Details = stockOutDetails.Select(d => new TransferStockInItemViewModel
+                {
+                    ProductId = d.ProductId,
+                    ProductName = d.Product.ProductName,
+                    Quantity = d.Quantity,
+                    Unit = d.Product.Unit ?? string.Empty,
+                    UnitPrice = d.UnitPrice
+                }).ToList()
+            };
+        }
+
+        public async Task<int> ProcessTransferStockOutAsync(CreateTransferStockOutViewModel model, int userId)
+        {
+            var transfer = await _db.TransferRequests
+                .Include(t => t.TransferDetails)
+                .FirstOrDefaultAsync(t => t.TransferId == model.TransferId);
+
+            if (transfer == null || transfer.FromWarehouseId != model.WarehouseId)
+            {
+                throw new InvalidOperationException("Transfer not found.");
+            }
+
+            if (transfer.Status != "Approved" && transfer.Status != "In Transit")
+            {
+                throw new InvalidOperationException($"Cannot process stock-out for transfer status: {transfer.Status}");
+            }
+
+            var expectedMap = transfer.TransferDetails.ToDictionary(x => x.ProductId, x => x.Quantity);
+            foreach (var detail in model.Details)
+            {
+                if (!expectedMap.TryGetValue(detail.ProductId, out var expectedQty) || expectedQty != detail.Quantity)
+                {
+                    throw new InvalidOperationException("Transfer stock-out quantities do not match the transfer request.");
+                }
+
+                var inventory = await _db.Inventories
+                    .Include(i => i.Location)
+                    .FirstOrDefaultAsync(i => i.ProductId == detail.ProductId && i.LocationId == detail.LocationId && i.Location.WarehouseId == model.WarehouseId);
+
+                if (inventory == null || (inventory.Quantity ?? 0) < detail.Quantity)
+                {
+                    throw new InvalidOperationException($"Insufficient stock for product ID {detail.ProductId} at the selected location.");
+                }
+            }
+
+            var receipt = await _db.StockOutReceipts
+                .Include(r => r.StockOutDetails)
+                .FirstOrDefaultAsync(r => r.TransferId == model.TransferId);
+
+            if (receipt == null)
+            {
+                receipt = new StockOutReceipt
+                {
+                    WarehouseId = model.WarehouseId,
+                    IssuedBy = userId,
+                    IssuedDate = model.IssuedDate,
+                    Reason = "Transfer Out",
+                    TransferId = model.TransferId,
+                    CreatedAt = DateTime.Now,
+                    TotalAmount = 0
+                };
+                _db.StockOutReceipts.Add(receipt);
+                await _db.SaveChangesAsync();
+            }
+            else if (receipt.StockOutDetails.Any())
+            {
+                throw new InvalidOperationException("Transfer stock-out has already been processed.");
+            }
+
+            decimal totalAmount = 0;
+            foreach (var detail in model.Details)
+            {
+                _db.StockOutDetails.Add(new StockOutDetail
+                {
+                    StockOutId = receipt.StockOutId,
+                    ProductId = detail.ProductId,
+                    LocationId = detail.LocationId,
+                    Quantity = detail.Quantity,
+                    UnitPrice = detail.UnitPrice
+                });
+
+                var inventory = await _db.Inventories.FirstAsync(i => i.ProductId == detail.ProductId && i.LocationId == detail.LocationId);
+                inventory.Quantity = (inventory.Quantity ?? 0) - detail.Quantity;
+                inventory.LastUpdated = DateTime.Now;
+
+                totalAmount += detail.Quantity * detail.UnitPrice;
+            }
+
+            receipt.IssuedBy = userId;
+            receipt.IssuedDate = model.IssuedDate;
+            receipt.TotalAmount = totalAmount;
+            transfer.Status = "In Transit";
+
+            await _db.SaveChangesAsync();
+            return receipt.StockOutId;
+        }
+
+        public async Task<int> ProcessTransferStockInAsync(ConfirmTransferStockInRequest request, int userId)
+        {
+            var transfer = await _db.TransferRequests
+                .Include(t => t.TransferDetails)
+                .Include(t => t.StockOutReceipts)
+                    .ThenInclude(r => r.StockOutDetails)
+                .FirstOrDefaultAsync(t => t.TransferId == request.TransferId);
+
+            if (transfer == null || transfer.ToWarehouseId != request.WarehouseId)
+            {
+                throw new InvalidOperationException("Transfer not found.");
+            }
+
+            if (transfer.Status != "Approved" && transfer.Status != "In Transit")
+            {
+                throw new InvalidOperationException($"Cannot process stock-in for transfer status: {transfer.Status}");
+            }
+
+            var stockOutDetails = transfer.StockOutReceipts
+                .SelectMany(r => r.StockOutDetails)
+                .ToList();
+
+            if (!stockOutDetails.Any())
+            {
+                throw new InvalidOperationException("Transfer stock-out has not been processed yet.");
+            }
+
+            var expectedMap = stockOutDetails.GroupBy(x => x.ProductId).ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+            var actualMap = request.Items.GroupBy(x => x.ProductId).ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+            if (expectedMap.Count != actualMap.Count || expectedMap.Any(x => !actualMap.TryGetValue(x.Key, out var qty) || qty != x.Value))
+            {
+                throw new InvalidOperationException("Transfer stock-in quantities must match the processed stock-out.");
+            }
+
+            foreach (var item in request.Items)
+            {
+                var location = await _db.Locations.FirstOrDefaultAsync(l => l.LocationId == item.LocationId && l.WarehouseId == request.WarehouseId);
+                if (location == null)
+                {
+                    throw new InvalidOperationException("Selected stock-in location does not belong to the destination warehouse.");
+                }
+            }
+
+            var receipt = await _db.StockInReceipts
+                .Include(r => r.StockInDetails)
+                .FirstOrDefaultAsync(r => r.TransferId == request.TransferId);
+
+            if (receipt == null)
+            {
+                receipt = new StockInReceipt
+                {
+                    WarehouseId = request.WarehouseId,
+                    ReceivedBy = userId,
+                    ReceivedDate = DateTime.Now,
+                    Reason = "Transfer In",
+                    TransferId = request.TransferId,
+                    CreatedAt = DateTime.Now,
+                    TotalAmount = 0
+                };
+                _db.StockInReceipts.Add(receipt);
+                await _db.SaveChangesAsync();
+            }
+            else if (receipt.StockInDetails.Any())
+            {
+                throw new InvalidOperationException("Transfer stock-in has already been processed.");
+            }
+
+            decimal totalAmount = 0;
+            foreach (var item in request.Items)
+            {
+                _db.StockInDetails.Add(new StockInDetail
+                {
+                    StockInId = receipt.StockInId,
+                    ProductId = item.ProductId,
+                    LocationId = item.LocationId,
+                    Quantity = item.Quantity,
+                    UnitPrice = item.UnitPrice
+                });
+
+                var inventory = await _db.Inventories
+                    .FirstOrDefaultAsync(i => i.ProductId == item.ProductId && i.LocationId == item.LocationId);
+                if (inventory == null)
+                {
+                    inventory = new Inventory
+                    {
+                        ProductId = item.ProductId,
+                        LocationId = item.LocationId,
+                        Quantity = item.Quantity,
+                        LastUpdated = DateTime.Now
+                    };
+                    _db.Inventories.Add(inventory);
+                }
+                else
+                {
+                    inventory.Quantity = (inventory.Quantity ?? 0) + item.Quantity;
+                    inventory.LastUpdated = DateTime.Now;
+                }
+
+                totalAmount += item.Quantity * item.UnitPrice;
+            }
+
+            receipt.ReceivedBy = userId;
+            receipt.ReceivedDate = DateTime.Now;
+            receipt.TotalAmount = totalAmount;
+            transfer.Status = "Completed";
+
+            await _db.SaveChangesAsync();
+            return receipt.StockInId;
         }
 
         public async Task<bool> RejectTransferAsync(int transferId, int rejectedBy, int userWarehouseId, string? rejectionReason = null)
@@ -372,138 +611,9 @@ namespace EWMS.Services
             return true;
         }
 
-        public async Task<bool> UpdateToRackAsync(int transferId, string toRack, int userId)
+        public Task<bool> UpdateToRackAsync(int transferId, string toRack, int userId)
         {
-            using var transaction = await _db.Database.BeginTransactionAsync();
-            try
-            {
-                var transfer = await _db.TransferRequests
-                    .Include(t => t.TransferDetails)
-                    .FirstOrDefaultAsync(t => t.TransferId == transferId);
-                    
-                if (transfer == null)
-                {
-                    throw new InvalidOperationException("Transfer request not found.");
-                }
-
-                if (transfer.Status != "Approved")
-                {
-                    throw new InvalidOperationException("Can only set destination rack for approved transfers.");
-                }
-
-                var toLocation = await _db.Locations
-                    .FirstOrDefaultAsync(l => l.WarehouseId == transfer.ToWarehouseId && l.Rack == toRack);
-                    
-                if (toLocation == null)
-                {
-                    throw new InvalidOperationException($"Rack '{toRack}' not found in destination warehouse.");
-                }
-
-                var fromLocation = await _db.Locations
-                    .FirstOrDefaultAsync(l => l.WarehouseId == transfer.FromWarehouseId && l.Rack == transfer.FromRack);
-                    
-                if (fromLocation == null)
-                {
-                    throw new InvalidOperationException($"Rack '{transfer.FromRack}' not found in source warehouse.");
-                }
-
-                transfer.ToRack = toRack;
-                _db.TransferRequests.Update(transfer);
-
-                var stockOutReceipt = new StockOutReceipt
-                {
-                    WarehouseId = transfer.FromWarehouseId,
-                    IssuedBy = userId,
-                    IssuedDate = DateTime.Now,
-                    Reason = "Transfer",
-                    TransferId = transferId,
-                    TotalAmount = 0,
-                    CreatedAt = DateTime.Now
-                };
-                _db.StockOutReceipts.Add(stockOutReceipt);
-                await _db.SaveChangesAsync();
-
-                var stockInReceipt = new StockInReceipt
-                {
-                    WarehouseId = transfer.ToWarehouseId!.Value,
-                    ReceivedBy = userId,
-                    ReceivedDate = DateTime.Now,
-                    Reason = "Transfer",
-                    TransferId = transferId,
-                    TotalAmount = 0,
-                    CreatedAt = DateTime.Now
-                };
-                _db.StockInReceipts.Add(stockInReceipt);
-                await _db.SaveChangesAsync();
-
-                foreach (var detail in transfer.TransferDetails)
-                {
-                    var product = await _db.Products.FindAsync(detail.ProductId);
-                    var unitPrice = product?.SellingPrice ?? 0;
-
-                    var stockOutDetail = new StockOutDetail
-                    {
-                        StockOutId = stockOutReceipt.StockOutId,
-                        ProductId = detail.ProductId,
-                        LocationId = fromLocation.LocationId,
-                        Quantity = detail.Quantity,
-                        UnitPrice = unitPrice
-                    };
-                    _db.StockOutDetails.Add(stockOutDetail);
-
-                    var fromInventory = await _db.Inventories
-                        .FirstOrDefaultAsync(i => i.LocationId == fromLocation.LocationId && i.ProductId == detail.ProductId);
-                        
-                    if (fromInventory != null && fromInventory.Quantity.HasValue)
-                    {
-                        fromInventory.Quantity -= detail.Quantity;
-                        if (fromInventory.Quantity < 0) fromInventory.Quantity = 0;
-                        _db.Inventories.Update(fromInventory);
-                    }
-
-                    var stockInDetail = new StockInDetail
-                    {
-                        StockInId = stockInReceipt.StockInId,
-                        ProductId = detail.ProductId,
-                        LocationId = toLocation.LocationId,
-                        Quantity = detail.Quantity,
-                        UnitPrice = unitPrice
-                    };
-                    _db.StockInDetails.Add(stockInDetail);
-
-                    var toInventory = await _db.Inventories
-                        .FirstOrDefaultAsync(i => i.LocationId == toLocation.LocationId && i.ProductId == detail.ProductId);
-                        
-                    if (toInventory != null && toInventory.Quantity.HasValue)
-                    {
-                        toInventory.Quantity += detail.Quantity;
-                        _db.Inventories.Update(toInventory);
-                    }
-                    else
-                    {
-                        var newInventory = new Inventory
-                        {
-                            LocationId = toLocation.LocationId,
-                            ProductId = detail.ProductId,
-                            Quantity = detail.Quantity
-                        };
-                        _db.Inventories.Add(newInventory);
-                    }
-                }
-
-                transfer.Status = "Completed";
-                _db.TransferRequests.Update(transfer);
-                
-                await _db.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                return true;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            return Task.FromException<bool>(new InvalidOperationException("Destination rack is selected during stock-in at the destination warehouse."));
         }
     }
 }

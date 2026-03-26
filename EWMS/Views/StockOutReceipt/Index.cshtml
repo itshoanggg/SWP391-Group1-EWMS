@@ -30,6 +30,64 @@
     </div>
 }
 
+@{
+    var pendingTransfers = ViewBag.PendingTransferStockOuts as List<EWMS.ViewModels.PendingTransferReceiptViewModel>
+        ?? new List<EWMS.ViewModels.PendingTransferReceiptViewModel>();
+}
+
+@if (pendingTransfers.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">Pending Transfer Stock-Out</h3>
+        </div>
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Transfer</th>
+                        <th>Destination Warehouse</th>
+                        <th>Products</th>
+                        <th>Total Qty</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var transfer in pendingTransfers)
+                    {
+                        <tr>
+                            <td><strong>TR-@transfer.TransferId.ToString("D4")</strong></td>
+                            <td>@transfer.CounterpartyWarehouseName</td>
+                            <td>@transfer.ProductSummary</td>
+                            <td>@transfer.TotalQuantity</td>
+                            <td>
+                                <span class="badge @(transfer.IsProcessed ? "badge-completed" : "badge-pending")">
+                                    @(transfer.IsProcessed ? "Processed" : transfer.Status)
+                                </span>
+                            </td>
+                            <td>
+                                @if (transfer.IsProcessed)
+                                {
+                                    <a class="btn btn-success btn-sm" href="@Url.Action("Details", "Transfer", new { id = transfer.TransferId })">
+                                        <i class="bi bi-eye"></i> View Transfer
+                                    </a>
+                                }
+                                else
+                                {
+                                    <a class="btn btn-warning btn-sm" href="@Url.Action("CreateTransfer", new { transferId = transfer.TransferId })">
+                                        <i class="bi bi-plus-circle"></i> Process Stock-Out
+                                    </a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
 <!-- Pending Sales Orders Card -->
 <div class="card">
     <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">

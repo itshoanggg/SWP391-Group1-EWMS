@@ -83,6 +83,7 @@ namespace EWMS.Controllers
                 ProductName = product.ProductName,
                 CategoryName = product.Category?.CategoryName ?? "N/A",
                 CategoryId = product.CategoryId ?? 0,
+                SupplierName = product.ProductSuppliers?.FirstOrDefault()?.Supplier?.SupplierName,
                 SupplierNames = product.ProductSuppliers?
                     .Select(ps => ps.Supplier?.SupplierName ?? "Unknown")
                     .ToList() ?? new List<string>(),
@@ -140,6 +141,10 @@ namespace EWMS.Controllers
                 categoryId = newCategory.CategoryId;
             }
 
+            // Determine unit
+            string unit = !string.IsNullOrWhiteSpace(model.NewUnit) 
+                ? model.NewUnit.Trim() 
+                : (model.Unit ?? "Piece");
             // Handle new supplier creation
             if (!string.IsNullOrWhiteSpace(model.NewSupplierName))
             {
@@ -229,6 +234,7 @@ namespace EWMS.Controllers
                 ProductId = product.ProductId,
                 ProductName = product.ProductName,
                 CategoryId = product.CategoryId,
+                SupplierId = null, // Removed - now managed via ProductSuppliers
                 SelectedSupplierIds = product.ProductSuppliers?
                     .Select(ps => ps.SupplierId)
                     .ToList() ?? new List<int>(),
@@ -271,6 +277,10 @@ namespace EWMS.Controllers
                 categoryId = newCategory.CategoryId;
             }
 
+            // Determine unit
+            string unit = !string.IsNullOrWhiteSpace(model.NewUnit) 
+                ? model.NewUnit.Trim() 
+                : (model.Unit ?? "Piece");
             // Handle new supplier creation
             if (!string.IsNullOrWhiteSpace(model.NewSupplierName))
             {

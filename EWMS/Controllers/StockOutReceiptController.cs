@@ -11,13 +11,16 @@ namespace EWMS.Controllers
     {
         private readonly IStockOutReceiptService _stockOutReceiptService;
         private readonly IUserService _userService;
+        private readonly TransferService _transferService;
 
         public StockOutReceiptController(
             IStockOutReceiptService stockOutReceiptService,
-            IUserService userService)
+            IUserService userService,
+            TransferService transferService)
         {
             _stockOutReceiptService = stockOutReceiptService;
             _userService = userService;
+            _transferService = transferService;
         }
 
         public async Task<IActionResult> Index(string? customer, string? status, int page = 1)
@@ -37,6 +40,7 @@ namespace EWMS.Controllers
                     warehouseId, customer, status, page, pageSize);
 
             ViewBag.WarehouseId = warehouseId;
+            ViewBag.PendingTransferStockOuts = await _transferService.GetPendingTransferStockOutAsync(warehouseId);
 
             return View(viewModel);
         }
@@ -162,6 +166,36 @@ namespace EWMS.Controllers
             return View(order);
         }
 
+        [HttpGet]
+        public async Task<IActionResult> CreateTransfer(int transferId)
+        {
+            var userId = _userService.GetCurrentUserId();
+            if (userId == 0) return RedirectToAction("Login", "Account");
+            int warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            if (warehouseId == 0)
+            {
+                TempData["ErrorMessage"] = "You haven't been assigned to any warehouse yet.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            try
+            {
+                var model = await _transferService.GetTransferStockOutAsync(transferId, warehouseId);
+                if (model == null)
+                {
+                    TempData["ErrorMessage"] = "Transfer not found or cannot be processed.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                return View("CreateTransfer", model);
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = ex.Message;
+                return RedirectToAction(nameof(Index));
+            }
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(CreateStockOutReceiptViewModel model)
@@ -232,6 +266,34 @@ namespace EWMS.Controllers
             ViewBag.WarehouseName = retryWarehouseName ?? "Unknown";
 
             return View(retryOrder);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateTransfer(CreateTransferStockOutViewModel model)
+        {
+            var userId = _userService.GetCurrentUserId();
+            if (userId == 0) return RedirectToAction("Login", "Account");
+
+            if (!ModelState.IsValid || model.Details == null || !model.Details.Any())
+            {
+                TempData["ErrorMessage"] = "Please select pickup location for all transfer items.";
+                var retryModel = await _transferService.GetTransferStockOutAsync(model.TransferId, model.WarehouseId);
+                return View("CreateTransfer", retryModel);
+            }
+
+            try
+            {
+                var receiptId = await _transferService.ProcessTransferStockOutAsync(model, userId);
+                TempData["SuccessMessage"] = "Transfer stock-out processed successfully.";
+                return RedirectToAction(nameof(Details), new { id = receiptId });
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = ex.Message;
+                var retryModel = await _transferService.GetTransferStockOutAsync(model.TransferId, model.WarehouseId);
+                return View("CreateTransfer", retryModel);
+            }
         }
 
         [HttpGet]

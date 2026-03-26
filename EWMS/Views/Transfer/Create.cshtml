@@ -15,7 +15,7 @@
     var warehouses = ViewBag.Warehouses as List<EWMS.Models.Warehouse> ?? new List<EWMS.Models.Warehouse>();
     var userWarehouse = ViewBag.UserWarehouse as EWMS.Models.Warehouse;
     var userWarehouseId = ViewBag.UserWarehouseId ?? 0;
-    var fromRacks = ViewBag.FromRacks as List<string> ?? new List<string>();
+    var products = ViewBag.Products as List<EWMS.ViewModels.TransferProductStockViewModel> ?? new List<EWMS.ViewModels.TransferProductStockViewModel>();
 }
 
 <style>
@@ -79,7 +79,7 @@
 
 <div class="create-header">
     <h2><i class="bi bi-plus-circle me-2"></i>Create Transfer Request</h2>
-    <p class="mb-0 mt-2" style="opacity: 0.9;">Transfer goods from your warehouse. Warehouse manager will select the destination and confirm.</p>
+    <p class="mb-0 mt-2" style="opacity: 0.9;">Transfer goods from your warehouse. Warehouse manager will select the destination and confirm. Location will be selected later when processing stock-out and stock-in.</p>
 </div>
 
 @if (ViewData.ModelState.ErrorCount > 0)
@@ -115,26 +115,17 @@
 
         <div class="row mb-4">
             <div class="col-md-6">
-                <label class="form-label"><i class="bi bi-grid me-2"></i>Source Rack (*)</label>
-                <select id="fromRack" name="FromRack" class="form-select" required>
-                    <option value="">-- Select Rack --</option>
-                </select>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label"><i class="bi bi-geo-alt me-2"></i>Source Location (*)</label>
-                <select id="fromLocation" name="FromLocationId" class="form-select" required>
-                    <option value="">-- Select Location --</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="row mb-4">
-            <div class="col-md-6">
                 <label class="form-label"><i class="bi bi-box me-2"></i>Product (*)</label>
                 <select id="productSelect" name="ProductID" class="form-select" required>
-                    <option value="">-- Select Source Location First --</option>
+                    <option value="">-- Select Product --</option>
+                    @foreach (var product in products)
+                    {
+                        <option value="@product.ProductId" data-available="@product.AvailableQuantity">
+                            @product.Sku - @product.ProductName (Qty: @product.AvailableQuantity)
+                        </option>
+                    }
                 </select>
-                <small class="text-muted" id="availableStock">Available Quantity: 0</small>
+                <small class="text-muted" id="availableStock">Warehouse Available Quantity: 0</small>
             </div>
             <div class="col-md-6">
                 <label class="form-label"><i class="bi bi-123 me-2"></i>Quantity (*)</label>
@@ -163,68 +154,17 @@
     <script>
         $(document).ready(function () {
             const warehouseId = @userWarehouseId;
-            let currentProducts = [];
-
-            // Load Racks for source warehouse
-            $.get(`/Stock/GetRacks?warehouseId=${warehouseId}`, function (data) {
-                if (data && !data.error) {
-                    data.forEach(function (r) {
-                        $('#fromRack').append(`<option value="${r.rack}">${r.rack}</option>`);
-                    });
-                }
-            });
-
-            // When Rack changes, load Locations
-            $('#fromRack').change(function () {
-                const rack = $(this).val();
-                $('#fromLocation').html('<option value="">-- Select Location --</option>');
-                $('#productSelect').html('<option value="">-- Select Source Location First --</option>');
-                $('#availableStock').text('Available Quantity: 0');
-                $('#qtyInput').removeAttr('max').val('');
-                currentProducts = [];
-
-                if (rack) {
-                    $.get(`/Stock/GetLocationsByRack?warehouseId=${warehouseId}&rack=${rack}`, function (data) {
-                        if (data && !data.error) {
-                            data.forEach(function (l) {
-                                $('#fromLocation').append(`<option value="${l.locationId}">${l.locationCode} (${l.locationName || 'N/A'})</option>`);
-                            });
-                        }
-                    });
-                }
-            });
-
-            // When Location changes, load Products
-            $('#fromLocation').change(function () {
-                const locationId = $(this).val();
-                $('#productSelect').html('<option value="">-- Select Product --</option>');
-                $('#availableStock').text('Available Quantity: 0');
-                $('#qtyInput').removeAttr('max').val('');
-                currentProducts = [];
-
-                if (locationId) {
-                    $.get(`/Stock/GetProductsByLocation?locationId=${locationId}`, function (data) {
-                        if (data && !data.error) {
-                            currentProducts = data;
-                            data.forEach(function (p) {
-                                $('#productSelect').append(`<option value="${p.productId}">${p.sku} - ${p.productName} (Qty: ${p.quantity})</option>`);
-                            });
-                        }
-                    });
-                }
-            });
 
             // Update available stock display
             $('#productSelect').change(function () {
-                const pId = $(this).val();
-                if (pId) {
-                    const prod = currentProducts.find(p => p.productId == pId);
-                    if (prod) {
-                        $('#availableStock').text(`Available Quantity: ${prod.quantity}`);
-                        $('#qtyInput').attr('max', prod.quantity);
-                    }
+                const selectedOption = this.options[this.selectedIndex];
+                const available = selectedOption ? selectedOption.getAttribute('data-available') : null;
+
+                if (available) {
+                    $('#availableStock').text(`Warehouse Available Quantity: ${available}`);
+                    $('#qtyInput').attr('max', available).val('');
                 } else {
-                    $('#availableStock').text('Available Quantity: 0');
+                    $('#availableStock').text('Warehouse Available Quantity: 0');
                     $('#qtyInput').removeAttr('max');
                 }
             });
