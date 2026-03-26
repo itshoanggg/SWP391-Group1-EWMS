@@ -35,13 +35,17 @@ namespace EWMS.Controllers
             var isManager = User.IsInRole("Warehouse Manager");
             
             List<TransferRequest> transfers;
-            if (isAdmin || isManager)
+            if (isAdmin)
             {
                 transfers = await _transferService.GetAllTransfersAsync();
             }
+            else if (isManager)
+            {
+                transfers = await _transferService.GetTransfersForWarehouseAsync(warehouseId);
+            }
             else
             {
-                transfers = await _transferService.GetAllTransfersAsync();
+                transfers = await _transferService.GetTransfersForWarehouseAsync(warehouseId);
             }
             
             ViewBag.UserWarehouseId = warehouseId;
