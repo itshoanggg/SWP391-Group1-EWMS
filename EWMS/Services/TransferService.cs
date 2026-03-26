@@ -324,7 +324,6 @@ namespace EWMS.Services
                 throw new InvalidOperationException($"Cannot approve transfer with status: {transfer.Status}");
             }
 
-        public async Task<bool> ApproveTransferAsync(int transferId, int approvedBy, int userWarehouseId, int toWarehouseId)
             _db.TransferRequests.Update(transfer);
             await _db.SaveChangesAsync();
 
@@ -426,7 +425,7 @@ namespace EWMS.Services
 
                 var stockInReceipt = new StockInReceipt
                 {
-                    WarehouseId = transfer.ToWarehouseId,
+                    WarehouseId = transfer.ToWarehouseId!.Value,
                     ReceivedBy = userId,
                     ReceivedDate = DateTime.Now,
                     Reason = "Transfer",

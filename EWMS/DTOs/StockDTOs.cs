@@ -50,4 +50,14 @@ namespace EWMS.DTOs
         public int MaxCapacity { get; set; }
         public int CurrentStock { get; set; }
     }
+
+    public class StockSummaryDTO
+    {
+        public int TotalLocations { get; set; }
+        public int TotalCapacity { get; set; }
+        public int TotalStock { get; set; }
+        public int TotalProducts { get; set; }
+        public int AvailableSpace { get; set; }
+        public double UtilizationRate { get; set; }
+    }
 }
