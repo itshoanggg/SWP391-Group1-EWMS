@@ -2,7 +2,7 @@
 @{
     var isManager = ViewBag.IsManager == true || User.IsInRole("Warehouse Manager");
     var isInventoryStaff = User.IsInRole("Inventory Staff");
-    
+
     if (isManager)
     {
         Layout = "~/Views/Shared/_LayoutWarehouseManager.cshtml";
@@ -11,7 +11,7 @@
     {
         Layout = "~/Views/Shared/_Layout.cshtml";
     }
-    
+
     var isPendingDestination = Model.Status?.ToLower() == "pending destination";
     var isPending = Model.Status?.ToLower() == "pending";
     var canSelectDestination = isManager && isPendingDestination && ViewBag.UserWarehouseId == Model.FromWarehouseId;
@@ -25,7 +25,7 @@
         "in transit" => "bg-blue-100 text-blue-800 border-blue-300",
         _ => "bg-gray-100 text-gray-800 border-gray-300"
     };
-    
+
     var warehouses = ViewBag.Warehouses as List<EWMS.Models.Warehouse> ?? new List<EWMS.Models.Warehouse>();
 }
 
@@ -86,7 +86,6 @@
 </style>
 
 <div class="container py-4">
-    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="mb-1"><i class="fas fa-exchange-alt me-2"></i>Transfer Request #@Model.TransferId</h2>
@@ -99,7 +98,6 @@
         </div>
     </div>
 
-    <!-- Status and Main Info -->
     <div class="detail-card">
         <div class="d-flex justify-content-between align-items-start mb-4">
             <div>
@@ -172,10 +170,9 @@
         }
     </div>
 
-    <!-- Transfer Items -->
     <div class="detail-card">
         <h5 class="mb-3"><i class="fas fa-boxes me-2 text-primary"></i>Transfer Items</h5>
-        
+
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead class="table-light">
@@ -202,14 +199,13 @@
         </div>
     </div>
 
-    <!-- Action Buttons: Select Destination Warehouse -->
     @if (canSelectDestination)
     {
         var warehousesList = ViewBag.Warehouses as List<EWMS.Models.Warehouse> ?? new List<EWMS.Models.Warehouse>();
         <div class="detail-card">
             <h5 class="mb-3"><i class="fas fa-warehouse me-2 text-primary"></i>Select Destination & Confirm</h5>
             <p class="text-muted mb-3">As the source warehouse manager, please select the destination warehouse before confirming this transfer.</p>
-            
+
             <form asp-action="Approve" asp-route-id="@Model.TransferId" method="post">
                 @Html.AntiForgeryToken()
                 <div class="mb-3">
@@ -234,14 +230,13 @@
                     </button>
                 </div>
             </form>
-            
+
             <div class="alert alert-warning mt-3 mb-0">
                 <i class="fas fa-exclamation-triangle me-2"></i>
                 <strong>Note:</strong> Once confirmed, the system creates a transfer-linked stock-out at the source warehouse and a pending stock-in at the destination warehouse. Location selection happens when those receipts are processed.
             </div>
         </div>
 
-        <!-- Reject Modal -->
         <div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -278,13 +273,12 @@
         </div>
     }
 
-    <!-- Action Buttons: Confirm for Approved status (if pending approval at destination) -->
     @if (isPending && canApprove)
     {
         <div class="detail-card">
             <h5 class="mb-3"><i class="fas fa-tasks me-2 text-primary"></i>Actions</h5>
             <p class="text-muted mb-3">You can approve or reject this transfer request as the destination warehouse manager.</p>
-            
+
             <div class="d-flex gap-2 mb-3">
                 <form asp-action="Approve" asp-route-id="@Model.TransferId" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to approve this transfer request?');">
                     @Html.AntiForgeryToken()
@@ -292,19 +286,18 @@
                         <i class="fas fa-check-circle me-2"></i>Approve Transfer
                     </button>
                 </form>
-                
+
                 <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal2">
                     <i class="fas fa-times-circle me-2"></i>Reject Transfer
                 </button>
             </div>
-            
+
             <div class="alert alert-warning mb-0">
                 <i class="fas fa-exclamation-triangle me-2"></i>
                 <strong>Note:</strong> Once approved or rejected, this action cannot be undone. Approved transfers will then wait for stock-out at source and stock-in at destination.
             </div>
         </div>
 
-        <!-- Reject Modal 2 -->
         <div class="modal fade" id="rejectModal2" tabindex="-1" aria-labelledby="rejectModalLabel2" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -341,7 +334,6 @@
         </div>
     }
 
-    <!-- Pending Destination Status Message -->
     @if (isPendingDestination && !canSelectDestination)
     {
         <div class="detail-card">

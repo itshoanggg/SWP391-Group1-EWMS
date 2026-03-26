@@ -25,10 +25,10 @@ namespace EWMS.Controllers
         {
             var userId = _userService.GetCurrentUserId();
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
-            
+
             var isAdmin = User.IsInRole("Admin");
             var isManager = User.IsInRole("Warehouse Manager");
-            
+
             List<TransferRequest> transfers;
             if (isAdmin)
             {
@@ -38,11 +38,11 @@ namespace EWMS.Controllers
             {
                 transfers = await _transferService.GetTransfersForWarehouseAsync(warehouseId);
             }
-            
+
             ViewBag.UserWarehouseId = warehouseId;
             ViewBag.IsManager = isManager || isAdmin;
             ViewBag.IsAdmin = isAdmin;
-            
+
             return View(transfers);
         }
 
@@ -51,17 +51,17 @@ namespace EWMS.Controllers
         {
             var userId = _userService.GetCurrentUserId();
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
-            
+
             var warehouses = await _transferService.GetWarehousesAsync();
             var userWarehouse = warehouses.FirstOrDefault(w => w.WarehouseId == warehouseId);
-            
+
             ViewBag.UserWarehouse = userWarehouse;
             ViewBag.UserWarehouseId = warehouseId;
             ViewBag.Warehouses = warehouses.Where(w => w.WarehouseId != warehouseId).ToList();
             ViewBag.Products = warehouseId > 0
                 ? await _transferService.GetAvailableProductsByWarehouseAsync(warehouseId)
                 : new List<EWMS.ViewModels.TransferProductStockViewModel>();
-            
+
             return View();
         }
 
@@ -72,9 +72,9 @@ namespace EWMS.Controllers
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var userId = int.TryParse(userIdClaim, out var id) ? id : 0;
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
-            
+
             FromWarehouseId = warehouseId;
-            
+
             ModelState.Remove("FromWarehouse");
             ModelState.Remove("ToWarehouse");
             ModelState.Remove("RequestedByNavigation");
@@ -160,13 +160,12 @@ namespace EWMS.Controllers
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             var isAdmin = User.IsInRole("Admin");
             var isManager = User.IsInRole("Warehouse Manager");
-            
+
             var warehouses = await _transferService.GetWarehousesAsync();
             ViewBag.Warehouses = warehouses;
             ViewBag.UserWarehouseId = warehouseId;
             ViewBag.IsManager = isManager;
-            
-            var canSelectDestination = isManager && transfer.Status == "Pending Destination" && transfer.FromWarehouseId == warehouseId;
+
             var canApproveAtDestination = isManager && transfer.Status == "Pending" && transfer.ToWarehouseId == warehouseId;
             ViewBag.CanApprove = canApproveAtDestination;
             ViewBag.CanProcessStockOut = (transfer.Status == "Approved" || transfer.Status == "In Transit") && transfer.FromWarehouseId == warehouseId;
@@ -227,7 +226,7 @@ namespace EWMS.Controllers
                 }
 
                 await _transferService.ApproveTransferAsync(id, userId, warehouseId, false, ToWarehouseId, ToLocationId);
-                TempData["SuccessMessage"] = "Transfer confirmed successfully! Goods will be sent to the destination warehouse.";
+                TempData["SuccessMessage"] = "Transfer confirmed successfully. A transfer-linked stock-out and pending stock-in have been created for processing.";
                 return RedirectToAction(nameof(Details), new { id });
             }
             catch (Exception ex)
@@ -264,6 +263,5 @@ namespace EWMS.Controllers
                 return RedirectToAction(nameof(Details), new { id });
             }
         }
-
     }
 }

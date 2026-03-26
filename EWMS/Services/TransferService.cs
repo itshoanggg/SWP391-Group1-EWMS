@@ -158,9 +158,12 @@ namespace EWMS.Services
 
         public async Task<bool> ApproveTransferAsync(int transferId, int approvedBy, int userWarehouseId, bool isAdmin = false, int? toWarehouseId = null, int? toLocationId = null)
         {
+            using var transaction = await _db.Database.BeginTransactionAsync();
+
             var transfer = await _db.TransferRequests
                 .Include(t => t.TransferDetails)
                 .FirstOrDefaultAsync(t => t.TransferId == transferId);
+
             if (transfer == null)
             {
                 throw new InvalidOperationException("Transfer request not found.");
@@ -184,7 +187,7 @@ namespace EWMS.Services
                 }
 
                 transfer.ToWarehouseId = toWarehouseId.Value;
-                transfer.Status = "Pending";
+                transfer.Status = "Approved";
                 transfer.ApprovedBy = approvedBy;
                 transfer.ApprovedDate = DateTime.Now;
             }
@@ -198,48 +201,47 @@ namespace EWMS.Services
                 transfer.Status = "Approved";
                 transfer.ApprovedBy = approvedBy;
                 transfer.ApprovedDate = DateTime.Now;
-                
-                var existingStockOut = await _db.StockOutReceipts
-                    .FirstOrDefaultAsync(x => x.TransferId == transferId);
-                if (existingStockOut == null)
-                {
-                    var stockOutReceipt = new StockOutReceipt
-                    {
-                        WarehouseId = transfer.FromWarehouseId,
-                        IssuedBy = approvedBy,
-                        IssuedDate = DateTime.Now,
-                        Reason = "Transfer Out",
-                        TransferId = transferId,
-                        CreatedAt = DateTime.Now,
-                        TotalAmount = 0
-                    };
-                    _db.StockOutReceipts.Add(stockOutReceipt);
-                }
-
-                var existingStockIn = await _db.StockInReceipts
-                    .FirstOrDefaultAsync(x => x.TransferId == transferId);
-                if (existingStockIn == null)
-                {
-                    var stockInReceipt = new StockInReceipt
-                    {
-                        WarehouseId = transfer.ToWarehouseId.Value,
-                        ReceivedBy = approvedBy,
-                        ReceivedDate = DateTime.Now,
-                        Reason = "Transfer In",
-                        TransferId = transferId,
-                        CreatedAt = DateTime.Now,
-                        TotalAmount = 0
-                    };
-                    _db.StockInReceipts.Add(stockInReceipt);
-                }
             }
             else
             {
                 throw new InvalidOperationException($"Cannot approve transfer with status: {transfer.Status}");
             }
 
+            var existingStockOut = await _db.StockOutReceipts
+                .FirstOrDefaultAsync(x => x.TransferId == transferId);
+            if (existingStockOut == null)
+            {
+                _db.StockOutReceipts.Add(new StockOutReceipt
+                {
+                    WarehouseId = transfer.FromWarehouseId,
+                    IssuedBy = approvedBy,
+                    IssuedDate = DateTime.Now,
+                    Reason = "Transfer Out",
+                    TransferId = transferId,
+                    CreatedAt = DateTime.Now,
+                    TotalAmount = 0
+                });
+            }
+
+            var existingStockIn = await _db.StockInReceipts
+                .FirstOrDefaultAsync(x => x.TransferId == transferId);
+            if (existingStockIn == null)
+            {
+                _db.StockInReceipts.Add(new StockInReceipt
+                {
+                    WarehouseId = transfer.ToWarehouseId!.Value,
+                    ReceivedBy = approvedBy,
+                    ReceivedDate = null,
+                    Reason = "Transfer In",
+                    TransferId = transferId,
+                    CreatedAt = DateTime.Now,
+                    TotalAmount = 0
+                });
+            }
+
             _db.TransferRequests.Update(transfer);
             await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return true;
         }
@@ -609,55 +611,9 @@ namespace EWMS.Services
             return true;
         }
 
-        public async Task<bool> UpdateToRackAsync(int transferId, string toRack, int userId)
+        public Task<bool> UpdateToRackAsync(int transferId, string toRack, int userId)
         {
-            using var transaction = await _db.Database.BeginTransactionAsync();
-            try
-            {
-                var transfer = await _db.TransferRequests
-                    .Include(t => t.TransferDetails)
-                    .FirstOrDefaultAsync(t => t.TransferId == transferId);
-                    
-                if (transfer == null)
-                {
-                    throw new InvalidOperationException("Transfer request not found.");
-                }
-
-                if (transfer.Status != "Approved")
-                {
-                    throw new InvalidOperationException("Can only set destination rack for approved transfers.");
-                }
-
-                var toLocation = await _db.Locations
-                    .FirstOrDefaultAsync(l => l.WarehouseId == transfer.ToWarehouseId && l.Rack == toRack);
-                    
-                if (toLocation == null)
-                {
-                    throw new InvalidOperationException($"Rack '{toRack}' not found in destination warehouse.");
-                }
-
-                var fromLocation = await _db.Locations
-                    .FirstOrDefaultAsync(l => l.WarehouseId == transfer.FromWarehouseId && l.Rack == transfer.FromRack);
-                    
-                if (fromLocation == null)
-                {
-                    throw new InvalidOperationException($"Rack '{transfer.FromRack}' not found in source warehouse.");
-                }
-
-                transfer.ToRack = toRack;
-                transfer.Status = "Completed";
-                _db.TransferRequests.Update(transfer);
-                
-                await _db.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                return true;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            return Task.FromException<bool>(new InvalidOperationException("Destination rack is selected during stock-in at the destination warehouse."));
         }
     }
 }

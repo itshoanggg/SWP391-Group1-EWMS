@@ -1,6 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using EWMS.Services;
 using EWMS.Services.Interfaces;
 using EWMS.ViewModels;
@@ -24,7 +23,6 @@ namespace EWMS.Controllers
             _transferService = transferService;
         }
 
-        // GET: StockIn/Index
         public async Task<IActionResult> Index()
         {
             var userId = _userService.GetCurrentUserId();
@@ -43,7 +41,6 @@ namespace EWMS.Controllers
             return View();
         }
 
-        // GET: StockIn/History
         public async Task<IActionResult> History()
         {
             var userId = _userService.GetCurrentUserId();
@@ -61,7 +58,6 @@ namespace EWMS.Controllers
             return View("History");
         }
 
-        // API: Get Purchase Orders
         [HttpGet]
         public async Task<IActionResult> GetPurchaseOrders(int warehouseId, string status = "", string search = "")
         {
@@ -81,7 +77,6 @@ namespace EWMS.Controllers
             }
         }
 
-        // API: Get Purchase Orders History (Received/Cancelled)
         [HttpGet]
         public async Task<IActionResult> GetHistoryPurchaseOrders(int warehouseId, string search = "")
         {
@@ -101,7 +96,6 @@ namespace EWMS.Controllers
             }
         }
 
-        // GET: StockIn/Details/poId
         public async Task<IActionResult> Details(int id)
         {
             var userId = _userService.GetCurrentUserId();
@@ -115,7 +109,6 @@ namespace EWMS.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Allow entering Stock-In details for Ordered (popup on UI validates receipt date is today)
             if (purchaseOrder.Status != "PartiallyReceived" && purchaseOrder.Status != "Ordered")
             {
                 TempData["Error"] = "Stock-in only allowed for orders ready to receive, partially received, or ordered.";
@@ -154,7 +147,6 @@ namespace EWMS.Controllers
             }
         }
 
-        // GET: StockIn/DetailsReadOnly/{id} - Reuse Stock-In details UI in read-only mode
         [Authorize(Roles = "Inventory Staff")]
         [HttpGet]
         public async Task<IActionResult> DetailsReadOnly(int id)
@@ -176,7 +168,6 @@ namespace EWMS.Controllers
                 return RedirectToAction(nameof(History));
             }
 
-            // Allow viewing historical orders (Received/Cancelled) in read-only mode
             ViewBag.WarehouseId = warehouseId;
             ViewBag.UserId = userId;
             ViewBag.ReadOnly = true;
@@ -184,7 +175,6 @@ namespace EWMS.Controllers
             return View("~/Views/StockIn/Details.cshtml", purchaseOrder);
         }
 
-        // API: Get Purchase Order Info
         [HttpGet]
         public async Task<IActionResult> GetPurchaseOrderInfo(int purchaseOrderId)
         {
@@ -212,7 +202,6 @@ namespace EWMS.Controllers
             return Json(products);
         }
 
-        // API: Get allocations by product/location for a PO
         [HttpGet]
         public async Task<IActionResult> GetPurchaseOrderAllocations(int purchaseOrderId)
         {
@@ -228,7 +217,6 @@ namespace EWMS.Controllers
             return Json(allocations);
         }
 
-        // API: Get Available Locations
         [HttpGet]
         public async Task<IActionResult> GetAvailableLocations(int warehouseId, int productId)
         {
@@ -248,7 +236,6 @@ namespace EWMS.Controllers
             }
         }
 
-        // API: Check Location Capacity
         [HttpGet]
         public async Task<IActionResult> CheckLocationCapacity(int locationId)
         {
@@ -267,7 +254,6 @@ namespace EWMS.Controllers
             }
         }
 
-        // API: Confirm Stock In
         [HttpPost]
         public async Task<IActionResult> ConfirmStockIn([FromBody] ConfirmStockInRequest request)
         {
