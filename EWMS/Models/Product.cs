@@ -48,4 +48,7 @@ public partial class Product
 
     [InverseProperty("Product")]
     public virtual ICollection<TransferDetail> TransferDetails { get; set; } = new List<TransferDetail>();
+
+    [InverseProperty("Product")]
+    public virtual ICollection<ProductSupplier> ProductSuppliers { get; set; } = new List<ProductSupplier>();
 }
