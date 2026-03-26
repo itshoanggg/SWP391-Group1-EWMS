@@ -9,11 +9,6 @@ using EWMS.Models;
 
 namespace EWMS.Controllers
 {
-    /// <summary>
-    /// Transfer Request Controller
-    /// User Story: As an inventory staff, I want to manage transfer requests so that inventory movement is controlled.
-    /// Authorization: Admin, Inventory Staff, Warehouse Manager
-    /// </summary>
     [Authorize(Roles = "Inventory Staff,Warehouse Manager")]
     public class TransferController : Controller
     {
@@ -35,13 +30,13 @@ namespace EWMS.Controllers
             var isManager = User.IsInRole("Warehouse Manager");
             
             List<TransferRequest> transfers;
-            if (isAdmin || isManager)
+            if (isAdmin)
             {
                 transfers = await _transferService.GetAllTransfersAsync();
             }
             else
             {
-                transfers = await _transferService.GetAllTransfersAsync();
+                transfers = await _transferService.GetTransfersForWarehouseAsync(warehouseId);
             }
             
             ViewBag.UserWarehouseId = warehouseId;
@@ -63,15 +58,25 @@ namespace EWMS.Controllers
             
             ViewBag.UserWarehouse = userWarehouse;
             ViewBag.UserWarehouseId = warehouseId;
-            ViewBag.Warehouses = warehouses;
+            ViewBag.Warehouses = warehouses.Where(w => w.WarehouseId != warehouseId).ToList();
             ViewBag.Locations = locations;
             ViewBag.Products = await _transferService.GetProductsAsync();
+            
+            if (warehouseId > 0)
+            {
+                ViewBag.FromRacks = await _transferService.GetRacksByWarehouseAsync(warehouseId);
+            }
+            else
+            {
+                ViewBag.FromRacks = new List<string>();
+            }
+            
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(int FromWarehouseId, int FromLocationId, int ProductID, int Quantity, string? Reason)
+        public async Task<IActionResult> Create(int FromWarehouseId, int FromLocationId, int ProductID, int Quantity, string? Reason, string? FromRack)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var userId = int.TryParse(userIdClaim, out var id) ? id : 0;
@@ -98,24 +103,31 @@ namespace EWMS.Controllers
                 return View();
             }
 
+            if (string.IsNullOrEmpty(FromRack))
+            {
+                ModelState.AddModelError("", "Please select source rack.");
+                await PrepareCreateViewBag(warehouseId);
+                return View();
+            }
+
             if (ProductID == 0)
             {
                 ModelState.AddModelError("", "Please select a product.");
-                ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
+                await PrepareCreateViewBag(warehouseId);
                 return View();
             }
 
             if (Quantity <= 0)
             {
                 ModelState.AddModelError("", "Quantity must be greater than 0.");
-                ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
+                await PrepareCreateViewBag(warehouseId);
                 return View();
             }
 
             if (userId == 0)
             {
                 ModelState.AddModelError("", "User not logged in.");
-                ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
+                await PrepareCreateViewBag(warehouseId);
                 return View();
             }
 
@@ -126,6 +138,7 @@ namespace EWMS.Controllers
                     FromWarehouseId = FromWarehouseId,
                     ToWarehouseId = null,
                     TransferType = "Transfer",
+                    FromRack = FromRack,
                     Reason = Reason
                 };
 
@@ -141,8 +154,28 @@ namespace EWMS.Controllers
                     errorMsg += " - " + ex.InnerException.Message;
                 }
                 ModelState.AddModelError("", $"Error creating transfer: {errorMsg}");
-                ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
+                await PrepareCreateViewBag(warehouseId);
                 return View();
+            }
+        }
+
+        private async Task PrepareCreateViewBag(int? currentWarehouseId)
+        {
+            var warehouses = await _transferService.GetWarehousesAsync();
+            if (currentWarehouseId > 0)
+            {
+                warehouses = warehouses.Where(w => w.WarehouseId != currentWarehouseId).ToList();
+            }
+            ViewBag.Warehouses = warehouses;
+            ViewBag.Products = await _transferService.GetProductsAsync();
+            
+            if (currentWarehouseId > 0)
+            {
+                ViewBag.FromRacks = await _transferService.GetRacksByWarehouseAsync(currentWarehouseId.Value);
+            }
+            else
+            {
+                ViewBag.FromRacks = new List<string>();
             }
         }
 
@@ -150,7 +183,9 @@ namespace EWMS.Controllers
         {
             var transfer = await _transferService.GetTransferByIdAsync(id);
             if (transfer == null)
+            {
                 return NotFound();
+            }
 
             var userId = _userService.GetCurrentUserId();
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
@@ -165,13 +200,11 @@ namespace EWMS.Controllers
             var canSelectDestination = isManager && transfer.Status == "Pending Destination" && transfer.FromWarehouseId == warehouseId;
             var canApproveAtDestination = isManager && transfer.Status == "Pending" && transfer.ToWarehouseId == warehouseId;
             ViewBag.CanApprove = canApproveAtDestination;
-
-            // For Manager approve form: provide destination warehouse id if known
-            if (canSelectDestination || canApproveAtDestination)
+            ViewBag.CanSetToRack = isManager && transfer.ToWarehouseId > 0 && transfer.Status == "Approved" && string.IsNullOrEmpty(transfer.ToRack);
+            
+            if (transfer.Status == "Pending" && isManager && transfer.ToWarehouseId.HasValue && transfer.ToWarehouseId.Value > 0)
             {
-                var destWarehouseId = canApproveAtDestination ? transfer.ToWarehouseId : null;
-                if (destWarehouseId.HasValue)
-                    ViewBag.DestWarehouseId = destWarehouseId.Value;
+                ViewBag.ToRacks = await _transferService.GetRacksByWarehouseAsync(transfer.ToWarehouseId.Value);
             }
 
             return View(transfer);
@@ -184,6 +217,12 @@ namespace EWMS.Controllers
         {
             try
             {
+                if (!ToWarehouseId.HasValue || ToWarehouseId.Value == 0)
+                {
+                    TempData["ErrorMessage"] = "Please select destination warehouse.";
+                    return RedirectToAction(nameof(Details), new { id });
+                }
+
                 var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 var userId = int.TryParse(userIdClaim, out var uid) ? uid : 0;
                 var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
@@ -229,6 +268,39 @@ namespace EWMS.Controllers
             catch (Exception ex)
             {
                 TempData["ErrorMessage"] = $"Error rejecting transfer: {ex.Message}";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin,Warehouse Manager")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SetToRack(int id, string ToRack)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(ToRack))
+                {
+                    TempData["ErrorMessage"] = "Please select destination rack.";
+                    return RedirectToAction(nameof(Details), new { id });
+                }
+
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var userId = int.TryParse(userIdClaim, out var uid) ? uid : 0;
+
+                if (userId == 0)
+                {
+                    TempData["ErrorMessage"] = "User not authenticated.";
+                    return RedirectToAction(nameof(Details), new { id });
+                }
+
+                await _transferService.UpdateToRackAsync(id, ToRack, userId);
+                TempData["SuccessMessage"] = "Transfer completed successfully! Stock has been moved.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error setting destination rack: {ex.Message}";
                 return RedirectToAction(nameof(Details), new { id });
             }
         }

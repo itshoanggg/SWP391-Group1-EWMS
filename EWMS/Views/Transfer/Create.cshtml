@@ -15,6 +15,7 @@
     var warehouses = ViewBag.Warehouses as List<EWMS.Models.Warehouse> ?? new List<EWMS.Models.Warehouse>();
     var userWarehouse = ViewBag.UserWarehouse as EWMS.Models.Warehouse;
     var userWarehouseId = ViewBag.UserWarehouseId ?? 0;
+    var fromRacks = ViewBag.FromRacks as List<string> ?? new List<string>();
 }
 
 <style>
@@ -115,7 +116,7 @@
         <div class="row mb-4">
             <div class="col-md-6">
                 <label class="form-label"><i class="bi bi-grid me-2"></i>Source Rack (*)</label>
-                <select id="fromRack" class="form-select" required>
+                <select id="fromRack" name="FromRack" class="form-select" required>
                     <option value="">-- Select Rack --</option>
                 </select>
             </div>
