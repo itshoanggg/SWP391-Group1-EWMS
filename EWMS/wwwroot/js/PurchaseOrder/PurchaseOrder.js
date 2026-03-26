@@ -91,9 +91,11 @@ async function loadProducts(supplierId) {
     }
 }
 
-function updateProduct(select, index) {
+async function updateProduct(select, index) {
     const row = select.closest('.product-row');
     const selectedOption = select.options[select.selectedIndex];
+
+    console.log('updateProduct called, selectedOption:', selectedOption);
 
     if (selectedOption.value) {
         // Check for duplicate products
@@ -114,7 +116,9 @@ function updateProduct(select, index) {
         const sku = selectedOption.dataset.sku;
         const costPrice = selectedOption.dataset.costPrice;
 
-        row.querySelector('.sku-display').textContent = sku;
+        console.log('SKU:', sku, 'CostPrice:', costPrice);
+
+        row.querySelector('.sku-display').textContent = sku || '';
         
         // Set suggested price from product (user can edit)
         const priceInput = row.querySelector('.price-input');
@@ -124,6 +128,10 @@ function updateProduct(select, index) {
         }
 
         calculateTotal(index);
+
+        console.log('Calling filterSuppliersByProduct with productId:', selectedProductId);
+        // Filter suppliers based on selected product
+        await filterSuppliersByProduct(selectedProductId);
     } else {
         row.querySelector('.sku-display').textContent = '';
         row.querySelector('.price-input').value = '';
@@ -131,6 +139,54 @@ function updateProduct(select, index) {
     }
 
     updateTotals();
+}
+
+async function filterSuppliersByProduct(productId) {
+    try {
+        const response = await fetch(`/PurchaseOrder/GetSuppliersByProduct?productId=${productId}`);
+        const data = await response.json();
+
+        console.log('API Response for productId', productId, ':', data);
+
+        const supplierSelect = document.getElementById('supplierSelect');
+        const currentValue = supplierSelect.value;
+
+        if (data.success && data.suppliers && data.suppliers.length > 0) {
+            console.log('Found', data.suppliers.length, 'suppliers, enabling dropdown');
+            // Enable and rebuild supplier dropdown
+            supplierSelect.disabled = false;
+            supplierSelect.innerHTML = '<option value="">-- Select Supplier --</option>';
+            
+            data.suppliers.forEach(supplier => {
+                const option = document.createElement('option');
+                option.value = supplier.supplierId;
+                option.text = supplier.supplierName;
+                supplierSelect.appendChild(option);
+            });
+
+            // Restore previous selection if still available
+            if (currentValue) {
+                const optionExists = Array.from(supplierSelect.options).some(opt => opt.value === currentValue);
+                if (optionExists) {
+                    supplierSelect.value = currentValue;
+                } else {
+                    // Clear supplier info if current selection is no longer valid
+                    document.getElementById('supplierInfo').style.display = 'none';
+                }
+            }
+        } else {
+            console.log('No suppliers found or API failed, disabling dropdown');
+            // Disable supplier select and show warning
+            supplierSelect.disabled = true;
+            supplierSelect.innerHTML = '<option value="">-- No Suppliers Available --</option>';
+            showAlert('warning', '⚠️ No suppliers found for this product. Please select a different product.');
+        }
+    } catch (error) {
+        console.error('Error filtering suppliers:', error);
+        const supplierSelect = document.getElementById('supplierSelect');
+        supplierSelect.disabled = true;
+        supplierSelect.innerHTML = '<option value="">-- Error Loading Suppliers --</option>';
+    }
 }
 
 function formatPrice(value) {

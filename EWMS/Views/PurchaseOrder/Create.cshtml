@@ -67,10 +67,10 @@
                     <div class="card-body">
                         <div class="mb-3">
                             <label class="form-label">Name: <span class="text-danger">*</span></label>
-                            <select asp-for="SupplierId" class="form-select" asp-items="ViewBag.Suppliers"
-                                    id="supplierSelect" required onchange="loadSupplierInfo()">
-                                <option value="">-- Select Supplier --</option>
+                            <select asp-for="SupplierId" class="form-select" id="supplierSelect" required onchange="loadSupplierInfo()" disabled>
+                                <option value="">-- Select Product First --</option>
                             </select>
+                            <small class="text-muted">Please select a product to see available suppliers</small>
                         </div>
 
                         <div id="supplierInfo" style="display: none;">
@@ -114,7 +114,15 @@
                                 </td>
                                 <td>
                                     <select name="Details[0].ProductId" class="form-select product-select" required onchange="updateProduct(this, 0)">
-                                        <option value="">-- Select Product --</option>
+                                        <option value="">-- Select Product First --</option>
+                                        @foreach (var product in ViewBag.AllProducts)
+                                        {
+                                            <option value="@product.productId" 
+                                                    data-sku="@product.sku" 
+                                                    data-cost-price="@product.costPrice">
+                                                @product.productName (@product.categoryName)
+                                            </option>
+                                        }
                                     </select>
                                 </td>
                                 <td>

@@ -114,7 +114,18 @@
                                 <span class="badge badge-pending">@product.CategoryName</span>
                             </td>
                             <td>
-                                @(product.SupplierName ?? "N/A")
+                                @if (product.SupplierCount == 0)
+                                {
+                                    <span class="text-muted">N/A</span>
+                                }
+                                else if (product.SupplierCount == 1)
+                                {
+                                    @product.SupplierName
+                                }
+                                else
+                                {
+                                    <span>@product.SupplierName <span class="badge badge-warning" style="background-color: #ff9800; color: white;">+@((product.SupplierCount - 1).ToString())</span></span>
+                                }
                             </td>
                             <td>@product.Unit</td>
                             <td>
