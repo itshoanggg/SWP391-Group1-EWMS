@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using EWMS.Services.Interfaces;
 using EWMS.ViewModels;
+using EWMS.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace EWMS.Controllers
 {
@@ -12,15 +14,18 @@ namespace EWMS.Controllers
         private readonly IPurchaseOrderService _purchaseOrderService;
         private readonly ISupplierService _supplierService;
         private readonly IUserService _userService;
+        private readonly IProductRepository _productRepository;
 
         public PurchaseOrderController(
             IPurchaseOrderService purchaseOrderService,
             ISupplierService supplierService,
-            IUserService userService)
+            IUserService userService,
+            IProductRepository productRepository)
         {
             _purchaseOrderService = purchaseOrderService;
             _supplierService = supplierService;
             _userService = userService;
+            _productRepository = productRepository;
         }
 
         // GET: PurchaseOrder/Index
@@ -82,6 +87,20 @@ namespace EWMS.Controllers
                 "SupplierId",
                 "SupplierName"
             );
+
+            // Load all products for initial dropdown with additional data
+            var allProducts = await _productRepository.Context.Products
+                .Include(p => p.Category)
+                .OrderBy(p => p.ProductName)
+                .ToListAsync();
+            
+            ViewBag.AllProducts = allProducts.Select(p => new {
+                productId = p.ProductId,
+                productName = p.ProductName,
+                categoryName = p.Category?.CategoryName ?? "N/A",
+                sku = "SKU-" + p.ProductId.ToString().PadLeft(5, '0'),
+                costPrice = p.CostPrice ?? 0
+            }).ToList();
 
             ViewBag.WarehouseId = warehouseId;
             ViewBag.UserId = userId;
@@ -161,6 +180,40 @@ namespace EWMS.Controllers
         {
             var products = await _purchaseOrderService.GetProductsBySupplierAsync(supplierId);
             return Json(products);
+        }
+
+        // API: Get Suppliers by Product
+        [HttpGet]
+        public async Task<IActionResult> GetSuppliersByProduct(int productId)
+        {
+            var product = await _productRepository.GetProductByIdAsync(productId);
+            if (product == null)
+            {
+                return Json(new { success = false, message = "Product not found" });
+            }
+
+            var suppliers = product.ProductSuppliers?
+                .Select(ps => new
+                {
+                    supplierId = ps.SupplierId,
+                    supplierName = ps.Supplier?.SupplierName ?? "Unknown"
+                })
+                .ToList();
+
+            if (suppliers == null || !suppliers.Any())
+            {
+                return Json(new
+                {
+                    success = false,
+                    message = "No suppliers found for this product"
+                });
+            }
+
+            return Json(new
+            {
+                success = true,
+                suppliers = suppliers
+            });
         }
 
         // API: Get Supplier Info

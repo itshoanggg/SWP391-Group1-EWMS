@@ -45,6 +45,7 @@ namespace EWMS.Controllers
                     CategoryName = p.Category?.CategoryName ?? "N/A",
                     CategoryId = p.CategoryId ?? 0,
                     SupplierName = p.ProductSuppliers?.FirstOrDefault()?.Supplier?.SupplierName,
+                    SupplierCount = p.ProductSuppliers?.Count ?? 0,
                     Unit = p.Unit ?? "Unit",
                     TotalStock = p.Inventories?.Sum(i => i.Quantity ?? 0) ?? 0
                 }).ToList(),
@@ -83,6 +84,9 @@ namespace EWMS.Controllers
                 CategoryName = product.Category?.CategoryName ?? "N/A",
                 CategoryId = product.CategoryId ?? 0,
                 SupplierName = product.ProductSuppliers?.FirstOrDefault()?.Supplier?.SupplierName,
+                SupplierNames = product.ProductSuppliers?
+                    .Select(ps => ps.Supplier?.SupplierName ?? "Unknown")
+                    .ToList() ?? new List<string>(),
                 Unit = product.Unit ?? "Unit",
                 InventoryByWarehouse = inventoryItems
                     .GroupBy(i => new { i.Location.WarehouseId, i.Location.Warehouse.WarehouseName })
@@ -112,8 +116,7 @@ namespace EWMS.Controllers
             var viewModel = new CreateProductViewModel
             {
                 Categories = await GetCategoryOptionsAsync(),
-                Suppliers = await GetSupplierOptionsAsync(),
-                Units = await GetDistinctUnitsAsync()
+                Suppliers = await GetSupplierOptionsAsync()
             };
 
             return View(viewModel);
@@ -142,6 +145,20 @@ namespace EWMS.Controllers
             string unit = !string.IsNullOrWhiteSpace(model.NewUnit) 
                 ? model.NewUnit.Trim() 
                 : (model.Unit ?? "Piece");
+            // Handle new supplier creation
+            if (!string.IsNullOrWhiteSpace(model.NewSupplierName))
+            {
+                var newSupplier = new Supplier
+                {
+                    SupplierName = model.NewSupplierName.Trim()
+                };
+                await _supplierRepository.AddAsync(newSupplier);
+                await _supplierRepository.SaveAsync();
+                model.SelectedSupplierIds.Add(newSupplier.SupplierId);
+            }
+
+            // Unit is always "Piece"
+            string unit = "Piece";
 
             // Validate category
             if (!categoryId.HasValue && string.IsNullOrWhiteSpace(model.NewCategoryName))
@@ -176,6 +193,21 @@ namespace EWMS.Controllers
                 await _productRepository.AddAsync(product);
                 await _productRepository.SaveAsync();
 
+                // Add ProductSupplier relationships
+                if (model.SelectedSupplierIds != null && model.SelectedSupplierIds.Any())
+                {
+                    foreach (var supplierId in model.SelectedSupplierIds)
+                    {
+                        var productSupplier = new ProductSupplier
+                        {
+                            ProductId = product.ProductId,
+                            SupplierId = supplierId
+                        };
+                        await _productRepository.Context.ProductSuppliers.AddAsync(productSupplier);
+                    }
+                    await _productRepository.Context.SaveChangesAsync();
+                }
+
                 TempData["SuccessMessage"] = $"Product '{product.ProductName}' created successfully! Prices will be set automatically when you stock in.";
                 return RedirectToAction(nameof(Index));
             }
@@ -203,10 +235,12 @@ namespace EWMS.Controllers
                 ProductName = product.ProductName,
                 CategoryId = product.CategoryId,
                 SupplierId = null, // Removed - now managed via ProductSuppliers
+                SelectedSupplierIds = product.ProductSuppliers?
+                    .Select(ps => ps.SupplierId)
+                    .ToList() ?? new List<int>(),
                 Unit = product.Unit ?? "Piece",
                 Categories = await GetCategoryOptionsAsync(),
-                Suppliers = await GetSupplierOptionsAsync(),
-                Units = await GetDistinctUnitsAsync()
+                Suppliers = await GetSupplierOptionsAsync()
             };
 
             return View(viewModel);
@@ -247,6 +281,20 @@ namespace EWMS.Controllers
             string unit = !string.IsNullOrWhiteSpace(model.NewUnit) 
                 ? model.NewUnit.Trim() 
                 : (model.Unit ?? "Piece");
+            // Handle new supplier creation
+            if (!string.IsNullOrWhiteSpace(model.NewSupplierName))
+            {
+                var newSupplier = new Supplier
+                {
+                    SupplierName = model.NewSupplierName.Trim()
+                };
+                await _supplierRepository.AddAsync(newSupplier);
+                await _supplierRepository.SaveAsync();
+                model.SelectedSupplierIds.Add(newSupplier.SupplierId);
+            }
+
+            // Unit is always "Piece"
+            string unit = "Piece";
 
             // Validate
             if (!categoryId.HasValue && string.IsNullOrWhiteSpace(model.NewCategoryName))
@@ -254,7 +302,6 @@ namespace EWMS.Controllers
                 ModelState.AddModelError("", "Please select a category or enter a new category name.");
                 model.Categories = await GetCategoryOptionsAsync();
                 model.Suppliers = await GetSupplierOptionsAsync();
-                model.Units = await GetDistinctUnitsAsync();
                 return View(model);
             }
 
@@ -267,8 +314,30 @@ namespace EWMS.Controllers
             _productRepository.Update(product);
             await _productRepository.SaveAsync();
 
+            // Update ProductSupplier relationships
+            // Remove existing relationships
+            var existingProductSuppliers = await _productRepository.Context.ProductSuppliers
+                .Where(ps => ps.ProductId == product.ProductId)
+                .ToListAsync();
+            _productRepository.Context.ProductSuppliers.RemoveRange(existingProductSuppliers);
+
+            // Add new relationships
+            if (model.SelectedSupplierIds != null && model.SelectedSupplierIds.Any())
+            {
+                foreach (var supplierId in model.SelectedSupplierIds)
+                {
+                    var productSupplier = new ProductSupplier
+                    {
+                        ProductId = product.ProductId,
+                        SupplierId = supplierId
+                    };
+                    await _productRepository.Context.ProductSuppliers.AddAsync(productSupplier);
+                }
+            }
+            await _productRepository.Context.SaveChangesAsync();
+
             TempData["SuccessMessage"] = $"Product '{product.ProductName}' updated successfully!";
-            return RedirectToAction(nameof(Details), new { id = product.ProductId });
+            return RedirectToAction(nameof(Index));
         }
 
         // POST: Product/Delete/5
@@ -407,27 +476,6 @@ namespace EWMS.Controllers
             }).ToList();
         }
 
-        private async Task<List<string>> GetDistinctUnitsAsync()
-        {
-            var units = await _productRepository.Context.Products
-                .Where(p => p.Unit != null)
-                .Select(p => p.Unit!)
-                .Distinct()
-                .OrderBy(u => u)
-                .ToListAsync();
-            
-            // Add default units if not present
-            var defaultUnits = new[] { "Piece", "Box", "Unit", "Set", "Pack" };
-            foreach (var unit in defaultUnits)
-            {
-                if (!units.Contains(unit))
-                {
-                    units.Add(unit);
-                }
-            }
-            
-            return units.OrderBy(u => u).ToList();
-        }
 
         private int GetSuggestedMarkupForCategory(string categoryName)
         {

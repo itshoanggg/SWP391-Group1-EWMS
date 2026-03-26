@@ -24,6 +24,7 @@ namespace EWMS.ViewModels
         public string CategoryName { get; set; } = null!;
         public int CategoryId { get; set; }
         public string? SupplierName { get; set; }
+        public int SupplierCount { get; set; }
         public string Unit { get; set; } = null!;
         public int TotalStock { get; set; }
     }
@@ -35,7 +36,7 @@ namespace EWMS.ViewModels
         public string ProductName { get; set; } = null!;
         public string CategoryName { get; set; } = null!;
         public int CategoryId { get; set; }
-        public string? SupplierName { get; set; }
+        public List<string> SupplierNames { get; set; } = new List<string>();
         public string Unit { get; set; } = null!;
         public List<WarehouseInventoryViewModel> InventoryByWarehouse { get; set; } = new List<WarehouseInventoryViewModel>();
         public int TotalInventory { get; set; }
@@ -55,22 +56,15 @@ namespace EWMS.ViewModels
         [Display(Name = "New Category Name")]
         public string? NewCategoryName { get; set; }
 
-        [Display(Name = "Supplier")]
-        public int? SupplierId { get; set; }
+        [Display(Name = "Suppliers")]
+        public List<int> SelectedSupplierIds { get; set; } = new List<int>();
 
         [Display(Name = "New Supplier Name")]
         public string? NewSupplierName { get; set; }
 
-        [Display(Name = "Unit")]
-        public string? Unit { get; set; }
-
-        [Display(Name = "New Unit")]
-        public string? NewUnit { get; set; }
-
         // For dropdown lists
         public List<CategoryOptionViewModel> Categories { get; set; } = new List<CategoryOptionViewModel>();
         public List<SupplierOptionViewModel> Suppliers { get; set; } = new List<SupplierOptionViewModel>();
-        public List<string> Units { get; set; } = new List<string>();
     }
 
     // Edit view
@@ -89,22 +83,17 @@ namespace EWMS.ViewModels
         [Display(Name = "New Category Name")]
         public string? NewCategoryName { get; set; }
 
-        [Display(Name = "Supplier")]
-        public int? SupplierId { get; set; }
+        [Display(Name = "Suppliers")]
+        public List<int> SelectedSupplierIds { get; set; } = new List<int>();
 
         [Display(Name = "New Supplier Name")]
         public string? NewSupplierName { get; set; }
 
-        [Display(Name = "Unit")]
-        public string? Unit { get; set; }
-
-        [Display(Name = "New Unit")]
-        public string? NewUnit { get; set; }
+        public string Unit { get; set; } = "Piece";
 
         // For dropdown lists
         public List<CategoryOptionViewModel> Categories { get; set; } = new List<CategoryOptionViewModel>();
         public List<SupplierOptionViewModel> Suppliers { get; set; } = new List<SupplierOptionViewModel>();
-        public List<string> Units { get; set; } = new List<string>();
     }
 
     // Helper ViewModels

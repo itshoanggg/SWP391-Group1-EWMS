@@ -192,9 +192,10 @@ function renderProductsTable() {
                            data-product-id="${product.productId}"
                            data-row-id="${rowId}"
                            value="${product.remainingQty}"
-                           min="0"
+                           min="1"
                            max="${product.remainingQty}"
-                           onchange="handleQuantityChange(this)">
+                           onchange="handleQuantityChange(this)"
+                           oninput="if(this.value < 1) this.value = 1;">
                 </td>
                 <td>
                     <select class="form-select location-select" 
@@ -334,6 +335,11 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
    HANDLE QUANTITY CHANGE
 ========================================================= */
 function handleQuantityChange(input) {
+    // Enforce minimum value of 1
+    if (input.value < 1) {
+        input.value = 1;
+        showAlert('Actual received quantity must be at least 1.', 'warning', 'Invalid Quantity');
+    }
     const rowId = input.dataset.rowId;
     const productId = parseInt(input.dataset.productId);
     const newQty = parseInt(input.value) || 0;
@@ -496,7 +502,8 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
             <input type="number" id="qty-${newRowId}" class="form-control"
                    value="${remainingQty}" min="1" max="${remainingQty}"
                    data-row-id="${newRowId}" data-product-id="${productId}"
-                   onchange="handleQuantityChange(this)">
+                   onchange="handleQuantityChange(this)"
+                   oninput="if(this.value < 1) this.value = 1;">
         </td>
         <td>
             <select id="location-${newRowId}" class="form-select"
@@ -629,6 +636,18 @@ function updateSummary() {
    CONFIRM STOCK IN
 ========================================================= */
 async function confirmStockIn() {
+    // Validate all quantities are >= 1
+    let hasInvalidQuantity = false;
+    receiptItems.forEach(item => {
+        if (item.receivedQty < 1) {
+            hasInvalidQuantity = true;
+        }
+    });
+
+    if (hasInvalidQuantity) {
+        showAlert('All actual received quantities must be at least 1. Please check your inputs.', 'error', 'Invalid Quantity');
+        return;
+    }
     const errors = [];
 
     // Check if there are excess items

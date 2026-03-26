@@ -132,7 +132,7 @@
                                     <span class="badge bg-danger badge-low">Low</span>
                                 }
                             </td>
-                            <td class="text-end">@r.EndValue.ToString("N2")</td>
+                            <td class="text-end">@r.EndValue.ToString("N0")</td>
                         </tr>
                     }
                 </tbody>
@@ -143,7 +143,7 @@
                         <td class="text-end text-success">@Model.Totals.InQty</td>
                         <td class="text-end text-danger">@Model.Totals.OutQty</td>
                         <td class="text-end">@Model.Totals.EndQty</td>
-                        <td class="text-end">@Model.Totals.EndValue.ToString("N2")</td>
+                        <td class="text-end">@Model.Totals.EndValue.ToString("N0")</td>
                     </tr>
                 </tfoot>
             </table>

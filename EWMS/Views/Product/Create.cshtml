@@ -65,21 +65,27 @@
                     </div>
                 </div>
 
-                <!-- Supplier -->
+                <!-- Suppliers (Dynamic Rows) -->
                 <div class="form-group full">
-                    <label asp-for="SupplierId">Supplier</label>
-                    <div style="display: flex; gap: 8px;">
-                        <select asp-for="SupplierId" class="form-control" id="SupplierId" onchange="toggleSupplierInput()">
-                            <option value="">— Select Supplier —</option>
-                            @foreach (var supplier in Model.Suppliers)
-                            {
-                                <option value="@supplier.SupplierId">@supplier.SupplierName</option>
-                            }
-                        </select>
-                        <button type="button" class="btn btn-primary" onclick="showNewSupplierInput()" id="btnAddSupplier" title="Add new supplier">
-                            <i class="bi bi-plus-lg"></i>
-                        </button>
+                    <label>Suppliers</label>
+                    <div id="supplier-rows-container">
+                        <!-- Initial supplier row -->
+                        <div class="supplier-row" style="display: flex; gap: 8px; margin-bottom: 8px;">
+                            <select name="SelectedSupplierIds" class="form-control supplier-select">
+                                <option value="">— Select Supplier —</option>
+                                @foreach (var supplier in Model.Suppliers)
+                                {
+                                    <option value="@supplier.SupplierId">@supplier.SupplierName</option>
+                                }
+                            </select>
+                            <button type="button" class="btn btn-success btn-add-supplier" onclick="addSupplierRow()" title="Add another supplier">
+                                <i class="bi bi-plus-lg"></i>
+                            </button>
+                        </div>
                     </div>
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="showNewSupplierInput()" style="margin-top: 8px;">
+                        <i class="bi bi-plus-circle"></i> Create New Supplier
+                    </button>
                 </div>
 
                 <!-- New Supplier Input (hidden by default) -->
@@ -93,32 +99,10 @@
                     </div>
                 </div>
 
-                <!-- Unit -->
+                <!-- Unit (Fixed to "Piece") -->
                 <div class="form-group">
-                    <label asp-for="Unit">Unit</label>
-                    <div style="display: flex; gap: 8px;">
-                        <select asp-for="Unit" class="form-control" id="Unit" onchange="toggleUnitInput()">
-                            <option value="">— Select Unit —</option>
-                            @foreach (var unit in Model.Units)
-                            {
-                                <option value="@unit">@unit</option>
-                            }
-                        </select>
-                        <button type="button" class="btn btn-primary" onclick="showNewUnitInput()" id="btnAddUnit" title="Add new unit">
-                            <i class="bi bi-plus-lg"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- New Unit Input (hidden by default) -->
-                <div class="form-group" id="newUnitGroup" style="display: none;">
-                    <label asp-for="NewUnit">New Unit</label>
-                    <div style="display: flex; gap: 8px;">
-                        <input asp-for="NewUnit" class="form-control" id="NewUnit" placeholder="Enter new unit" />
-                        <button type="button" class="btn btn-outline-secondary" onclick="hideNewUnitInput()" title="Cancel">
-                            <i class="bi bi-x-lg"></i>
-                        </button>
-                    </div>
+                    <label>Unit</label>
+                    <input type="text" class="form-control" value="Piece" disabled readonly style="background-color: #e9ecef; cursor: not-allowed;" />
                 </div>
 
             </div>
@@ -164,45 +148,44 @@
         }
 
         function showNewSupplierInput() {
-            document.getElementById('SupplierId').value = '';
-            document.getElementById('SupplierId').disabled = true;
-            document.getElementById('btnAddSupplier').style.display = 'none';
             document.getElementById('newSupplierGroup').style.display = 'block';
             document.getElementById('NewSupplierName').focus();
         }
 
         function hideNewSupplierInput() {
-            document.getElementById('SupplierId').disabled = false;
-            document.getElementById('btnAddSupplier').style.display = 'block';
             document.getElementById('newSupplierGroup').style.display = 'none';
             document.getElementById('NewSupplierName').value = '';
         }
 
-        function toggleSupplierInput() {
-            if (document.getElementById('SupplierId').value) {
-                hideNewSupplierInput();
-            }
+        // Dynamic supplier rows functions
+        function addSupplierRow() {
+            const container = document.getElementById('supplier-rows-container');
+            const firstRow = container.querySelector('.supplier-row');
+            const newRow = document.createElement('div');
+            newRow.className = 'supplier-row';
+            newRow.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px;';
+            
+            // Clone the select from first row
+            const firstSelect = firstRow.querySelector('select');
+            const newSelect = firstSelect.cloneNode(true);
+            newSelect.value = ''; // Reset selection
+            
+            newRow.innerHTML = `
+                <select name="SelectedSupplierIds" class="form-control supplier-select">
+                    ${firstSelect.innerHTML}
+                </select>
+                <button type="button" class="btn btn-danger btn-remove-supplier" onclick="removeSupplierRow(this)" title="Remove this supplier">
+                    <i class="bi bi-trash"></i>
+                </button>
+            `;
+            
+            container.appendChild(newRow);
         }
 
-        function showNewUnitInput() {
-            document.getElementById('Unit').value = '';
-            document.getElementById('Unit').disabled = true;
-            document.getElementById('btnAddUnit').style.display = 'none';
-            document.getElementById('newUnitGroup').style.display = 'block';
-            document.getElementById('NewUnit').focus();
+        function removeSupplierRow(button) {
+            const row = button.closest('.supplier-row');
+            row.remove();
         }
 
-        function hideNewUnitInput() {
-            document.getElementById('Unit').disabled = false;
-            document.getElementById('btnAddUnit').style.display = 'block';
-            document.getElementById('newUnitGroup').style.display = 'none';
-            document.getElementById('NewUnit').value = '';
-        }
-
-        function toggleUnitInput() {
-            if (document.getElementById('Unit').value) {
-                hideNewUnitInput();
-            }
-        }
     </script>
 }
