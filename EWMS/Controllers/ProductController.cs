@@ -97,7 +97,7 @@ namespace EWMS.Controllers
                         Locations = g.Select(i => new LocationInventoryViewModel
                         {
                             LocationId = i.LocationId,
-                            LocationName = i.Location.LocationName,
+                            LocationName = i.Location.LocationName ?? "Unknown",
                             Quantity = i.Quantity ?? 0,
                             LastUpdated = i.LastUpdated
                         }).ToList()
@@ -141,19 +141,32 @@ namespace EWMS.Controllers
             }
 
             // Handle new supplier creation
+            // Determine unit
+            string unit = !string.IsNullOrWhiteSpace(model.NewUnit) 
+                ? model.NewUnit.Trim() 
+                : (model.Unit ?? "Piece");
+            
+            // Handle new supplier creation or selection by name (avoid duplicates)
             if (!string.IsNullOrWhiteSpace(model.NewSupplierName))
             {
-                var newSupplier = new Supplier
+                var newName = model.NewSupplierName.Trim();
+                var existingSupplierByName = await _supplierRepository.FirstOrDefaultAsync(s => s.SupplierName.ToLower() == newName.ToLower());
+                model.SelectedSupplierIds ??= new List<int>();
+                if (existingSupplierByName != null)
                 {
-                    SupplierName = model.NewSupplierName.Trim()
-                };
-                await _supplierRepository.AddAsync(newSupplier);
-                await _supplierRepository.SaveAsync();
-                model.SelectedSupplierIds.Add(newSupplier.SupplierId);
+                    model.SelectedSupplierIds.Add(existingSupplierByName.SupplierId);
+                }
+                else
+                {
+                    var newSupplier = new Supplier
+                    {
+                        SupplierName = newName
+                    };
+                    await _supplierRepository.AddAsync(newSupplier);
+                    await _supplierRepository.SaveAsync();
+                    model.SelectedSupplierIds.Add(newSupplier.SupplierId);
+                }
             }
-
-            // Unit is always "Piece"
-            string unit = "Piece";
 
             // Validate category
             if (!categoryId.HasValue && string.IsNullOrWhiteSpace(model.NewCategoryName))
@@ -188,10 +201,11 @@ namespace EWMS.Controllers
                 await _productRepository.AddAsync(product);
                 await _productRepository.SaveAsync();
 
-                // Add ProductSupplier relationships
+                // Add ProductSupplier relationships (deduplicate to avoid conflicts)
                 if (model.SelectedSupplierIds != null && model.SelectedSupplierIds.Any())
                 {
-                    foreach (var supplierId in model.SelectedSupplierIds)
+                    var distinctSupplierIds = model.SelectedSupplierIds.Distinct().ToList();
+                    foreach (var supplierId in distinctSupplierIds)
                     {
                         var productSupplier = new ProductSupplier
                         {
@@ -272,19 +286,32 @@ namespace EWMS.Controllers
             }
 
             // Handle new supplier creation
+            // Determine unit
+            string unit = !string.IsNullOrWhiteSpace(model.NewUnit) 
+                ? model.NewUnit.Trim() 
+                : (model.Unit ?? "Piece");
+            
+            // Handle new supplier creation or selection by name (avoid duplicates)
             if (!string.IsNullOrWhiteSpace(model.NewSupplierName))
             {
-                var newSupplier = new Supplier
+                var newName = model.NewSupplierName.Trim();
+                var existingSupplierByName = await _supplierRepository.FirstOrDefaultAsync(s => s.SupplierName.ToLower() == newName.ToLower());
+                model.SelectedSupplierIds ??= new List<int>();
+                if (existingSupplierByName != null)
                 {
-                    SupplierName = model.NewSupplierName.Trim()
-                };
-                await _supplierRepository.AddAsync(newSupplier);
-                await _supplierRepository.SaveAsync();
-                model.SelectedSupplierIds.Add(newSupplier.SupplierId);
+                    model.SelectedSupplierIds.Add(existingSupplierByName.SupplierId);
+                }
+                else
+                {
+                    var newSupplier = new Supplier
+                    {
+                        SupplierName = newName
+                    };
+                    await _supplierRepository.AddAsync(newSupplier);
+                    await _supplierRepository.SaveAsync();
+                    model.SelectedSupplierIds.Add(newSupplier.SupplierId);
+                }
             }
-
-            // Unit is always "Piece"
-            string unit = "Piece";
 
             // Validate
             if (!categoryId.HasValue && string.IsNullOrWhiteSpace(model.NewCategoryName))
@@ -304,26 +331,36 @@ namespace EWMS.Controllers
             _productRepository.Update(product);
             await _productRepository.SaveAsync();
 
-            // Update ProductSupplier relationships
-            // Remove existing relationships
-            var existingProductSuppliers = await _productRepository.Context.ProductSuppliers
+            // Update ProductSupplier relationships using diff to avoid tracking conflicts
+            var existingSupplierIds = await _productRepository.Context.ProductSuppliers
                 .Where(ps => ps.ProductId == product.ProductId)
+                .Select(ps => ps.SupplierId)
                 .ToListAsync();
-            _productRepository.Context.ProductSuppliers.RemoveRange(existingProductSuppliers);
 
-            // Add new relationships
-            if (model.SelectedSupplierIds != null && model.SelectedSupplierIds.Any())
+            var selectedSupplierIds = (model.SelectedSupplierIds ?? new List<int>()).Distinct().ToList();
+
+            // Determine which links to remove and which to add
+            var supplierIdsToRemove = existingSupplierIds.Except(selectedSupplierIds).ToList();
+            var supplierIdsToAdd = selectedSupplierIds.Except(existingSupplierIds).ToList();
+
+            if (supplierIdsToRemove.Any())
             {
-                foreach (var supplierId in model.SelectedSupplierIds)
-                {
-                    var productSupplier = new ProductSupplier
-                    {
-                        ProductId = product.ProductId,
-                        SupplierId = supplierId
-                    };
-                    await _productRepository.Context.ProductSuppliers.AddAsync(productSupplier);
-                }
+                var linksToRemove = await _productRepository.Context.ProductSuppliers
+                    .Where(ps => ps.ProductId == product.ProductId && supplierIdsToRemove.Contains(ps.SupplierId))
+                    .ToListAsync();
+                _productRepository.Context.ProductSuppliers.RemoveRange(linksToRemove);
             }
+
+            foreach (var supplierId in supplierIdsToAdd)
+            {
+                var productSupplier = new ProductSupplier
+                {
+                    ProductId = product.ProductId,
+                    SupplierId = supplierId
+                };
+                await _productRepository.Context.ProductSuppliers.AddAsync(productSupplier);
+            }
+
             await _productRepository.Context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = $"Product '{product.ProductName}' updated successfully!";

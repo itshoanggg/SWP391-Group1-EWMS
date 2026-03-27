@@ -62,6 +62,12 @@ namespace EWMS.ViewModels
         [Display(Name = "New Supplier Name")]
         public string? NewSupplierName { get; set; }
 
+        [Display(Name = "Unit")]
+        public string? Unit { get; set; }
+
+        [Display(Name = "New Unit")]
+        public string? NewUnit { get; set; }
+
         // For dropdown lists
         public List<CategoryOptionViewModel> Categories { get; set; } = new List<CategoryOptionViewModel>();
         public List<SupplierOptionViewModel> Suppliers { get; set; } = new List<SupplierOptionViewModel>();
@@ -90,6 +96,9 @@ namespace EWMS.ViewModels
         public string? NewSupplierName { get; set; }
 
         public string Unit { get; set; } = "Piece";
+
+        [Display(Name = "New Unit")]
+        public string? NewUnit { get; set; }
 
         // For dropdown lists
         public List<CategoryOptionViewModel> Categories { get; set; } = new List<CategoryOptionViewModel>();
