@@ -85,4 +85,52 @@ namespace EWMS.ViewModels
 
         public List<ConfirmStockInItem> Items { get; set; } = new();
     }
+
+    public class CreateCompleteTransferRequest
+    {
+        [Required]
+        public int FromWarehouseId { get; set; }
+
+        [Required]
+        public int ToWarehouseId { get; set; }
+
+        public string? Reason { get; set; }
+
+        public List<TransferItemInput> Items { get; set; } = new();
+    }
+
+    public class TransferItemInput
+    {
+        [Required]
+        public int ProductId { get; set; }
+
+        [Required]
+        public int FromLocationId { get; set; }
+
+        [Required]
+        public int ToLocationId { get; set; }
+
+        [Required]
+        public int Quantity { get; set; }
+    }
+
+    public class LocationCapacityViewModel
+    {
+        public int LocationId { get; set; }
+        public string LocationCode { get; set; } = string.Empty;
+        public string? LocationName { get; set; }
+        public string? Rack { get; set; }
+        public int Capacity { get; set; }
+        public int CurrentStock { get; set; }
+        public int AvailableSpace { get; set; }
+    }
+
+    public class ProductStockLocationViewModel
+    {
+        public int LocationId { get; set; }
+        public string LocationCode { get; set; } = string.Empty;
+        public string? LocationName { get; set; }
+        public string? Rack { get; set; }
+        public int AvailableQuantity { get; set; }
+    }
 }

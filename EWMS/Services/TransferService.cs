@@ -26,6 +26,7 @@ namespace EWMS.Services
                 .Include(t => t.ApprovedByNavigation)
                 .Include(t => t.TransferDetails)
                     .ThenInclude(d => d.Product)
+                .OrderByDescending(t => t.RequestedDate)
                 .ToListAsync();
         }
 
@@ -39,19 +40,6 @@ namespace EWMS.Services
                 .Include(t => t.TransferDetails)
                     .ThenInclude(d => d.Product)
                 .Where(t => t.ToWarehouseId == warehouseId || t.FromWarehouseId == warehouseId)
-                .ToListAsync();
-        }
-
-        public async Task<List<TransferRequest>> GetIncomingTransfersAsync(int warehouseId)
-        {
-            return await _db.TransferRequests
-                .Include(t => t.FromWarehouse)
-                .Include(t => t.ToWarehouse)
-                .Include(t => t.RequestedByNavigation)
-                .Include(t => t.ApprovedByNavigation)
-                .Include(t => t.TransferDetails)
-                    .ThenInclude(d => d.Product)
-                .Where(t => t.ToWarehouseId == warehouseId)
                 .OrderByDescending(t => t.RequestedDate)
                 .ToListAsync();
         }
@@ -66,13 +54,6 @@ namespace EWMS.Services
             return await _db.Products.ToListAsync();
         }
 
-        public async Task<List<Location>> GetLocationsByWarehouseAsync(int warehouseId)
-        {
-            return await _db.Locations
-                .Where(l => l.WarehouseId == warehouseId)
-                .ToListAsync();
-        }
-
         public async Task<List<string>> GetRacksByWarehouseAsync(int warehouseId)
         {
             return await _db.Locations
@@ -81,6 +62,81 @@ namespace EWMS.Services
                 .Distinct()
                 .OrderBy(r => r)
                 .ToListAsync();
+        }
+
+        public async Task<List<LocationCapacityViewModel>> GetLocationsByRackWithCapacityAsync(int warehouseId, string rack)
+        {
+            var locations = await _db.Locations
+                .Where(l => l.WarehouseId == warehouseId && l.Rack == rack)
+                .ToListAsync();
+
+            var result = new List<LocationCapacityViewModel>();
+            foreach (var loc in locations)
+            {
+                var currentStock = await _db.Inventories
+                    .Where(i => i.LocationId == loc.LocationId)
+                    .SumAsync(i => i.Quantity ?? 0);
+
+                result.Add(new LocationCapacityViewModel
+                {
+                    LocationId = loc.LocationId,
+                    LocationCode = loc.LocationCode,
+                    LocationName = loc.LocationName,
+                    Rack = loc.Rack,
+                    Capacity = loc.Capacity,
+                    CurrentStock = currentStock,
+                    AvailableSpace = Math.Max(0, loc.Capacity - currentStock)
+                });
+            }
+
+            return result.OrderBy(r => r.LocationCode).ToList();
+        }
+
+        public async Task<List<ProductStockLocationViewModel>> GetProductStockByLocationAsync(int warehouseId, int productId)
+        {
+            return await _db.Inventories
+                .Include(i => i.Location)
+                .Where(i => i.ProductId == productId && i.Location.WarehouseId == warehouseId && (i.Quantity ?? 0) > 0)
+                .Select(i => new ProductStockLocationViewModel
+                {
+                    LocationId = i.LocationId,
+                    LocationCode = i.Location.LocationCode,
+                    LocationName = i.Location.LocationName,
+                    Rack = i.Location.Rack,
+                    AvailableQuantity = i.Quantity ?? 0
+                })
+                .OrderBy(x => x.Rack)
+                .ThenBy(x => x.LocationCode)
+                .ToListAsync();
+        }
+
+        public async Task<LocationCapacityViewModel> GetLocationCapacityAsync(int locationId, int productId)
+        {
+            var location = await _db.Locations.FindAsync(locationId);
+            if (location == null)
+            {
+                throw new InvalidOperationException("Location not found.");
+            }
+
+            var currentStock = await _db.Inventories
+                .Where(i => i.LocationId == locationId)
+                .SumAsync(i => i.Quantity ?? 0);
+
+            var productStock = await _db.Inventories
+                .Where(i => i.LocationId == locationId && i.ProductId == productId)
+                .Select(i => i.Quantity ?? 0)
+                .FirstOrDefaultAsync();
+
+            return new LocationCapacityViewModel
+            {
+                LocationId = location.LocationId,
+                LocationCode = location.LocationCode,
+                LocationName = location.LocationName,
+                Rack = location.Rack,
+                Capacity = location.Capacity,
+                CurrentStock = currentStock,
+                AvailableSpace = Math.Max(0, location.Capacity - currentStock)
+            };
         }
 
         public async Task<TransferRequest?> GetTransferByIdAsync(int id)
@@ -92,6 +148,10 @@ namespace EWMS.Services
                 .Include(t => t.ApprovedByNavigation)
                 .Include(t => t.TransferDetails)
                     .ThenInclude(d => d.Product)
+                .Include(t => t.TransferDetails)
+                    .ThenInclude(d => d.FromLocation)
+                .Include(t => t.TransferDetails)
+                    .ThenInclude(d => d.ToLocation)
                 .FirstOrDefaultAsync(t => t.TransferId == id);
         }
 
@@ -117,133 +177,219 @@ namespace EWMS.Services
                 .ToListAsync();
         }
 
-        public async Task<int> CreateTransferAsync(TransferRequest request, int productId, int quantity, int requestedBy, int? fromLocationId = null)
-        {
-            var product = await _db.Products.FindAsync(productId);
-            if (product == null)
-            {
-                throw new InvalidOperationException("Product not found.");
-            }
-
-            var totalAvailable = await _db.Inventories
-                .Include(i => i.Location)
-                .Where(i => i.ProductId == productId && i.Location.WarehouseId == request.FromWarehouseId)
-                .SumAsync(i => i.Quantity ?? 0);
-
-            if (totalAvailable < quantity)
-            {
-                throw new InvalidOperationException($"Insufficient inventory. Available: {totalAvailable}, Requested: {quantity}");
-            }
-
-            request.RequestedBy = requestedBy;
-            request.RequestedDate = DateTime.Now;
-            request.Status = "Pending Destination";
-            request.TransferType = "Transfer";
-            _db.TransferRequests.Add(request);
-            await _db.SaveChangesAsync();
-
-            var detail = new TransferDetail
-            {
-                TransferId = request.TransferId,
-                ProductId = productId,
-                Quantity = quantity,
-                FromLocationId = fromLocationId
-            };
-
-            _db.TransferDetails.Add(detail);
-            await _db.SaveChangesAsync();
-
-            return request.TransferId;
-        }
-
-        public async Task<bool> ApproveTransferAsync(int transferId, int approvedBy, int userWarehouseId, bool isAdmin = false, int? toWarehouseId = null, int? toLocationId = null)
+        public async Task<int> CreateCompleteTransferAsync(CreateCompleteTransferRequest model, int userId)
         {
             using var transaction = await _db.Database.BeginTransactionAsync();
 
-            var transfer = await _db.TransferRequests
-                .Include(t => t.TransferDetails)
-                .FirstOrDefaultAsync(t => t.TransferId == transferId);
-
-            if (transfer == null)
+            try
             {
-                throw new InvalidOperationException("Transfer request not found.");
-            }
-
-            if (transfer.Status == "Pending Destination")
-            {
-                if (transfer.FromWarehouseId != userWarehouseId)
+                // Validate warehouses
+                if (model.FromWarehouseId == model.ToWarehouseId)
                 {
-                    throw new InvalidOperationException("You can only process transfers from your warehouse.");
+                    throw new InvalidOperationException("Source and destination warehouses must be different.");
                 }
 
-                if (!toWarehouseId.HasValue)
+                var fromWarehouse = await _db.Warehouses.FindAsync(model.FromWarehouseId);
+                var toWarehouse = await _db.Warehouses.FindAsync(model.ToWarehouseId);
+                if (fromWarehouse == null || toWarehouse == null)
                 {
-                    throw new InvalidOperationException("Please select a destination warehouse.");
+                    throw new InvalidOperationException("Invalid warehouse selection.");
                 }
 
-                if (toWarehouseId.Value == transfer.FromWarehouseId)
+                // Group items by product for validation
+                var itemsByProduct = model.Items.GroupBy(x => x.ProductId).ToList();
+
+                foreach (var productGroup in itemsByProduct)
                 {
-                    throw new InvalidOperationException("Destination warehouse must be different from source warehouse.");
+                    var productId = productGroup.Key;
+                    var product = await _db.Products.FindAsync(productId);
+                    if (product == null)
+                    {
+                        throw new InvalidOperationException($"Product ID {productId} not found.");
+                    }
+
+                    // Validate: total quantity per product doesn't exceed available stock at source
+                    var totalAvailable = await _db.Inventories
+                        .Include(i => i.Location)
+                        .Where(i => i.ProductId == productId && i.Location.WarehouseId == model.FromWarehouseId)
+                        .SumAsync(i => i.Quantity ?? 0);
+
+                    var totalRequested = productGroup.Sum(x => x.Quantity);
+                    if (totalRequested > totalAvailable)
+                    {
+                        throw new InvalidOperationException(
+                            $"Insufficient stock for '{product.ProductName}'. Available: {totalAvailable}, Requested: {totalRequested}");
+                    }
+
+                    foreach (var item in productGroup)
+                    {
+                        // Validate source location
+                        var sourceLocation = await _db.Locations
+                            .FirstOrDefaultAsync(l => l.LocationId == item.FromLocationId && l.WarehouseId == model.FromWarehouseId);
+                        if (sourceLocation == null)
+                        {
+                            throw new InvalidOperationException($"Source location ID {item.FromLocationId} does not belong to the source warehouse.");
+                        }
+
+                        var sourceInventory = await _db.Inventories
+                            .FirstOrDefaultAsync(i => i.ProductId == productId && i.LocationId == item.FromLocationId);
+                        if (sourceInventory == null || (sourceInventory.Quantity ?? 0) < item.Quantity)
+                        {
+                            var availableAtLoc = sourceInventory?.Quantity ?? 0;
+                            throw new InvalidOperationException(
+                                $"Insufficient stock for '{product.ProductName}' at {sourceLocation.LocationCode}. Available: {availableAtLoc}, Requested: {item.Quantity}");
+                        }
+
+                        // Validate destination location
+                        var destLocation = await _db.Locations
+                            .FirstOrDefaultAsync(l => l.LocationId == item.ToLocationId && l.WarehouseId == model.ToWarehouseId);
+                        if (destLocation == null)
+                        {
+                            throw new InvalidOperationException($"Destination location ID {item.ToLocationId} does not belong to the destination warehouse.");
+                        }
+
+                        // Validate destination rack capacity
+                        var destCurrentStock = await _db.Inventories
+                            .Where(i => i.LocationId == item.ToLocationId)
+                            .SumAsync(i => i.Quantity ?? 0);
+                        var destAvailableSpace = destLocation.Capacity - destCurrentStock;
+                        if (item.Quantity > destAvailableSpace)
+                        {
+                            throw new InvalidOperationException(
+                                $"Destination rack '{destLocation.LocationCode}' does not have enough capacity. Available space: {destAvailableSpace}, Trying to add: {item.Quantity}");
+                        }
+                    }
                 }
 
-                transfer.ToWarehouseId = toWarehouseId.Value;
-                transfer.Status = "Approved";
-                transfer.ApprovedBy = approvedBy;
-                transfer.ApprovedDate = DateTime.Now;
-            }
-            else if (transfer.Status == "Pending")
-            {
-                if (transfer.ToWarehouseId != userWarehouseId)
+                // Create TransferRequest
+                var transfer = new TransferRequest
                 {
-                    throw new InvalidOperationException("You can only approve transfers destined for your warehouse.");
+                    FromWarehouseId = model.FromWarehouseId,
+                    ToWarehouseId = model.ToWarehouseId,
+                    TransferType = "Transfer",
+                    RequestedBy = userId,
+                    RequestedDate = DateTime.Now,
+                    ApprovedBy = userId,
+                    ApprovedDate = DateTime.Now,
+                    Status = "Completed",
+                    Reason = model.Reason
+                };
+                _db.TransferRequests.Add(transfer);
+                await _db.SaveChangesAsync();
+
+                // Create TransferDetails
+                foreach (var item in model.Items)
+                {
+                    _db.TransferDetails.Add(new TransferDetail
+                    {
+                        TransferId = transfer.TransferId,
+                        ProductId = item.ProductId,
+                        Quantity = item.Quantity,
+                        FromLocationId = item.FromLocationId,
+                        ToLocationId = item.ToLocationId
+                    });
                 }
 
-                transfer.Status = "Approved";
-                transfer.ApprovedBy = approvedBy;
-                transfer.ApprovedDate = DateTime.Now;
-            }
-            else
-            {
-                throw new InvalidOperationException($"Cannot approve transfer with status: {transfer.Status}");
-            }
-
-            var existingStockOut = await _db.StockOutReceipts
-                .FirstOrDefaultAsync(x => x.TransferId == transferId);
-            if (existingStockOut == null)
-            {
-                _db.StockOutReceipts.Add(new StockOutReceipt
+                // Create StockOutReceipt
+                var stockOutReceipt = new StockOutReceipt
                 {
-                    WarehouseId = transfer.FromWarehouseId,
-                    IssuedBy = approvedBy,
+                    WarehouseId = model.FromWarehouseId,
+                    IssuedBy = userId,
                     IssuedDate = DateTime.Now,
                     Reason = "Transfer Out",
-                    TransferId = transferId,
+                    TransferId = transfer.TransferId,
                     CreatedAt = DateTime.Now,
                     TotalAmount = 0
-                });
-            }
+                };
+                _db.StockOutReceipts.Add(stockOutReceipt);
+                await _db.SaveChangesAsync();
 
-            var existingStockIn = await _db.StockInReceipts
-                .FirstOrDefaultAsync(x => x.TransferId == transferId);
-            if (existingStockIn == null)
-            {
-                _db.StockInReceipts.Add(new StockInReceipt
+                // Create StockInReceipt
+                var stockInReceipt = new StockInReceipt
                 {
-                    WarehouseId = transfer.ToWarehouseId!.Value,
-                    ReceivedBy = approvedBy,
-                    ReceivedDate = null,
+                    WarehouseId = model.ToWarehouseId,
+                    ReceivedBy = userId,
+                    ReceivedDate = DateTime.Now,
                     Reason = "Transfer In",
-                    TransferId = transferId,
+                    TransferId = transfer.TransferId,
                     CreatedAt = DateTime.Now,
                     TotalAmount = 0
-                });
+                };
+                _db.StockInReceipts.Add(stockInReceipt);
+                await _db.SaveChangesAsync();
+
+                decimal totalOutAmount = 0;
+                decimal totalInAmount = 0;
+
+                foreach (var item in model.Items)
+                {
+                    var product = await _db.Products.FindAsync(item.ProductId);
+                    var unitPrice = product?.SellingPrice ?? 0;
+
+                    // Create StockOutDetail
+                    _db.StockOutDetails.Add(new StockOutDetail
+                    {
+                        StockOutId = stockOutReceipt.StockOutId,
+                        ProductId = item.ProductId,
+                        LocationId = item.FromLocationId,
+                        Quantity = item.Quantity,
+                        UnitPrice = unitPrice
+                    });
+
+                    // Deduct from source inventory
+                    var sourceInv = await _db.Inventories
+                        .FirstAsync(i => i.ProductId == item.ProductId && i.LocationId == item.FromLocationId);
+                    sourceInv.Quantity = (sourceInv.Quantity ?? 0) - item.Quantity;
+                    sourceInv.LastUpdated = DateTime.Now;
+
+                    totalOutAmount += item.Quantity * unitPrice;
+
+                    // Create StockInDetail
+                    _db.StockInDetails.Add(new StockInDetail
+                    {
+                        StockInId = stockInReceipt.StockInId,
+                        ProductId = item.ProductId,
+                        LocationId = item.ToLocationId,
+                        Quantity = item.Quantity,
+                        UnitPrice = unitPrice
+                    });
+
+                    // Add to destination inventory
+                    var destInv = await _db.Inventories
+                        .FirstOrDefaultAsync(i => i.ProductId == item.ProductId && i.LocationId == item.ToLocationId);
+                    if (destInv == null)
+                    {
+                        destInv = new Inventory
+                        {
+                            ProductId = item.ProductId,
+                            LocationId = item.ToLocationId,
+                            Quantity = item.Quantity,
+                            LastUpdated = DateTime.Now
+                        };
+                        _db.Inventories.Add(destInv);
+                    }
+                    else
+                    {
+                        destInv.Quantity = (destInv.Quantity ?? 0) + item.Quantity;
+                        destInv.LastUpdated = DateTime.Now;
+                    }
+
+                    totalInAmount += item.Quantity * unitPrice;
+                }
+
+                stockOutReceipt.TotalAmount = totalOutAmount;
+                stockInReceipt.TotalAmount = totalInAmount;
+
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return transfer.TransferId;
             }
-
-            _db.TransferRequests.Update(transfer);
-            await _db.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            return true;
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task<List<PendingTransferReceiptViewModel>> GetPendingTransferStockOutAsync(int warehouseId)
@@ -500,6 +646,17 @@ namespace EWMS.Services
                 {
                     throw new InvalidOperationException("Selected stock-in location does not belong to the destination warehouse.");
                 }
+
+                // Validate rack capacity
+                var currentStock = await _db.Inventories
+                    .Where(i => i.LocationId == item.LocationId)
+                    .SumAsync(i => i.Quantity ?? 0);
+                var availableSpace = location.Capacity - currentStock;
+                if (item.Quantity > availableSpace)
+                {
+                    throw new InvalidOperationException(
+                        $"Rack '{location.LocationCode}' does not have enough capacity. Available: {availableSpace}, Trying to add: {item.Quantity}");
+                }
             }
 
             var receipt = await _db.StockInReceipts
@@ -609,11 +766,6 @@ namespace EWMS.Services
             await _db.SaveChangesAsync();
 
             return true;
-        }
-
-        public Task<bool> UpdateToRackAsync(int transferId, string toRack, int userId)
-        {
-            return Task.FromException<bool>(new InvalidOperationException("Destination rack is selected during stock-in at the destination warehouse."));
         }
     }
 }

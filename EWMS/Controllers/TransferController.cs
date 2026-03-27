@@ -6,10 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 using EWMS.Services;
 using EWMS.Services.Interfaces;
 using EWMS.Models;
+using EWMS.ViewModels;
 
 namespace EWMS.Controllers
 {
-    [Authorize(Roles = "Inventory Staff,Warehouse Manager")]
+    [Authorize(Roles = "Warehouse Manager")]
     public class TransferController : Controller
     {
         private readonly TransferService _transferService;
@@ -49,78 +50,48 @@ namespace EWMS.Controllers
         [HttpGet]
         public async Task<IActionResult> Create()
         {
-            var userId = _userService.GetCurrentUserId();
-            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
-
             var warehouses = await _transferService.GetWarehousesAsync();
-            var userWarehouse = warehouses.FirstOrDefault(w => w.WarehouseId == warehouseId);
-
-            ViewBag.UserWarehouse = userWarehouse;
-            ViewBag.UserWarehouseId = warehouseId;
-            ViewBag.Warehouses = warehouses.Where(w => w.WarehouseId != warehouseId).ToList();
-            ViewBag.Products = warehouseId > 0
-                ? await _transferService.GetAvailableProductsByWarehouseAsync(warehouseId)
-                : new List<EWMS.ViewModels.TransferProductStockViewModel>();
-
+            ViewBag.Warehouses = warehouses;
+            ViewBag.Products = await _transferService.GetProductsAsync();
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(int FromWarehouseId, int ProductID, int Quantity, string? Reason)
+        public async Task<IActionResult> CreateComplete([FromBody] CreateCompleteTransferRequest model)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var userId = int.TryParse(userIdClaim, out var id) ? id : 0;
-            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
-
-            FromWarehouseId = warehouseId;
-
-            ModelState.Remove("FromWarehouse");
-            ModelState.Remove("ToWarehouse");
-            ModelState.Remove("RequestedByNavigation");
-            ModelState.Remove("ApprovedByNavigation");
-
-            if (FromWarehouseId == 0)
-            {
-                ModelState.AddModelError("", "You are not assigned to any warehouse.");
-                ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
-                return View();
-            }
-
-            if (ProductID == 0)
-            {
-                ModelState.AddModelError("", "Please select a product.");
-                await PrepareCreateViewBag(warehouseId);
-                return View();
-            }
-
-            if (Quantity <= 0)
-            {
-                ModelState.AddModelError("", "Quantity must be greater than 0.");
-                await PrepareCreateViewBag(warehouseId);
-                return View();
-            }
-
-            if (userId == 0)
-            {
-                ModelState.AddModelError("", "User not logged in.");
-                await PrepareCreateViewBag(warehouseId);
-                return View();
-            }
-
             try
             {
-                var model = new TransferRequest
-                {
-                    FromWarehouseId = FromWarehouseId,
-                    ToWarehouseId = null,
-                    TransferType = "Transfer",
-                    Reason = Reason
-                };
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var userId = int.TryParse(userIdClaim, out var id) ? id : 0;
 
-                await _transferService.CreateTransferAsync(model, ProductID, Quantity, userId);
-                TempData["SuccessMessage"] = "Transfer request created successfully! Waiting for warehouse manager to select destination and confirm.";
-                return RedirectToAction(nameof(Index));
+                if (userId == 0)
+                {
+                    return Json(new { success = false, error = "User not logged in." });
+                }
+
+                if (model.FromWarehouseId == model.ToWarehouseId)
+                {
+                    return Json(new { success = false, error = "Source and destination warehouses must be different." });
+                }
+
+                if (model.Items == null || model.Items.Count == 0)
+                {
+                    return Json(new { success = false, error = "Please add at least one transfer item." });
+                }
+
+                var transferId = await _transferService.CreateCompleteTransferAsync(model, userId);
+
+                return Json(new
+                {
+                    success = true,
+                    message = $"Transfer TR-{transferId:D4} created and processed successfully! Stock-out and stock-in have been completed.",
+                    transferId
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Json(new { success = false, error = ex.Message });
             }
             catch (Exception ex)
             {
@@ -129,23 +100,8 @@ namespace EWMS.Controllers
                 {
                     errorMsg += " - " + ex.InnerException.Message;
                 }
-                ModelState.AddModelError("", $"Error creating transfer: {errorMsg}");
-                await PrepareCreateViewBag(warehouseId);
-                return View();
+                return Json(new { success = false, error = $"Error creating transfer: {errorMsg}" });
             }
-        }
-
-        private async Task PrepareCreateViewBag(int? currentWarehouseId)
-        {
-            var warehouses = await _transferService.GetWarehousesAsync();
-            if (currentWarehouseId > 0)
-            {
-                warehouses = warehouses.Where(w => w.WarehouseId != currentWarehouseId).ToList();
-            }
-            ViewBag.Warehouses = warehouses;
-            ViewBag.Products = currentWarehouseId > 0
-                ? await _transferService.GetAvailableProductsByWarehouseAsync(currentWarehouseId.Value)
-                : new List<EWMS.ViewModels.TransferProductStockViewModel>();
         }
 
         public async Task<IActionResult> Details(int id)
@@ -158,18 +114,12 @@ namespace EWMS.Controllers
 
             var userId = _userService.GetCurrentUserId();
             var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
-            var isAdmin = User.IsInRole("Admin");
             var isManager = User.IsInRole("Warehouse Manager");
 
             var warehouses = await _transferService.GetWarehousesAsync();
             ViewBag.Warehouses = warehouses;
             ViewBag.UserWarehouseId = warehouseId;
             ViewBag.IsManager = isManager;
-
-            var canApproveAtDestination = isManager && transfer.Status == "Pending" && transfer.ToWarehouseId == warehouseId;
-            ViewBag.CanApprove = canApproveAtDestination;
-            ViewBag.CanProcessStockOut = (transfer.Status == "Approved" || transfer.Status == "In Transit") && transfer.FromWarehouseId == warehouseId;
-            ViewBag.CanProcessStockIn = (transfer.Status == "Approved" || transfer.Status == "In Transit") && transfer.ToWarehouseId == warehouseId;
 
             return View(transfer);
         }
@@ -179,13 +129,6 @@ namespace EWMS.Controllers
         {
             try
             {
-                var userId = _userService.GetCurrentUserId();
-                var userWarehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
-                if (userWarehouseId != warehouseId)
-                {
-                    return Json(new { error = "Access denied" });
-                }
-
                 var products = await _transferService.GetAvailableProductsByWarehouseAsync(warehouseId);
                 return Json(products);
             }
@@ -195,72 +138,59 @@ namespace EWMS.Controllers
             }
         }
 
-        [HttpPost]
-        [Authorize(Roles = "Warehouse Manager")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Approve(int id, int? ToWarehouseId, int? ToLocationId)
+        [HttpGet]
+        public async Task<IActionResult> GetRacksByWarehouse(int warehouseId)
         {
             try
             {
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var userId = int.TryParse(userIdClaim, out var uid) ? uid : 0;
-                var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
-
-                if (userId == 0)
-                {
-                    TempData["ErrorMessage"] = "User not authenticated.";
-                    return RedirectToAction(nameof(Details), new { id });
-                }
-
-                var transfer = await _transferService.GetTransferByIdAsync(id);
-                if (transfer == null)
-                {
-                    TempData["ErrorMessage"] = "Transfer request not found.";
-                    return RedirectToAction(nameof(Index));
-                }
-
-                if (transfer.Status == "Pending Destination" && (!ToWarehouseId.HasValue || ToWarehouseId.Value == 0))
-                {
-                    TempData["ErrorMessage"] = "Please select destination warehouse.";
-                    return RedirectToAction(nameof(Details), new { id });
-                }
-
-                await _transferService.ApproveTransferAsync(id, userId, warehouseId, false, ToWarehouseId, ToLocationId);
-                TempData["SuccessMessage"] = "Transfer confirmed successfully. A transfer-linked stock-out and pending stock-in have been created for processing.";
-                return RedirectToAction(nameof(Details), new { id });
+                var racks = await _transferService.GetRacksByWarehouseAsync(warehouseId);
+                return Json(racks);
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = $"Error approving transfer: {ex.Message}";
-                return RedirectToAction(nameof(Details), new { id });
+                return Json(new { error = ex.Message });
             }
         }
 
-        [HttpPost]
-        [Authorize(Roles = "Warehouse Manager")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Reject(int id, string? rejectionReason)
+        [HttpGet]
+        public async Task<IActionResult> GetLocationsByRack(int warehouseId, string rack)
         {
             try
             {
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var userId = int.TryParse(userIdClaim, out var uid) ? uid : 0;
-                var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
-
-                if (userId == 0)
-                {
-                    TempData["ErrorMessage"] = "User not authenticated.";
-                    return RedirectToAction(nameof(Details), new { id });
-                }
-
-                await _transferService.RejectTransferAsync(id, userId, warehouseId, rejectionReason);
-                TempData["SuccessMessage"] = "Transfer request rejected successfully!";
-                return RedirectToAction(nameof(Details), new { id });
+                var locations = await _transferService.GetLocationsByRackWithCapacityAsync(warehouseId, rack);
+                return Json(locations);
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = $"Error rejecting transfer: {ex.Message}";
-                return RedirectToAction(nameof(Details), new { id });
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetProductStockByLocation(int warehouseId, int productId)
+        {
+            try
+            {
+                var locations = await _transferService.GetProductStockByLocationAsync(warehouseId, productId);
+                return Json(locations);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetLocationCapacity(int locationId, int productId)
+        {
+            try
+            {
+                var capacity = await _transferService.GetLocationCapacityAsync(locationId, productId);
+                return Json(capacity);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
             }
         }
     }
