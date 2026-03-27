@@ -140,6 +140,44 @@
         transform: none;
         cursor: not-allowed;
     }
+    .rack-summary {
+        background: #f0f7ff;
+        border: 1px solid #b6d4fe;
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-top: 8px;
+        font-size: 13px;
+    }
+    .rack-summary-title {
+        font-weight: 600;
+        color: #0a58ca;
+        margin-bottom: 6px;
+    }
+    .rack-summary-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 3px 0;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .rack-summary-item:last-child { border-bottom: none; }
+    .stock-info-line {
+        background: #fff8e1;
+        border: 1px solid #ffe082;
+        border-radius: 6px;
+        padding: 8px 12px;
+        margin-top: 8px;
+        font-size: 12px;
+        color: #6d4c00;
+    }
+    .remaining-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .remaining-ok { background: #d4edda; color: #155724; }
+    .remaining-over { background: #f8d7da; color: #721c24; }
 </style>
 
 <div class="create-header">
@@ -314,6 +352,7 @@
                             <input type="number" class="form-control" id="totalQty-${id}" min="1" value="1"
                                    onchange="onTotalQtyChange(${id})" required />
                             <small class="text-muted" id="availableInfo-${id}"></small>
+                            <div id="rackSummary-${id}"></div>
                         </div>
                     </div>
                     <div id="splits-${id}">
@@ -346,9 +385,37 @@
             const fromWh = document.getElementById('fromWarehouse').value;
             const stockLocs = await loadProductStockLocations(fromWh, productId);
             const totalAvail = stockLocs.reduce((s, l) => s + l.availableQuantity, 0);
-            document.getElementById(`availableInfo-${id}`).textContent = `Available: ${totalAvail} units across ${stockLocs.length} location(s)`;
+            document.getElementById(`availableInfo-${id}`).textContent = `Total available: ${totalAvail} units`;
             document.getElementById(`totalQty-${id}`).max = totalAvail;
             document.getElementById(`btnAddSplit-${id}`).disabled = false;
+
+            // Show rack-level breakdown
+            const rackMap = {};
+            stockLocs.forEach(s => {
+                if (!rackMap[s.rack]) rackMap[s.rack] = 0;
+                rackMap[s.rack] += s.availableQuantity;
+            });
+
+            const rackSummaryEl = document.getElementById(`rackSummary-${id}`);
+            if (Object.keys(rackMap).length > 0) {
+                let rackHtml = `<div class="rack-summary">
+                    <div class="rack-summary-title"><i class="bi bi-boxes me-1"></i>Available by Rack</div>`;
+                for (const [rack, qty] of Object.entries(rackMap).sort((a, b) => b[1] - a[1])) {
+                    rackHtml += `<div class="rack-summary-item">
+                        <span>Rack <strong>${rack}</strong></span>
+                        <span class="badge bg-primary">${qty} units</span>
+                    </div>`;
+                }
+                rackHtml += `<div class="rack-summary-item" style="font-weight:600; margin-top:4px; padding-top:6px; border-top:2px solid #0a58ca;">
+                    <span>Total</span>
+                    <span class="badge bg-dark">${totalAvail} units</span>
+                </div></div>`;
+                rackSummaryEl.innerHTML = rackHtml;
+            } else {
+                rackSummaryEl.innerHTML = `<div class="rack-summary" style="border-color:#f5c6cb; background:#fff5f5;">
+                    <span style="color:#721c24;"><i class="bi bi-exclamation-triangle me-1"></i>No stock available for this product</span>
+                </div>`;
+            }
 
             // Reset splits
             document.getElementById(`splits-${id}`).innerHTML = '<label class="form-label mb-2"><i class="bi bi-diagram-3 me-1"></i>Rack Distribution</label>';
@@ -385,7 +452,8 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label" style="font-size:12px;">Source Location</label>
-                            <select class="form-select form-select-sm from-location" data-split="${splitId}" required>
+                            <select class="form-select form-select-sm from-location" data-split="${splitId}" 
+                                    onchange="onFromLocationChange(${id},${splitId})" required>
                                 <option value="">-- Location --</option>
                             </select>
                         </div>
@@ -411,6 +479,7 @@
                         </div>
                     </div>
                     <div class="capacity-info" id="capacityInfo-${id}-${splitId}" style="font-size:12px;"></div>
+                    <div class="stock-info-line" id="stockInfo-${id}-${splitId}" style="display:none;"></div>
                 </div>
             `;
             document.getElementById(`splits-${id}`).insertAdjacentHTML('beforeend', html);
@@ -431,23 +500,63 @@
             const locSelect = row.querySelector('.from-location');
             locSelect.innerHTML = '<option value="">-- Location --</option>';
 
+            const stockInfoEl = document.getElementById(`stockInfo-${id}-${splitId}`);
+            stockInfoEl.style.display = 'none';
+
             if (!rack) return;
 
             const locations = await loadLocations(fromWh, rack);
             const stockLocs = await loadProductStockLocations(fromWh, productId);
             const stockMap = {};
-            stockLocs.forEach(s => { stockMap[s.locationId] = s.availableQuantity; });
+            let rackTotal = 0;
+            stockLocs.forEach(s => { 
+                stockMap[s.locationId] = s.availableQuantity;
+            });
 
+            let hasStock = false;
             locations.forEach(loc => {
                 const avail = stockMap[loc.locationId] || 0;
                 if (avail > 0) {
+                    hasStock = true;
+                    rackTotal += avail;
                     const opt = document.createElement('option');
                     opt.value = loc.locationId;
-                    opt.textContent = `${loc.locationCode} (Stock: ${avail})`;
+                    opt.textContent = `${loc.locationCode} — ${avail} units available`;
                     opt.dataset.available = avail;
                     locSelect.appendChild(opt);
                 }
             });
+
+            // Show rack stock summary
+            if (hasStock) {
+                stockInfoEl.innerHTML = `<i class="bi bi-info-circle me-1"></i>Rack <strong>${rack}</strong> has <strong>${rackTotal} units</strong> of this product. Select a location to set quantity limit.`;
+                stockInfoEl.style.display = 'block';
+            } else {
+                stockInfoEl.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>No stock available in Rack ${rack}`;
+                stockInfoEl.style.display = 'block';
+            }
+        }
+
+        function onFromLocationChange(id, splitId) {
+            const row = document.getElementById(`split-${id}-${splitId}`);
+            const locSelect = row.querySelector('.from-location');
+            const qtyInput = row.querySelector('.split-qty');
+            const stockInfoEl = document.getElementById(`stockInfo-${id}-${splitId}`);
+
+            if (!locSelect.value) return;
+
+            const selectedOpt = locSelect.options[locSelect.selectedIndex];
+            const available = parseInt(selectedOpt.dataset.available || '0');
+
+            qtyInput.max = available;
+            if (parseInt(qtyInput.value) > available) {
+                qtyInput.value = available;
+            }
+
+            stockInfoEl.innerHTML = `<i class="bi bi-check-circle me-1" style="color:#28a745;"></i>Selected location has <strong>${available} units</strong> available. Max you can transfer from here: <strong>${available}</strong>`;
+            stockInfoEl.style.display = 'block';
+
+            validateSplit(id);
         }
 
         async function onToRackChange(id, splitId) {
@@ -461,16 +570,22 @@
             if (!rack) return;
 
             const locations = await loadLocations(toWh, rack);
+            let totalSpace = 0;
             locations.forEach(loc => {
                 const space = loc.availableSpace;
+                totalSpace += space;
                 const opt = document.createElement('option');
                 opt.value = loc.locationId;
-                opt.textContent = `${loc.locationCode} (Space: ${space}/${loc.capacity})`;
+                opt.textContent = `${loc.locationCode} — ${space} space left (cap: ${loc.capacity})`;
                 opt.dataset.space = space;
                 opt.dataset.capacity = loc.capacity;
                 opt.dataset.currentStock = loc.currentStock;
                 locSelect.appendChild(opt);
             });
+
+            // Show destination rack capacity info
+            const capInfoEl = document.getElementById(`capacityInfo-${id}-${splitId}`);
+            capInfoEl.innerHTML = `<i class="bi bi-building me-1"></i>Dest Rack <strong>${rack}</strong>: <strong>${totalSpace} total space</strong> available across ${locations.length} location(s)`;
         }
 
         function validateSplit(id) {
@@ -497,7 +612,7 @@
                     const available = parseInt(fromOpt.dataset.available || '0');
                     if (qty > available) {
                         allValid = false;
-                        errorMessages.push(`Split #${split.dataset.split}: Requested ${qty} but only ${available} available at source.`);
+                        errorMessages.push(`Split #${split.dataset.split}: You entered ${qty} but this location only has ${available} units available.`);
                     }
                 }
 
@@ -507,14 +622,19 @@
                     const space = parseInt(toOpt.dataset.space || '0');
                     if (qty > space) {
                         allValid = false;
-                        errorMessages.push(`Split #${split.dataset.split}: Destination has only ${space} space, but trying to add ${qty}.`);
+                        errorMessages.push(`Split #${split.dataset.split}: Destination location has space for only ${space} more units.`);
                     }
                 }
             });
 
-            if (splitTotal !== totalQty) {
+            const remaining = totalQty - splitTotal;
+            if (remaining !== 0) {
                 allValid = false;
-                errorMessages.push(`Split total (${splitTotal}) does not match requested quantity (${totalQty}).`);
+                if (remaining > 0) {
+                    errorMessages.push(`You still need to allocate ${remaining} more unit(s). Total requested: ${totalQty}, allocated so far: ${splitTotal}.`);
+                } else {
+                    errorMessages.push(`You allocated ${Math.abs(remaining)} too many! Total requested: ${totalQty}, allocated so far: ${splitTotal}.`);
+                }
             }
 
             const errorEl = document.getElementById(`errorMsg-${id}`);
@@ -532,6 +652,8 @@
         }
 
         function onTotalQtyChange(id) {
+            const totalQty = parseInt(document.getElementById(`totalQty-${id}`).value) || 0;
+            document.getElementById(`totalQty-${id}`).setAttribute('data-total', totalQty);
             validateSplit(id);
         }
 
