@@ -33,4 +33,10 @@ public partial class TransferDetail
     [ForeignKey("TransferId")]
     [InverseProperty("TransferDetails")]
     public virtual TransferRequest Transfer { get; set; } = null!;
+
+    [ForeignKey("FromLocationId")]
+    public virtual Location? FromLocation { get; set; }
+
+    [ForeignKey("ToLocationId")]
+    public virtual Location? ToLocation { get; set; }
 }

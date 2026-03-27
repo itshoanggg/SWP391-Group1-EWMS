@@ -140,6 +140,7 @@ namespace EWMS.Controllers
                 categoryId = newCategory.CategoryId;
             }
 
+            // Handle new supplier creation
             // Determine unit
             string unit = !string.IsNullOrWhiteSpace(model.NewUnit) 
                 ? model.NewUnit.Trim() 
@@ -284,6 +285,7 @@ namespace EWMS.Controllers
                 categoryId = newCategory.CategoryId;
             }
 
+            // Handle new supplier creation
             // Determine unit
             string unit = !string.IsNullOrWhiteSpace(model.NewUnit) 
                 ? model.NewUnit.Trim() 

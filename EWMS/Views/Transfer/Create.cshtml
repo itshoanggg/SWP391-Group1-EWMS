@@ -1,22 +1,10 @@
 @{
-    var isManager = User.IsInRole("Warehouse Manager");
-    var isInventoryStaff = User.IsInRole("Inventory Staff");
-    
-    if (isManager)
-    {
-        Layout = "~/Views/Shared/_LayoutWarehouseManager.cshtml";
-    }
-    else
-    {
-        Layout = "~/Views/Shared/_Layout.cshtml";
-    }
-    
-    ViewData["Title"] = "Create Transfer";
+    Layout = "~/Views/Shared/_LayoutWarehouseManager.cshtml";
+    ViewData["Title"] = "Create Cross-Warehouse Transfer";
     var warehouses = ViewBag.Warehouses as List<EWMS.Models.Warehouse> ?? new List<EWMS.Models.Warehouse>();
-    var userWarehouse = ViewBag.UserWarehouse as EWMS.Models.Warehouse;
-    var userWarehouseId = ViewBag.UserWarehouseId ?? 0;
-    var products = ViewBag.Products as List<EWMS.ViewModels.TransferProductStockViewModel> ?? new List<EWMS.ViewModels.TransferProductStockViewModel>();
+    var products = ViewBag.Products as List<EWMS.Models.Product> ?? new List<EWMS.Models.Product>();
 }
+@Html.AntiForgeryToken()
 
 <style>
     .create-header {
@@ -27,147 +15,683 @@
         margin-bottom: 1.5rem;
         box-shadow: 0 4px 15px rgba(44, 62, 80, 0.35);
     }
-    .create-header h2 {
-        margin: 0;
-        font-weight: 600;
-        font-size: 28px;
-    }
+    .create-header h2 { margin: 0; font-weight: 600; font-size: 28px; }
     .form-card {
         background: white;
         border-radius: 15px;
         padding: 30px;
         box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        margin-bottom: 20px;
     }
-    .form-label {
-        font-weight: 600;
-        color: #495057;
-        margin-bottom: 8px;
-    }
+    .form-label { font-weight: 600; color: #495057; margin-bottom: 8px; }
     .form-control:focus, .form-select:focus {
         border-color: #2c3e50;
         box-shadow: 0 0 0 0.2rem rgba(44, 62, 80, 0.25);
     }
-    .btn-create {
+    .product-card {
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+        transition: all 0.3s;
+    }
+    .product-card:hover { border-color: #2c3e50; }
+    .product-card.confirmed { border-color: #28a745; background: #f0fff4; }
+    .product-card.has-error { border-color: #dc3545; }
+    .split-row {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 10px;
+        position: relative;
+    }
+    .split-row .row-index {
+        position: absolute;
+        top: -10px;
+        left: 15px;
+        background: #2c3e50;
+        color: white;
+        padding: 2px 10px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .btn-add-split {
+        background: #e8f4fd;
+        border: 2px dashed #3498db;
+        color: #3498db;
+        padding: 10px;
+        border-radius: 8px;
+        width: 100%;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    .btn-add-split:hover {
+        background: #3498db;
+        color: white;
+    }
+    .btn-confirm-item {
+        background: #28a745;
+        border: none;
+        color: white;
+        padding: 8px 20px;
+        border-radius: 6px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    .btn-confirm-item:hover { background: #218838; color: white; }
+    .btn-confirm-item:disabled { background: #6c757d; cursor: not-allowed; }
+    .capacity-bar {
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 5px;
+    }
+    .capacity-bar .fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.3s;
+    }
+    .error-msg {
+        color: #dc3545;
+        font-size: 13px;
+        margin-top: 5px;
+        display: none;
+    }
+    .error-msg.show { display: block; }
+    .success-icon { color: #28a745; }
+    .item-summary {
+        background: #e8f4fd;
+        border-radius: 8px;
+        padding: 10px 15px;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .summary-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .btn-submit-transfer {
         background: linear-gradient(180deg, #2c3e50, #34495e);
         border: none;
-        padding: 12px 30px;
+        padding: 14px 40px;
         border-radius: 8px;
         font-weight: 600;
+        font-size: 16px;
         color: white;
         transition: all 0.3s ease;
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
-    .btn-create:hover {
+    .btn-submit-transfer:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(44, 62, 80, 0.35);
         color: white;
     }
-    .btn-cancel {
-        background: white;
-        border: 2px solid #6c757d;
-        color: #6c757d;
-        padding: 12px 30px;
-        border-radius: 8px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-    .btn-cancel:hover {
+    .btn-submit-transfer:disabled {
         background: #6c757d;
-        color: white;
+        transform: none;
+        cursor: not-allowed;
     }
 </style>
 
 <div class="create-header">
-    <h2><i class="bi bi-plus-circle me-2"></i>Create Transfer Request</h2>
-    <p class="mb-0 mt-2" style="opacity: 0.9;">Transfer goods from your warehouse. Warehouse manager will select the destination and confirm. Location will be selected later when processing stock-out and stock-in.</p>
+    <h2><i class="bi bi-arrow-left-right me-2"></i>Create Cross-Warehouse Transfer</h2>
+    <p class="mb-0 mt-2" style="opacity: 0.9;">Select source and destination warehouses, choose products, and distribute them across racks. Each item can be placed in a different rack.</p>
 </div>
 
-@if (ViewData.ModelState.ErrorCount > 0)
-{
-        <div class="alert alert-danger mb-4">
-            <i class="bi bi-exclamation-circle me-2"></i>
-            <strong>Error:</strong> Please check the information.
-            <div class="mb-0 mt-2">
-            @Html.ValidationSummary(false, "", new { @class = "text-danger" })
-            </div>
-        </div>
-}
+<div id="globalError" class="alert alert-danger" style="display:none;">
+    <i class="bi bi-exclamation-circle me-2"></i><span id="globalErrorMsg"></span>
+</div>
 
+<div id="globalSuccess" class="alert alert-success" style="display:none;">
+    <i class="bi bi-check-circle me-2"></i><span id="globalSuccessMsg"></span>
+</div>
+
+<!-- Warehouse Selection -->
 <div class="form-card">
-    <form asp-action="Create" method="post">
-        @Html.AntiForgeryToken()
-
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <label class="form-label"><i class="bi bi-box-arrow-right me-2"></i>Source Warehouse</label>
-                <input type="hidden" name="FromWarehouseId" value="@userWarehouseId" />
-                <input type="text" class="form-control" value="@userWarehouse?.WarehouseName" readonly />
-                <small class="text-muted">Your assigned warehouse</small>
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label"><i class="bi bi-box-arrow-in-down me-2"></i>Destination Warehouse</label>
-                <div class="form-control" style="background: #e9ecef;">
-                    <i class="bi bi-info-circle me-2"></i>Will be selected by Warehouse Manager
-                </div>
-            </div>
+    <h5 class="mb-4"><i class="bi bi-building me-2"></i>Warehouse Selection</h5>
+    <div class="row">
+        <div class="col-md-5">
+            <label class="form-label">Source Warehouse (*)</label>
+            <select id="fromWarehouse" class="form-select" required onchange="onWarehouseChange()">
+                <option value="">-- Select Source Warehouse --</option>
+                @foreach (var w in warehouses)
+                {
+                    <option value="@w.WarehouseId">@w.WarehouseName</option>
+                }
+            </select>
         </div>
-
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <label class="form-label"><i class="bi bi-box me-2"></i>Product (*)</label>
-                <select id="productSelect" name="ProductID" class="form-select" required>
-                    <option value="">-- Select Product --</option>
-                    @foreach (var product in products)
-                    {
-                        <option value="@product.ProductId" data-available="@product.AvailableQuantity">
-                            @product.Sku - @product.ProductName (Qty: @product.AvailableQuantity)
-                        </option>
-                    }
-                </select>
-                <small class="text-muted" id="availableStock">Warehouse Available Quantity: 0</small>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label"><i class="bi bi-123 me-2"></i>Quantity (*)</label>
-                <input type="number" id="qtyInput" name="Quantity" class="form-control" min="1" placeholder="Enter quantity" required />
-            </div>
+        <div class="col-md-2 d-flex align-items-end justify-content-center pb-2">
+            <i class="bi bi-arrow-right" style="font-size: 24px; color: #2c3e50;"></i>
         </div>
-
-        <div class="mb-4">
-            <label class="form-label"><i class="bi bi-chat-left-text me-2"></i>Reason / Notes</label>
-            <textarea name="Reason" class="form-control" rows="4" placeholder="Enter transfer reason..."></textarea>
+        <div class="col-md-5">
+            <label class="form-label">Destination Warehouse (*)</label>
+            <select id="toWarehouse" class="form-select" required onchange="onWarehouseChange()">
+                <option value="">-- Select Destination Warehouse --</option>
+                @foreach (var w in warehouses)
+                {
+                    <option value="@w.WarehouseId">@w.WarehouseName</option>
+                }
+            </select>
         </div>
+    </div>
+</div>
 
-        <div class="d-flex justify-content-end gap-3">
-            <a asp-action="Index" class="btn-cancel">
-                <i class="bi bi-x-circle me-2"></i>Cancel
-            </a>
-            <button type="submit" class="btn-create">
-                <i class="bi bi-check-circle me-2"></i>Create Transfer
-            </button>
-        </div>
-    </form>
+<!-- Products Section -->
+<div class="form-card" id="productsSection" style="display:none;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="mb-0"><i class="bi bi-box-seam me-2"></i>Transfer Items</h5>
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="addProduct()">
+            <i class="bi bi-plus-circle me-1"></i>Add Product
+        </button>
+    </div>
+    <div id="productList"></div>
+</div>
+
+<!-- Confirmed Items Summary -->
+<div class="form-card" id="summarySection" style="display:none;">
+    <h5 class="mb-3"><i class="bi bi-clipboard-check me-2"></i>Confirmed Transfer Items</h5>
+    <div id="confirmedList"></div>
+    <div class="mt-3">
+        <label class="form-label">Reason / Notes</label>
+        <textarea id="transferReason" class="form-control" rows="3" placeholder="Enter transfer reason..."></textarea>
+    </div>
+    <div class="d-flex justify-content-end gap-3 mt-4">
+        <a href="@Url.Action("Index", "Transfer")" class="btn btn-outline-secondary" style="padding: 12px 30px; border-radius: 8px; font-weight: 600;">
+            <i class="bi bi-x-circle me-2"></i>Cancel
+        </a>
+        <button type="button" id="btnSubmit" class="btn-submit-transfer" onclick="submitTransfer()" disabled>
+            <i class="bi bi-check-circle me-2"></i>Confirm Transfer
+        </button>
+    </div>
 </div>
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
     <script>
-        $(document).ready(function () {
-            const warehouseId = @userWarehouseId;
+        let productCounter = 0;
+        let confirmedItems = [];
+        let productData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            products.Select(p => new { productId = p.ProductId, productName = p.ProductName, unit = p.Unit ?? "" })));
+        let rackCache = {};
+        let locationCache = {};
+        let stockLocationCache = {};
 
-            // Update available stock display
-            $('#productSelect').change(function () {
-                const selectedOption = this.options[this.selectedIndex];
-                const available = selectedOption ? selectedOption.getAttribute('data-available') : null;
+        function showGlobalError(msg) {
+            document.getElementById('globalErrorMsg').textContent = msg;
+            document.getElementById('globalError').style.display = 'block';
+            document.getElementById('globalSuccess').style.display = 'none';
+        }
 
-                if (available) {
-                    $('#availableStock').text(`Warehouse Available Quantity: ${available}`);
-                    $('#qtyInput').attr('max', available).val('');
+        function showGlobalSuccess(msg) {
+            document.getElementById('globalSuccessMsg').textContent = msg;
+            document.getElementById('globalSuccess').style.display = 'block';
+            document.getElementById('globalError').style.display = 'none';
+        }
+
+        function hideGlobalMessages() {
+            document.getElementById('globalError').style.display = 'none';
+            document.getElementById('globalSuccess').style.display = 'none';
+        }
+
+        function onWarehouseChange() {
+            const fromWh = document.getElementById('fromWarehouse').value;
+            const toWh = document.getElementById('toWarehouse').value;
+            const section = document.getElementById('productsSection');
+
+            if (fromWh && toWh && fromWh !== toWh) {
+                section.style.display = 'block';
+                rackCache = {};
+                locationCache = {};
+                stockLocationCache = {};
+            } else {
+                section.style.display = 'none';
+                if (fromWh && toWh && fromWh === toWh) {
+                    showGlobalError('Source and destination warehouses must be different.');
                 } else {
-                    $('#availableStock').text('Warehouse Available Quantity: 0');
-                    $('#qtyInput').removeAttr('max');
+                    hideGlobalMessages();
+                }
+            }
+        }
+
+        async function loadRacks(warehouseId) {
+            if (rackCache[warehouseId]) return rackCache[warehouseId];
+            const res = await fetch(`/Transfer/GetRacksByWarehouse?warehouseId=${warehouseId}`);
+            const data = await res.json();
+            if (data.error) { showGlobalError(data.error); return []; }
+            rackCache[warehouseId] = data;
+            return data;
+        }
+
+        async function loadLocations(warehouseId, rack) {
+            const key = `${warehouseId}-${rack}`;
+            if (locationCache[key]) return locationCache[key];
+            const res = await fetch(`/Transfer/GetLocationsByRack?warehouseId=${warehouseId}&rack=${encodeURIComponent(rack)}`);
+            const data = await res.json();
+            if (data.error) { showGlobalError(data.error); return []; }
+            locationCache[key] = data;
+            return data;
+        }
+
+        async function loadProductStockLocations(warehouseId, productId) {
+            const key = `${warehouseId}-${productId}`;
+            if (stockLocationCache[key]) return stockLocationCache[key];
+            const res = await fetch(`/Transfer/GetProductStockByLocation?warehouseId=${warehouseId}&productId=${productId}`);
+            const data = await res.json();
+            if (data.error) { showGlobalError(data.error); return []; }
+            stockLocationCache[key] = data;
+            return data;
+        }
+
+        function addProduct() {
+            productCounter++;
+            const id = productCounter;
+            const html = `
+                <div class="product-card" id="product-${id}" data-id="${id}">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h6 class="mb-0"><i class="bi bi-box me-2"></i>Product #${id}</h6>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeProduct(${id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label">Product (*)</label>
+                            <select class="form-select product-select" id="productSelect-${id}" onchange="onProductSelect(${id})" required>
+                                <option value="">-- Select Product --</option>
+                                ${productData.map(p => `<option value="${p.productId}">${p.productName}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Total Quantity (*)</label>
+                            <input type="number" class="form-control" id="totalQty-${id}" min="1" value="1"
+                                   onchange="onTotalQtyChange(${id})" required />
+                            <small class="text-muted" id="availableInfo-${id}"></small>
+                        </div>
+                    </div>
+                    <div id="splits-${id}">
+                        <label class="form-label mb-2"><i class="bi bi-diagram-3 me-1"></i>Rack Distribution</label>
+                    </div>
+                    <button type="button" class="btn-add-split mt-2" onclick="addSplit(${id})" id="btnAddSplit-${id}" disabled>
+                        <i class="bi bi-plus-circle me-1"></i>Add Rack Line
+                    </button>
+                    <div class="error-msg" id="errorMsg-${id}"></div>
+                    <div class="d-flex justify-content-end mt-3">
+                        <button type="button" class="btn-confirm-item" id="btnConfirm-${id}" onclick="confirmProduct(${id})" disabled>
+                            <i class="bi bi-check-circle me-1"></i>Confirm This Item
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('productList').insertAdjacentHTML('beforeend', html);
+        }
+
+        function removeProduct(id) {
+            document.getElementById(`product-${id}`)?.remove();
+            confirmedItems = confirmedItems.filter(x => x.productId !== parseInt(document.getElementById(`productSelect-${id}`)?.value || '0'));
+            updateSummary();
+        }
+
+        async function onProductSelect(id) {
+            const productId = parseInt(document.getElementById(`productSelect-${id}`).value);
+            if (!productId) return;
+
+            const fromWh = document.getElementById('fromWarehouse').value;
+            const stockLocs = await loadProductStockLocations(fromWh, productId);
+            const totalAvail = stockLocs.reduce((s, l) => s + l.availableQuantity, 0);
+            document.getElementById(`availableInfo-${id}`).textContent = `Available: ${totalAvail} units across ${stockLocs.length} location(s)`;
+            document.getElementById(`totalQty-${id}`).max = totalAvail;
+            document.getElementById(`btnAddSplit-${id}`).disabled = false;
+
+            // Reset splits
+            document.getElementById(`splits-${id}`).innerHTML = '<label class="form-label mb-2"><i class="bi bi-diagram-3 me-1"></i>Rack Distribution</label>';
+            addSplit(id);
+        }
+
+        let splitCounters = {};
+        async function addSplit(productId) {
+            const id = productId;
+            if (!splitCounters[id]) splitCounters[id] = 0;
+            splitCounters[id]++;
+            const splitId = splitCounters[id];
+
+            const fromWh = document.getElementById('fromWarehouse').value;
+            const toWh = document.getElementById('toWarehouse').value;
+            const fromRacks = await loadRacks(fromWh);
+            const toRacks = await loadRacks(toWh);
+
+            const html = `
+                <div class="split-row" id="split-${id}-${splitId}">
+                    <span class="row-index">#${splitId}</span>
+                    <button type="button" class="btn btn-sm btn-outline-danger position-absolute" 
+                            style="top:5px;right:5px;" onclick="removeSplit(${id},${splitId})">
+                        <i class="bi bi-x"></i>
+                    </button>
+                    <div class="row mb-2">
+                        <div class="col-md-3">
+                            <label class="form-label" style="font-size:12px;">Source Rack</label>
+                            <select class="form-select form-select-sm from-rack" data-split="${splitId}" 
+                                    onchange="onFromRackChange(${id},${splitId})" required>
+                                <option value="">-- Rack --</option>
+                                ${fromRacks.map(r => `<option value="${r}">${r}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" style="font-size:12px;">Source Location</label>
+                            <select class="form-select form-select-sm from-location" data-split="${splitId}" required>
+                                <option value="">-- Location --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label" style="font-size:12px;">Qty</label>
+                            <input type="number" class="form-control form-control-sm split-qty" 
+                                   data-split="${splitId}" min="1" value="1"
+                                   onchange="validateSplit(${id})" required />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label" style="font-size:12px;">Dest Rack</label>
+                            <select class="form-select form-select-sm to-rack" data-split="${splitId}" 
+                                    onchange="onToRackChange(${id},${splitId})" required>
+                                <option value="">-- Rack --</option>
+                                ${toRacks.map(r => `<option value="${r}">${r}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label" style="font-size:12px;">Dest Location</label>
+                            <select class="form-select form-select-sm to-location" data-split="${splitId}" required>
+                                <option value="">-- Location --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="capacity-info" id="capacityInfo-${id}-${splitId}" style="font-size:12px;"></div>
+                </div>
+            `;
+            document.getElementById(`splits-${id}`).insertAdjacentHTML('beforeend', html);
+        }
+
+        function removeSplit(id, splitId) {
+            document.getElementById(`split-${id}-${splitId}`)?.remove();
+            validateSplit(id);
+        }
+
+        async function onFromRackChange(id, splitId) {
+            const card = document.getElementById(`product-${id}`);
+            const row = document.getElementById(`split-${id}-${splitId}`);
+            const rack = row.querySelector('.from-rack').value;
+            const fromWh = document.getElementById('fromWarehouse').value;
+            const productId = parseInt(document.getElementById(`productSelect-${id}`).value);
+
+            const locSelect = row.querySelector('.from-location');
+            locSelect.innerHTML = '<option value="">-- Location --</option>';
+
+            if (!rack) return;
+
+            const locations = await loadLocations(fromWh, rack);
+            const stockLocs = await loadProductStockLocations(fromWh, productId);
+            const stockMap = {};
+            stockLocs.forEach(s => { stockMap[s.locationId] = s.availableQuantity; });
+
+            locations.forEach(loc => {
+                const avail = stockMap[loc.locationId] || 0;
+                if (avail > 0) {
+                    const opt = document.createElement('option');
+                    opt.value = loc.locationId;
+                    opt.textContent = `${loc.locationCode} (Stock: ${avail})`;
+                    opt.dataset.available = avail;
+                    locSelect.appendChild(opt);
                 }
             });
-        });
+        }
+
+        async function onToRackChange(id, splitId) {
+            const row = document.getElementById(`split-${id}-${splitId}`);
+            const rack = row.querySelector('.to-rack').value;
+            const toWh = document.getElementById('toWarehouse').value;
+
+            const locSelect = row.querySelector('.to-location');
+            locSelect.innerHTML = '<option value="">-- Location --</option>';
+
+            if (!rack) return;
+
+            const locations = await loadLocations(toWh, rack);
+            locations.forEach(loc => {
+                const space = loc.availableSpace;
+                const opt = document.createElement('option');
+                opt.value = loc.locationId;
+                opt.textContent = `${loc.locationCode} (Space: ${space}/${loc.capacity})`;
+                opt.dataset.space = space;
+                opt.dataset.capacity = loc.capacity;
+                opt.dataset.currentStock = loc.currentStock;
+                locSelect.appendChild(opt);
+            });
+        }
+
+        function validateSplit(id) {
+            const card = document.getElementById(`product-${id}`);
+            const splits = card.querySelectorAll('.split-row');
+            const totalQty = parseInt(document.getElementById(`totalQty-${id}`).value) || 0;
+
+            let splitTotal = 0;
+            let allValid = true;
+            let errorMessages = [];
+
+            splits.forEach(split => {
+                const qty = parseInt(split.querySelector('.split-qty').value) || 0;
+                const fromLoc = split.querySelector('.from-location');
+                const toLoc = split.querySelector('.to-location');
+                const fromLocVal = fromLoc.value;
+                const toLocVal = toLoc.value;
+
+                splitTotal += qty;
+
+                // Validate source stock
+                if (fromLocVal) {
+                    const fromOpt = fromLoc.options[fromLoc.selectedIndex];
+                    const available = parseInt(fromOpt.dataset.available || '0');
+                    if (qty > available) {
+                        allValid = false;
+                        errorMessages.push(`Split #${split.dataset.split}: Requested ${qty} but only ${available} available at source.`);
+                    }
+                }
+
+                // Validate dest capacity
+                if (toLocVal) {
+                    const toOpt = toLoc.options[toLoc.selectedIndex];
+                    const space = parseInt(toOpt.dataset.space || '0');
+                    if (qty > space) {
+                        allValid = false;
+                        errorMessages.push(`Split #${split.dataset.split}: Destination has only ${space} space, but trying to add ${qty}.`);
+                    }
+                }
+            });
+
+            if (splitTotal !== totalQty) {
+                allValid = false;
+                errorMessages.push(`Split total (${splitTotal}) does not match requested quantity (${totalQty}).`);
+            }
+
+            const errorEl = document.getElementById(`errorMsg-${id}`);
+            if (errorMessages.length > 0) {
+                errorEl.innerHTML = errorMessages.join('<br>');
+                errorEl.classList.add('show');
+                card.classList.add('has-error');
+            } else {
+                errorEl.classList.remove('show');
+                card.classList.remove('has-error');
+            }
+
+            document.getElementById(`btnConfirm-${id}`).disabled = !allValid || splits.length === 0;
+            return allValid;
+        }
+
+        function onTotalQtyChange(id) {
+            validateSplit(id);
+        }
+
+        function confirmProduct(id) {
+            if (!validateSplit(id)) return;
+
+            const productId = parseInt(document.getElementById(`productSelect-${id}`).value);
+            const product = productData.find(p => p.productId === productId);
+            const totalQty = parseInt(document.getElementById(`totalQty-${id}`).value);
+            const card = document.getElementById(`product-${id}`);
+            const splits = card.querySelectorAll('.split-row');
+
+            const items = [];
+            splits.forEach(split => {
+                const qty = parseInt(split.querySelector('.split-qty').value);
+                const fromLocId = parseInt(split.querySelector('.from-location').value);
+                const toLocId = parseInt(split.querySelector('.to-location').value);
+
+                const fromLoc = split.querySelector('.from-location');
+                const toLoc = split.querySelector('.to-location');
+                const fromLocText = fromLoc.options[fromLoc.selectedIndex].text;
+                const toLocText = toLoc.options[toLoc.selectedIndex].text;
+
+                items.push({
+                    fromLocationId: fromLocId,
+                    toLocationId: toLocId,
+                    quantity: qty,
+                    fromLocationText: fromLocText,
+                    toLocationText: toLocText
+                });
+            });
+
+            // Remove existing entry for this product (if re-confirming)
+            confirmedItems = confirmedItems.filter(x => x.productCardId !== id);
+
+            confirmedItems.push({
+                productCardId: id,
+                productId: productId,
+                productName: product.productName,
+                totalQuantity: totalQty,
+                splits: items
+            });
+
+            card.classList.add('confirmed');
+            document.getElementById(`btnConfirm-${id}`).disabled = true;
+            document.getElementById(`btnAddSplit-${id}`).disabled = true;
+            card.querySelectorAll('select, input').forEach(el => el.disabled = true);
+
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const summarySection = document.getElementById('summarySection');
+            const confirmedList = document.getElementById('confirmedList');
+            const btnSubmit = document.getElementById('btnSubmit');
+
+            if (confirmedItems.length === 0) {
+                summarySection.style.display = 'none';
+                return;
+            }
+
+            summarySection.style.display = 'block';
+
+            let html = '';
+            confirmedItems.forEach(item => {
+                html += `
+                    <div class="item-summary">
+                        <div>
+                            <strong>${item.productName}</strong>
+                            <span class="summary-badge bg-primary text-white ms-2">${item.totalQuantity} units</span>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-warning" onclick="editProduct(${item.productCardId})">
+                            <i class="bi bi-pencil"></i> Edit
+                        </button>
+                    </div>
+                    <div class="mb-3 ms-3">
+                        ${item.splits.map(s => `
+                            <div class="text-muted" style="font-size: 13px;">
+                                <i class="bi bi-arrow-right-short"></i> 
+                                ${s.quantity}x from <strong>${s.fromLocationText}</strong> 
+                                <i class="bi bi-arrow-right"></i> 
+                                to <strong>${s.toLocationText}</strong>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            });
+            confirmedList.innerHTML = html;
+            btnSubmit.disabled = false;
+        }
+
+        function editProduct(id) {
+            const card = document.getElementById(`product-${id}`);
+            card.classList.remove('confirmed');
+            card.querySelectorAll('select, input').forEach(el => el.disabled = false);
+            document.getElementById(`btnConfirm-${id}`).disabled = false;
+            document.getElementById(`btnAddSplit-${id}`).disabled = false;
+            confirmedItems = confirmedItems.filter(x => x.productCardId !== id);
+            updateSummary();
+        }
+
+        async function submitTransfer() {
+            if (confirmedItems.length === 0) {
+                showGlobalError('Please confirm at least one product to transfer.');
+                return;
+            }
+
+            const fromWh = parseInt(document.getElementById('fromWarehouse').value);
+            const toWh = parseInt(document.getElementById('toWarehouse').value);
+            const reason = document.getElementById('transferReason').value;
+
+            const items = [];
+            confirmedItems.forEach(item => {
+                item.splits.forEach(split => {
+                    items.push({
+                        productId: item.productId,
+                        fromLocationId: split.fromLocationId,
+                        toLocationId: split.toLocationId,
+                        quantity: split.quantity
+                    });
+                });
+            });
+
+            const payload = {
+                fromWarehouseId: fromWh,
+                toWarehouseId: toWh,
+                reason: reason,
+                items: items
+            };
+
+            const btn = document.getElementById('btnSubmit');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Processing...';
+
+            try {
+                const res = await fetch('/Transfer/CreateComplete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    showGlobalSuccess(result.message);
+                    setTimeout(() => {
+                        window.location.href = '/Transfer/Index';
+                    }, 2500);
+                } else {
+                    showGlobalError(result.error);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Confirm Transfer';
+                }
+            } catch (err) {
+                showGlobalError('An error occurred: ' + err.message);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Confirm Transfer';
+            }
+        }
     </script>
 }
