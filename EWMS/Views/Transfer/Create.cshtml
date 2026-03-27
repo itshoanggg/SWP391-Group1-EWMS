@@ -339,21 +339,14 @@
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
-                    <div class="row mb-3">
-                        <div class="col-md-8">
-                            <label class="form-label">Product (*)</label>
-                            <select class="form-select product-select" id="productSelect-${id}" onchange="onProductSelect(${id})" required>
-                                <option value="">-- Select Product --</option>
-                                ${productData.map(p => `<option value="${p.productId}">${p.productName}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Total Quantity (*)</label>
-                            <input type="number" class="form-control" id="totalQty-${id}" min="1" value="1"
-                                   onchange="onTotalQtyChange(${id})" required />
-                            <small class="text-muted" id="availableInfo-${id}"></small>
-                            <div id="rackSummary-${id}"></div>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label">Product (*)</label>
+                        <select class="form-select product-select" id="productSelect-${id}" onchange="onProductSelect(${id})" required>
+                            <option value="">-- Select Product --</option>
+                            ${productData.map(p => `<option value="${p.productId}">${p.productName}</option>`).join('')}
+                        </select>
+                        <small class="text-muted" id="availableInfo-${id}"></small>
+                        <div id="rackSummary-${id}"></div>
                     </div>
                     <div id="splits-${id}">
                         <label class="form-label mb-2"><i class="bi bi-diagram-3 me-1"></i>Rack Distribution</label>
@@ -386,7 +379,6 @@
             const stockLocs = await loadProductStockLocations(fromWh, productId);
             const totalAvail = stockLocs.reduce((s, l) => s + l.availableQuantity, 0);
             document.getElementById(`availableInfo-${id}`).textContent = `Total available: ${totalAvail} units`;
-            document.getElementById(`totalQty-${id}`).max = totalAvail;
             document.getElementById(`btnAddSplit-${id}`).disabled = false;
 
             // Show rack-level breakdown
@@ -487,6 +479,16 @@
 
         function removeSplit(id, splitId) {
             document.getElementById(`split-${id}-${splitId}`)?.remove();
+            const card = document.getElementById(`product-${id}`);
+            const remainingSplits = card.querySelectorAll('.split-row');
+            // Renumber row indices sequentially
+            let maxId = 0;
+            remainingSplits.forEach((s, i) => {
+                s.querySelector('.row-index').textContent = `#${i + 1}`;
+                const sid = parseInt(s.id.split('-').pop());
+                if (sid > maxId) maxId = sid;
+            });
+            splitCounters[id] = maxId;
             validateSplit(id);
         }
 
@@ -591,10 +593,9 @@
         function validateSplit(id) {
             const card = document.getElementById(`product-${id}`);
             const splits = card.querySelectorAll('.split-row');
-            const totalQty = parseInt(document.getElementById(`totalQty-${id}`).value) || 0;
 
             let splitTotal = 0;
-            let allValid = true;
+            let allValid = splits.length > 0;
             let errorMessages = [];
 
             splits.forEach(split => {
@@ -604,10 +605,13 @@
                 const fromLocVal = fromLoc.value;
                 const toLocVal = toLoc.value;
 
+                if (qty < 1) {
+                    allValid = false;
+                }
                 splitTotal += qty;
 
                 // Validate source stock
-                if (fromLocVal) {
+                if (fromLocVal && qty > 0) {
                     const fromOpt = fromLoc.options[fromLoc.selectedIndex];
                     const available = parseInt(fromOpt.dataset.available || '0');
                     if (qty > available) {
@@ -617,7 +621,7 @@
                 }
 
                 // Validate dest capacity
-                if (toLocVal) {
+                if (toLocVal && qty > 0) {
                     const toOpt = toLoc.options[toLoc.selectedIndex];
                     const space = parseInt(toOpt.dataset.space || '0');
                     if (qty > space) {
@@ -626,16 +630,6 @@
                     }
                 }
             });
-
-            const remaining = totalQty - splitTotal;
-            if (remaining !== 0) {
-                allValid = false;
-                if (remaining > 0) {
-                    errorMessages.push(`You still need to allocate ${remaining} more unit(s). Total requested: ${totalQty}, allocated so far: ${splitTotal}.`);
-                } else {
-                    errorMessages.push(`You allocated ${Math.abs(remaining)} too many! Total requested: ${totalQty}, allocated so far: ${splitTotal}.`);
-                }
-            }
 
             const errorEl = document.getElementById(`errorMsg-${id}`);
             if (errorMessages.length > 0) {
@@ -647,28 +641,31 @@
                 card.classList.remove('has-error');
             }
 
-            document.getElementById(`btnConfirm-${id}`).disabled = !allValid || splits.length === 0;
+            // Show running total
+            const availableInfoEl = document.getElementById(`availableInfo-${id}`);
+            const totalAvailText = availableInfoEl.textContent;
+            if (splits.length > 0) {
+                availableInfoEl.innerHTML = totalAvailText + ` | <span class="remaining-badge ${splitTotal > 0 ? 'remaining-ok' : ''}">Transferring: ${splitTotal} units across ${splits.length} rack line(s)</span>`;
+            }
+
+            document.getElementById(`btnConfirm-${id}`).disabled = !allValid;
             return allValid;
         }
 
-        function onTotalQtyChange(id) {
-            const totalQty = parseInt(document.getElementById(`totalQty-${id}`).value) || 0;
-            document.getElementById(`totalQty-${id}`).setAttribute('data-total', totalQty);
-            validateSplit(id);
-        }
 
         function confirmProduct(id) {
             if (!validateSplit(id)) return;
 
             const productId = parseInt(document.getElementById(`productSelect-${id}`).value);
             const product = productData.find(p => p.productId === productId);
-            const totalQty = parseInt(document.getElementById(`totalQty-${id}`).value);
             const card = document.getElementById(`product-${id}`);
             const splits = card.querySelectorAll('.split-row');
 
             const items = [];
+            let totalQty = 0;
             splits.forEach(split => {
                 const qty = parseInt(split.querySelector('.split-qty').value);
+                totalQty += qty;
                 const fromLocId = parseInt(split.querySelector('.from-location').value);
                 const toLocId = parseInt(split.querySelector('.to-location').value);
 
