@@ -400,7 +400,8 @@ namespace EWMS.Services
                     .ThenInclude(d => d.Product)
                 .Include(t => t.StockOutReceipts)
                     .ThenInclude(r => r.StockOutDetails)
-                .Where(t => t.FromWarehouseId == warehouseId && (t.Status == "Approved" || t.Status == "In Transit"))
+                .Where(t => t.FromWarehouseId == warehouseId &&
+                            (t.Status == "Approved" || t.Status == "In Transit" || t.Status == "Completed"))
                 .OrderByDescending(t => t.RequestedDate)
                 .Select(t => new PendingTransferReceiptViewModel
                 {
@@ -427,7 +428,8 @@ namespace EWMS.Services
                     .ThenInclude(r => r.StockOutDetails)
                 .Include(t => t.StockInReceipts)
                     .ThenInclude(r => r.StockInDetails)
-                .Where(t => t.ToWarehouseId == warehouseId && (t.Status == "Approved" || t.Status == "In Transit"))
+                .Where(t => t.ToWarehouseId == warehouseId &&
+                            (t.Status == "Approved" || t.Status == "In Transit" || t.Status == "Completed"))
                 .OrderByDescending(t => t.RequestedDate)
                 .Select(t => new PendingTransferReceiptViewModel
                 {
