@@ -10,7 +10,7 @@ using EWMS.ViewModels;
 
 namespace EWMS.Controllers
 {
-    [Authorize(Roles = "Warehouse Manager")]
+    [Authorize(Roles = "Warehouse Manager,Inventory Staff")]
     public class TransferController : Controller
     {
         private readonly TransferService _transferService;
@@ -47,6 +47,7 @@ namespace EWMS.Controllers
             return View(transfers);
         }
 
+        [Authorize(Roles = "Warehouse Manager")]
         [HttpGet]
         public async Task<IActionResult> Create()
         {
@@ -56,6 +57,7 @@ namespace EWMS.Controllers
             return View();
         }
 
+        [Authorize(Roles = "Warehouse Manager")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateComplete([FromBody] CreateCompleteTransferRequest model)
@@ -124,6 +126,53 @@ namespace EWMS.Controllers
             return View(transfer);
         }
 
+        [Authorize(Roles = "Warehouse Manager")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApproveTransfer(int id)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var userId = int.TryParse(userIdClaim, out var uid) ? uid : 0;
+                var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+
+                await _transferService.ApproveTransferAsync(id, userId, warehouseId);
+
+                TempData["SuccessMessage"] = $"Transfer TR-{id:D4} has been approved successfully.";
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["ErrorMessage"] = ex.Message;
+            }
+
+            return RedirectToAction("Details", new { id });
+        }
+
+        [Authorize(Roles = "Warehouse Manager")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RejectTransfer(int id, string? rejectionReason)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var userId = int.TryParse(userIdClaim, out var uid) ? uid : 0;
+                var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+
+                await _transferService.RejectTransferAsync(id, userId, warehouseId, rejectionReason);
+
+                TempData["SuccessMessage"] = $"Transfer TR-{id:D4} has been rejected.";
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["ErrorMessage"] = ex.Message;
+            }
+
+            return RedirectToAction("Details", new { id });
+        }
+
+        [Authorize(Roles = "Warehouse Manager")]
         [HttpGet]
         public async Task<IActionResult> GetProductsByWarehouse(int warehouseId)
         {
@@ -138,6 +187,7 @@ namespace EWMS.Controllers
             }
         }
 
+        [Authorize(Roles = "Warehouse Manager")]
         [HttpGet]
         public async Task<IActionResult> GetRacksByWarehouse(int warehouseId)
         {
@@ -152,6 +202,7 @@ namespace EWMS.Controllers
             }
         }
 
+        [Authorize(Roles = "Warehouse Manager")]
         [HttpGet]
         public async Task<IActionResult> GetLocationsByRack(int warehouseId, string rack)
         {
@@ -166,6 +217,7 @@ namespace EWMS.Controllers
             }
         }
 
+        [Authorize(Roles = "Warehouse Manager")]
         [HttpGet]
         public async Task<IActionResult> GetProductStockByLocation(int warehouseId, int productId)
         {
@@ -180,6 +232,7 @@ namespace EWMS.Controllers
             }
         }
 
+        [Authorize(Roles = "Warehouse Manager")]
         [HttpGet]
         public async Task<IActionResult> GetLocationCapacity(int locationId, int productId)
         {

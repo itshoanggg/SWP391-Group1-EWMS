@@ -1,6 +1,8 @@
+@using System.Security.Claims
 @model List<EWMS.Models.TransferRequest>
 @{
-    Layout = "~/Views/Shared/_LayoutWarehouseManager.cshtml";
+    var isManager = ViewBag.IsManager as bool? ?? false;
+    Layout = isManager ? "~/Views/Shared/_LayoutWarehouseManager.cshtml" : "~/Views/Shared/_Layout.cshtml";
     ViewData["Title"] = "Cross-Warehouse Transfer";
     var userWarehouseId = ViewBag.UserWarehouseId ?? 0;
 }
@@ -84,11 +86,14 @@
 <div class="transfer-header d-flex justify-content-between align-items-center">
     <div>
         <h2><i class="bi bi-arrow-left-right me-2"></i>Cross-Warehouse Transfer</h2>
-        <p class="mb-0 mt-2" style="opacity: 0.9;">Create and manage transfers between warehouses</p>
+        <p class="mb-0 mt-2" style="opacity: 0.9;">@(isManager ? "Create and manage transfers between warehouses" : "View transfers between warehouses")</p>
     </div>
-    <a asp-action="Create" class="btn-create-transfer">
-        <i class="bi bi-plus-circle me-2"></i>New Transfer
-    </a>
+    @if (isManager)
+    {
+        <a asp-action="Create" class="btn-create-transfer">
+            <i class="bi bi-plus-circle me-2"></i>New Transfer
+        </a>
+    }
 </div>
 
 @if (TempData["SuccessMessage"] != null)

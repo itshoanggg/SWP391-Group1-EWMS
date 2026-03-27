@@ -1,8 +1,11 @@
 @model EWMS.Models.TransferRequest
 @{
-    Layout = "~/Views/Shared/_LayoutWarehouseManager.cshtml";
+    var isManager = ViewBag.IsManager as bool? ?? false;
+    var userWarehouseId = ViewBag.UserWarehouseId as int? ?? 0;
+    Layout = isManager ? "~/Views/Shared/_LayoutWarehouseManager.cshtml" : "~/Views/Shared/_Layout.cshtml";
     ViewData["Title"] = "Transfer Details";
 
+    var canApprove = isManager && Model.Status == "Pending" && Model.FromWarehouseId == userWarehouseId;
     var statusColor = Model.Status?.ToLower() switch
     {
         "completed" => "bg-success text-white",
@@ -113,6 +116,29 @@
             </div>
         }
     </div>
+
+    @if (canApprove)
+    {
+        <div class="detail-card">
+            <h5 class="mb-3"><i class="bi bi-check2-square me-2 text-primary"></i>Approval Actions</h5>
+            <div class="d-flex gap-3 align-items-start">
+                <form asp-action="ApproveTransfer" asp-route-id="@Model.TransferId" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-success" onclick="return confirm('Are you sure you want to approve this transfer?')">
+                        <i class="bi bi-check-circle me-2"></i>Approve Transfer
+                    </button>
+                </form>
+
+                <form asp-action="RejectTransfer" asp-route-id="@Model.TransferId" method="post" class="d-flex gap-2 align-items-start">
+                    @Html.AntiForgeryToken()
+                    <input type="text" name="rejectionReason" class="form-control" placeholder="Reason for rejection (optional)" style="max-width: 350px;" />
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to reject this transfer?')">
+                        <i class="bi bi-x-circle me-2"></i>Reject
+                    </button>
+                </form>
+            </div>
+        </div>
+    }
 
     <div class="detail-card">
         <h5 class="mb-3"><i class="bi bi-boxes me-2 text-primary"></i>Transfer Items</h5>

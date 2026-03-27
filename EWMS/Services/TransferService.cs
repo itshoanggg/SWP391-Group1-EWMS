@@ -728,6 +728,34 @@ namespace EWMS.Services
             return receipt.StockInId;
         }
 
+        public async Task<bool> ApproveTransferAsync(int transferId, int approvedBy, int userWarehouseId)
+        {
+            var transfer = await _db.TransferRequests.FindAsync(transferId);
+            if (transfer == null)
+            {
+                throw new InvalidOperationException("Transfer request not found.");
+            }
+
+            if (transfer.Status != "Pending")
+            {
+                throw new InvalidOperationException($"Cannot approve transfer with status: {transfer.Status}");
+            }
+
+            if (transfer.FromWarehouseId != userWarehouseId)
+            {
+                throw new InvalidOperationException("Only the Warehouse Manager of the source warehouse can approve this transfer.");
+            }
+
+            transfer.Status = "Approved";
+            transfer.ApprovedBy = approvedBy;
+            transfer.ApprovedDate = DateTime.Now;
+
+            _db.TransferRequests.Update(transfer);
+            await _db.SaveChangesAsync();
+
+            return true;
+        }
+
         public async Task<bool> RejectTransferAsync(int transferId, int rejectedBy, int userWarehouseId, string? rejectionReason = null)
         {
             var transfer = await _db.TransferRequests.FindAsync(transferId);
