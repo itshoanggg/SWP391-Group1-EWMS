@@ -388,25 +388,16 @@ async function openOrderedPreview(order) {
         // Store the purchase order ID
         document.getElementById('ordered-po-id').value = order.purchaseOrderId;
         
-        // Reset current PO info and receipt date constraints
+        // Reset current PO info
         currentPoInfo = null;
-        const receiptInput = document.getElementById('receipt-date-input');
         const proceedLink = document.getElementById('btn-proceed-stockin');
-        const hintElement = document.getElementById('receipt-date-hint');
-        if (receiptInput) {
-            receiptInput.value = '';
-            receiptInput.removeAttribute('min');
-            receiptInput.removeAttribute('max');
-        }
+        
+        // Since receipt date is now auto-filled with today's date, enable the button immediately
         if (proceedLink) {
-            proceedLink.removeAttribute('href');
-            proceedLink.classList.add('disabled');
-            proceedLink.setAttribute('aria-disabled', 'true');
-            proceedLink.setAttribute('tabindex', '-1');
-        }
-        if (hintElement) {
-            hintElement.textContent = 'Please select a receipt date to proceed.';
-            hintElement.className = 'form-text text-muted';
+            proceedLink.href = `/StockIn/Details/${order.purchaseOrderId}`;
+            proceedLink.classList.remove('disabled');
+            proceedLink.removeAttribute('aria-disabled');
+            proceedLink.removeAttribute('tabindex');
         }
         
         // Show modal
@@ -452,17 +443,7 @@ async function loadOrderedPoInfo(purchaseOrderId) {
             </div>
         `;
 
-        // Configure date input constraints
-        const receiptInput = document.getElementById('receipt-date-input');
-        if (receiptInput) {
-            // Receipt date must be on/after PO created date
-            if (data.createdAt) {
-                const created = new Date(data.createdAt);
-                created.setHours(0, 0, 0, 0);
-                receiptInput.min = toInputDate(created);
-            }
-            // Do NOT set max; allow selecting future dates but disable Create when chosen
-        }
+        // Receipt date is now auto-filled and disabled, no need to configure constraints
     } catch (error) {
         console.error('Failed to load PO info:', error);
         throw error;
@@ -625,11 +606,5 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.addEventListener('keyup', handleSearch);
     }
     
-    // Add event listener for receipt date
-    const receiptDateInput = document.getElementById('receipt-date-input');
-    if (receiptDateInput) {
-        receiptDateInput.addEventListener('change', checkReceiptDate);
-    }
-    
-    // Proceed is handled by anchor href; no click handler needed
+    // Receipt date is now auto-filled and disabled, no event listener needed
 });

@@ -4,6 +4,7 @@ using EWMS.Repositories;
 using EWMS.Repositories.Interfaces;
 using EWMS.ViewModels;
 using System.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace EWMS.Services
 {
@@ -242,9 +243,18 @@ namespace EWMS.Services
             }
         }
 
-        public async Task<List<ProductSelectViewModel>> GetProductsForSelectionAsync()
+        public async Task<List<ProductSelectViewModel>> GetProductsForSelectionAsync(int warehouseId)
         {
-            var products = await _productRepository.GetAllProductsAsync();
+            // Get products that have inventory in this warehouse
+            var warehouseProducts = await _context.Inventories
+                .Where(i => i.Location.WarehouseId == warehouseId && i.Quantity > 0)
+                .Select(i => i.ProductId)
+                .Distinct()
+                .ToListAsync();
+            
+            var products = await _context.Products
+                .Where(p => warehouseProducts.Contains(p.ProductId))
+                .ToListAsync();
 
             return products.Select(p => new ProductSelectViewModel
             {

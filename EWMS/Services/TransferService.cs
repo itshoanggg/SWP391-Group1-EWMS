@@ -261,7 +261,7 @@ namespace EWMS.Services
                     }
                 }
 
-                // Create TransferRequest
+                // Create TransferRequest with Pending status
                 var transfer = new TransferRequest
                 {
                     FromWarehouseId = model.FromWarehouseId,
@@ -269,9 +269,9 @@ namespace EWMS.Services
                     TransferType = "Transfer",
                     RequestedBy = userId,
                     RequestedDate = DateTime.Now,
-                    ApprovedBy = userId,
-                    ApprovedDate = DateTime.Now,
-                    Status = "Completed",
+                    ApprovedBy = null,
+                    ApprovedDate = null,
+                    Status = "Pending",
                     Reason = model.Reason
                 };
                 _db.TransferRequests.Add(transfer);
@@ -289,96 +289,6 @@ namespace EWMS.Services
                         ToLocationId = item.ToLocationId
                     });
                 }
-
-                // Create StockOutReceipt
-                var stockOutReceipt = new StockOutReceipt
-                {
-                    WarehouseId = model.FromWarehouseId,
-                    IssuedBy = userId,
-                    IssuedDate = DateTime.Now,
-                    Reason = "Transfer Out",
-                    TransferId = transfer.TransferId,
-                    CreatedAt = DateTime.Now,
-                    TotalAmount = 0
-                };
-                _db.StockOutReceipts.Add(stockOutReceipt);
-                await _db.SaveChangesAsync();
-
-                // Create StockInReceipt
-                var stockInReceipt = new StockInReceipt
-                {
-                    WarehouseId = model.ToWarehouseId,
-                    ReceivedBy = userId,
-                    ReceivedDate = DateTime.Now,
-                    Reason = "Transfer In",
-                    TransferId = transfer.TransferId,
-                    CreatedAt = DateTime.Now,
-                    TotalAmount = 0
-                };
-                _db.StockInReceipts.Add(stockInReceipt);
-                await _db.SaveChangesAsync();
-
-                decimal totalOutAmount = 0;
-                decimal totalInAmount = 0;
-
-                foreach (var item in model.Items)
-                {
-                    var product = await _db.Products.FindAsync(item.ProductId);
-                    var unitPrice = product?.SellingPrice ?? 0;
-
-                    // Create StockOutDetail
-                    _db.StockOutDetails.Add(new StockOutDetail
-                    {
-                        StockOutId = stockOutReceipt.StockOutId,
-                        ProductId = item.ProductId,
-                        LocationId = item.FromLocationId,
-                        Quantity = item.Quantity,
-                        UnitPrice = unitPrice
-                    });
-
-                    // Deduct from source inventory
-                    var sourceInv = await _db.Inventories
-                        .FirstAsync(i => i.ProductId == item.ProductId && i.LocationId == item.FromLocationId);
-                    sourceInv.Quantity = (sourceInv.Quantity ?? 0) - item.Quantity;
-                    sourceInv.LastUpdated = DateTime.Now;
-
-                    totalOutAmount += item.Quantity * unitPrice;
-
-                    // Create StockInDetail
-                    _db.StockInDetails.Add(new StockInDetail
-                    {
-                        StockInId = stockInReceipt.StockInId,
-                        ProductId = item.ProductId,
-                        LocationId = item.ToLocationId,
-                        Quantity = item.Quantity,
-                        UnitPrice = unitPrice
-                    });
-
-                    // Add to destination inventory
-                    var destInv = await _db.Inventories
-                        .FirstOrDefaultAsync(i => i.ProductId == item.ProductId && i.LocationId == item.ToLocationId);
-                    if (destInv == null)
-                    {
-                        destInv = new Inventory
-                        {
-                            ProductId = item.ProductId,
-                            LocationId = item.ToLocationId,
-                            Quantity = item.Quantity,
-                            LastUpdated = DateTime.Now
-                        };
-                        _db.Inventories.Add(destInv);
-                    }
-                    else
-                    {
-                        destInv.Quantity = (destInv.Quantity ?? 0) + item.Quantity;
-                        destInv.LastUpdated = DateTime.Now;
-                    }
-
-                    totalInAmount += item.Quantity * unitPrice;
-                }
-
-                stockOutReceipt.TotalAmount = totalOutAmount;
-                stockInReceipt.TotalAmount = totalInAmount;
 
                 await _db.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -401,7 +311,7 @@ namespace EWMS.Services
                 .Include(t => t.StockOutReceipts)
                     .ThenInclude(r => r.StockOutDetails)
                 .Where(t => t.FromWarehouseId == warehouseId &&
-                            (t.Status == "Approved" || t.Status == "In Transit" || t.Status == "Completed"))
+                            (t.Status == "Pending" || t.Status == "Approved" || t.Status == "Partial"))
                 .OrderByDescending(t => t.RequestedDate)
                 .Select(t => new PendingTransferReceiptViewModel
                 {
@@ -420,7 +330,7 @@ namespace EWMS.Services
 
         public async Task<List<PendingTransferReceiptViewModel>> GetPendingTransferStockInAsync(int warehouseId)
         {
-            return await _db.TransferRequests
+            var transfers = await _db.TransferRequests
                 .Include(t => t.FromWarehouse)
                 .Include(t => t.TransferDetails)
                     .ThenInclude(d => d.Product)
@@ -429,21 +339,43 @@ namespace EWMS.Services
                 .Include(t => t.StockInReceipts)
                     .ThenInclude(r => r.StockInDetails)
                 .Where(t => t.ToWarehouseId == warehouseId &&
-                            (t.Status == "Approved" || t.Status == "In Transit" || t.Status == "Completed"))
+                            t.Status == "In Transit")
                 .OrderByDescending(t => t.RequestedDate)
-                .Select(t => new PendingTransferReceiptViewModel
+                .ToListAsync();
+
+            return transfers.Select(t =>
+            {
+                // Calculate shipped quantities
+                var shippedMap = t.StockOutReceipts
+                    ?.SelectMany(r => r.StockOutDetails ?? new List<StockOutDetail>())
+                    .GroupBy(d => d.ProductId)
+                    .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity))
+                    ?? new Dictionary<int, int>();
+
+                // Calculate received quantities
+                var receivedMap = t.StockInReceipts
+                    ?.SelectMany(r => r.StockInDetails ?? new List<StockInDetail>())
+                    .GroupBy(d => d.ProductId)
+                    .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity))
+                    ?? new Dictionary<int, int>();
+
+                // Check if fully received
+                bool fullyReceived = shippedMap.Any() && shippedMap.All(kvp =>
+                    receivedMap.GetValueOrDefault(kvp.Key, 0) >= kvp.Value);
+
+                return new PendingTransferReceiptViewModel
                 {
                     TransferId = t.TransferId,
                     WarehouseId = t.ToWarehouseId ?? 0,
-                    WarehouseName = t.ToWarehouse.WarehouseName,
-                    CounterpartyWarehouseName = t.FromWarehouse.WarehouseName,
-                    ProductSummary = string.Join(", ", t.TransferDetails.Select(d => d.Product.ProductName)),
-                    TotalQuantity = t.TransferDetails.Sum(d => d.Quantity),
+                    WarehouseName = t.ToWarehouse?.WarehouseName ?? "Unknown",
+                    CounterpartyWarehouseName = t.FromWarehouse?.WarehouseName ?? "Unknown",
+                    ProductSummary = string.Join(", ", t.TransferDetails?.Select(d => d.Product?.ProductName ?? "Unknown") ?? new List<string>()),
+                    TotalQuantity = t.TransferDetails?.Sum(d => d.Quantity) ?? 0,
                     RequestedDate = t.RequestedDate,
                     Status = t.Status ?? string.Empty,
-                    IsProcessed = t.StockInReceipts.Any(r => r.StockInDetails.Any())
-                })
-                .ToListAsync();
+                    IsProcessed = fullyReceived // Only mark as processed when fully received
+                };
+            }).ToList();
         }
 
         public async Task<TransferStockOutPageViewModel?> GetTransferStockOutAsync(int transferId, int warehouseId)
@@ -478,6 +410,60 @@ namespace EWMS.Services
             };
         }
 
+        public async Task<SalesOrderForStockOutViewModel?> GetTransferForStockOutAsync(int transferId, int warehouseId)
+        {
+            var transfer = await _db.TransferRequests
+                .Include(t => t.FromWarehouse)
+                .Include(t => t.ToWarehouse)
+                .Include(t => t.TransferDetails)
+                    .ThenInclude(d => d.Product)
+                    .ThenInclude(p => p.Inventories)
+                        .ThenInclude(i => i.Location)
+                .Include(t => t.TransferDetails)
+                    .ThenInclude(d => d.FromLocation)
+                .Include(t => t.StockOutReceipts)
+                .FirstOrDefaultAsync(t => t.TransferId == transferId && t.FromWarehouseId == warehouseId);
+
+            if (transfer == null)
+            {
+                return null;
+            }
+
+            if (transfer.Status != "Pending" && transfer.Status != "Approved")
+            {
+                throw new InvalidOperationException($"Cannot process stock-out for transfer with status: {transfer.Status}");
+            }
+
+            return new SalesOrderForStockOutViewModel
+            {
+                SalesOrderId = transferId,
+                OrderNumber = $"TR-{transferId:D4}",
+                CustomerName = $"Transfer to {transfer.ToWarehouse?.WarehouseName ?? "Unknown"}",
+                CustomerPhone = "",
+                CustomerAddress = transfer.ToWarehouse?.Address ?? "",
+                ExpectedDeliveryDate = transfer.RequestedDate?.AddDays(7) ?? DateTime.Now.AddDays(7),
+                TotalAmount = 0,
+                Status = transfer.Status ?? "Pending",
+                Notes = transfer.Reason,
+                CreatedAt = transfer.RequestedDate ?? DateTime.Now,
+                WarehouseName = transfer.FromWarehouse.WarehouseName,
+                HasStockOutReceipt = transfer.StockOutReceipts.Any(),
+                StockOutReceiptId = transfer.StockOutReceipts.FirstOrDefault()?.StockOutId,
+                IsTransfer = true,
+                Details = transfer.TransferDetails.Select(d => new SalesOrderDetailViewModel
+                {
+                    ProductId = d.ProductId,
+                    ProductName = d.Product.ProductName,
+                    Quantity = d.Quantity,
+                    UnitPrice = d.Product.SellingPrice ?? 0,
+                    TotalPrice = (d.Product.SellingPrice ?? 0) * d.Quantity,
+                    Unit = d.Product.Unit ?? "",
+                    PrefilledLocationId = d.FromLocationId,
+                    PrefilledLocationName = d.FromLocation?.LocationName
+                }).ToList()
+            };
+        }
+
         public async Task<TransferStockInPageViewModel?> GetTransferStockInAsync(int transferId, int warehouseId)
         {
             var transfer = await _db.TransferRequests
@@ -487,6 +473,9 @@ namespace EWMS.Services
                     .ThenInclude(d => d.Product)
                 .Include(t => t.StockOutReceipts)
                     .ThenInclude(r => r.StockOutDetails)
+                        .ThenInclude(d => d.Product)
+                .Include(t => t.StockInReceipts)
+                    .ThenInclude(r => r.StockInDetails)
                 .FirstOrDefaultAsync(t => t.TransferId == transferId && t.ToWarehouseId == warehouseId);
 
             if (transfer == null || (transfer.Status != "Approved" && transfer.Status != "In Transit"))
@@ -503,6 +492,17 @@ namespace EWMS.Services
                 throw new InvalidOperationException("Transfer stock-out has not been processed yet.");
             }
 
+            // Calculate shipped quantities by product
+            var shippedMap = stockOutDetails
+                .GroupBy(d => d.ProductId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+
+            // Calculate already received quantities by product
+            var receivedMap = transfer.StockInReceipts
+                .SelectMany(r => r.StockInDetails)
+                .GroupBy(d => d.ProductId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+
             return new TransferStockInPageViewModel
             {
                 TransferId = transfer.TransferId,
@@ -510,14 +510,18 @@ namespace EWMS.Services
                 WarehouseName = transfer.ToWarehouse?.WarehouseName ?? "Unknown",
                 SourceWarehouseName = transfer.FromWarehouse.WarehouseName,
                 Reason = transfer.Reason,
-                Details = stockOutDetails.Select(d => new TransferStockInItemViewModel
-                {
-                    ProductId = d.ProductId,
-                    ProductName = d.Product.ProductName,
-                    Quantity = d.Quantity,
-                    Unit = d.Product.Unit ?? string.Empty,
-                    UnitPrice = d.UnitPrice
-                }).ToList()
+                Details = stockOutDetails
+                    .GroupBy(d => d.ProductId)
+                    .Select(g => new TransferStockInItemViewModel
+                    {
+                        ProductId = g.Key,
+                        ProductName = g.First().Product.ProductName,
+                        Quantity = shippedMap[g.Key],  // Total shipped
+                        ReceivedQuantity = receivedMap.GetValueOrDefault(g.Key, 0), // Already received
+                        RemainingQuantity = shippedMap[g.Key] - receivedMap.GetValueOrDefault(g.Key, 0), // Remaining
+                        Unit = g.First().Product.Unit ?? string.Empty,
+                        UnitPrice = g.First().UnitPrice
+                    }).ToList()
             };
         }
 
@@ -532,19 +536,43 @@ namespace EWMS.Services
                 throw new InvalidOperationException("Transfer not found.");
             }
 
-            if (transfer.Status != "Approved" && transfer.Status != "In Transit")
+            if (transfer.Status != "Pending" && transfer.Status != "Approved" && transfer.Status != "Partial")
             {
                 throw new InvalidOperationException($"Cannot process stock-out for transfer status: {transfer.Status}");
             }
 
-            var expectedMap = transfer.TransferDetails.ToDictionary(x => x.ProductId, x => x.Quantity);
+            // Group transfer details by product to get total expected quantity per product
+            var expectedMap = transfer.TransferDetails
+                .GroupBy(x => x.ProductId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+            
+            // Group incoming details by product to get total quantity being shipped per product
+            var incomingMap = model.Details
+                .GroupBy(x => x.ProductId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+            
+            // Validate quantities - allow partial stock-out like sales orders
+            foreach (var kvp in expectedMap)
+            {
+                if (!incomingMap.TryGetValue(kvp.Key, out var incomingQty))
+                {
+                    throw new InvalidOperationException($"Product ID {kvp.Key} is missing in the stock-out details.");
+                }
+                
+                if (incomingQty > kvp.Value)
+                {
+                    throw new InvalidOperationException($"Transfer stock-out quantity for product ID {kvp.Key} exceeds expected. Expected: {kvp.Value}, Received: {incomingQty}");
+                }
+                
+                if (incomingQty < 1)
+                {
+                    throw new InvalidOperationException($"Transfer stock-out quantity for product ID {kvp.Key} must be at least 1.");
+                }
+            }
+
+            // Validate inventory availability for each location
             foreach (var detail in model.Details)
             {
-                if (!expectedMap.TryGetValue(detail.ProductId, out var expectedQty) || expectedQty != detail.Quantity)
-                {
-                    throw new InvalidOperationException("Transfer stock-out quantities do not match the transfer request.");
-                }
-
                 var inventory = await _db.Inventories
                     .Include(i => i.Location)
                     .FirstOrDefaultAsync(i => i.ProductId == detail.ProductId && i.LocationId == detail.LocationId && i.Location.WarehouseId == model.WarehouseId);
@@ -601,7 +629,16 @@ namespace EWMS.Services
             receipt.IssuedBy = userId;
             receipt.IssuedDate = model.IssuedDate;
             receipt.TotalAmount = totalAmount;
-            transfer.Status = "In Transit";
+            
+            // Check if all products have been fully shipped
+            var shippedMap = receipt.StockOutDetails
+                .GroupBy(x => x.ProductId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+            
+            bool fullyShipped = expectedMap.All(kvp => 
+                shippedMap.TryGetValue(kvp.Key, out var shipped) && shipped >= kvp.Value);
+            
+            transfer.Status = fullyShipped ? "In Transit" : "Partial";
 
             await _db.SaveChangesAsync();
             return receipt.StockOutId;
@@ -620,7 +657,7 @@ namespace EWMS.Services
                 throw new InvalidOperationException("Transfer not found.");
             }
 
-            if (transfer.Status != "Approved" && transfer.Status != "In Transit")
+            if (transfer.Status != "In Transit")
             {
                 throw new InvalidOperationException($"Cannot process stock-in for transfer status: {transfer.Status}");
             }
@@ -634,11 +671,36 @@ namespace EWMS.Services
                 throw new InvalidOperationException("Transfer stock-out has not been processed yet.");
             }
 
-            var expectedMap = stockOutDetails.GroupBy(x => x.ProductId).ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
-            var actualMap = request.Items.GroupBy(x => x.ProductId).ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
-            if (expectedMap.Count != actualMap.Count || expectedMap.Any(x => !actualMap.TryGetValue(x.Key, out var qty) || qty != x.Value))
+            // Get total shipped quantities by product
+            var shippedMap = stockOutDetails.GroupBy(x => x.ProductId).ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+            
+            // Get already received quantities by product
+            var alreadyReceivedMap = transfer.StockInReceipts
+                .SelectMany(r => r.StockInDetails)
+                .GroupBy(x => x.ProductId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+            
+            // Get incoming quantities by product
+            var incomingMap = request.Items.GroupBy(x => x.ProductId).ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+            
+            // Validate quantities - allow partial receiving
+            foreach (var kvp in incomingMap)
             {
-                throw new InvalidOperationException("Transfer stock-in quantities must match the processed stock-out.");
+                var productId = kvp.Key;
+                var incomingQty = kvp.Value;
+                var shippedQty = shippedMap.GetValueOrDefault(productId, 0);
+                var alreadyReceived = alreadyReceivedMap.GetValueOrDefault(productId, 0);
+                var remainingQty = shippedQty - alreadyReceived;
+                
+                if (incomingQty > remainingQty)
+                {
+                    throw new InvalidOperationException($"Cannot receive {incomingQty} units of product ID {productId}. Only {remainingQty} units remaining to receive.");
+                }
+                
+                if (incomingQty < 1)
+                {
+                    throw new InvalidOperationException($"Must receive at least 1 unit of product ID {productId}.");
+                }
             }
 
             foreach (var item in request.Items)
@@ -661,29 +723,19 @@ namespace EWMS.Services
                 }
             }
 
-            var receipt = await _db.StockInReceipts
-                .Include(r => r.StockInDetails)
-                .FirstOrDefaultAsync(r => r.TransferId == request.TransferId);
-
-            if (receipt == null)
+            // Create a new stock-in receipt each time (allow multiple partial receipts)
+            var receipt = new StockInReceipt
             {
-                receipt = new StockInReceipt
-                {
-                    WarehouseId = request.WarehouseId,
-                    ReceivedBy = userId,
-                    ReceivedDate = DateTime.Now,
-                    Reason = "Transfer In",
-                    TransferId = request.TransferId,
-                    CreatedAt = DateTime.Now,
-                    TotalAmount = 0
-                };
-                _db.StockInReceipts.Add(receipt);
-                await _db.SaveChangesAsync();
-            }
-            else if (receipt.StockInDetails.Any())
-            {
-                throw new InvalidOperationException("Transfer stock-in has already been processed.");
-            }
+                WarehouseId = request.WarehouseId,
+                ReceivedBy = userId,
+                ReceivedDate = DateTime.Now,
+                Reason = "Transfer In",
+                TransferId = request.TransferId,
+                CreatedAt = DateTime.Now,
+                TotalAmount = 0
+            };
+            _db.StockInReceipts.Add(receipt);
+            await _db.SaveChangesAsync();
 
             decimal totalAmount = 0;
             foreach (var item in request.Items)
@@ -722,7 +774,17 @@ namespace EWMS.Services
             receipt.ReceivedBy = userId;
             receipt.ReceivedDate = DateTime.Now;
             receipt.TotalAmount = totalAmount;
-            transfer.Status = "Completed";
+            
+            // Check if all shipped quantities have been received
+            var totalReceivedMap = transfer.StockInReceipts
+                .SelectMany(r => r.StockInDetails)
+                .GroupBy(x => x.ProductId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+            
+            bool fullyReceived = shippedMap.All(kvp => 
+                totalReceivedMap.GetValueOrDefault(kvp.Key, 0) >= kvp.Value);
+            
+            transfer.Status = fullyReceived ? "Completed" : "In Transit";
 
             await _db.SaveChangesAsync();
             return receipt.StockInId;

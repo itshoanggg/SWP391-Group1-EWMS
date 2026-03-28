@@ -11,26 +11,32 @@ namespace EWMS.Services
         private readonly IStockOutReceiptRepository _stockOutReceiptRepository;
         private readonly ISalesOrderRepository _salesOrderRepository;
         private readonly ILocationRepository _locationRepository;
+        private readonly EWMSDbContext _db;
 
         public StockOutReceiptService(
             IStockOutReceiptRepository stockOutReceiptRepository,
             ISalesOrderRepository salesOrderRepository,
-            ILocationRepository locationRepository)
+            ILocationRepository locationRepository,
+            EWMSDbContext db)
         {
             _stockOutReceiptRepository = stockOutReceiptRepository;
             _salesOrderRepository = salesOrderRepository;
             _locationRepository = locationRepository;
+            _db = db;
         }
 
         public async Task<StockOutReceiptListViewModel> GetStockOutReceiptsByWarehouseAsync(int warehouseId)
         {
             var receipts = await _stockOutReceiptRepository.GetStockOutReceiptsByWarehouseAsync(warehouseId);
 
+            // Filter to only show sales order receipts (exclude transfer receipts)
+            var salesOrderReceipts = receipts.Where(r => r.SalesOrderId.HasValue && r.TransferId == null).ToList();
+
             var viewModel = new StockOutReceiptListViewModel
             {
                 WarehouseId = warehouseId,
-                WarehouseName = receipts.FirstOrDefault()?.Warehouse.WarehouseName ?? "Unknown",
-                Receipts = receipts.Select(r => new StockOutReceiptViewModel
+                WarehouseName = salesOrderReceipts.FirstOrDefault()?.Warehouse.WarehouseName ?? "Unknown",
+                Receipts = salesOrderReceipts.Select(r => new StockOutReceiptViewModel
                 {
                     StockOutId = r.StockOutId,
                     ReceiptNumber = $"STOCKOUT{r.StockOutId:D4}",
@@ -194,17 +200,61 @@ namespace EWMS.Services
                 }).ToList()
             }).ToList();
 
+            // Get all transfer orders for this warehouse (including completed) - no pagination
+            var transferRequests = await _db.TransferRequests
+                .Include(t => t.ToWarehouse)
+                .Include(t => t.TransferDetails)
+                    .ThenInclude(d => d.Product)
+                .Include(t => t.StockOutReceipts)
+                .Where(t => t.FromWarehouseId == warehouseId && 
+                           (t.Status == "Pending" || t.Status == "Approved" || t.Status == "Partial" || t.Status == "In Transit" || t.Status == "Completed"))
+                .OrderByDescending(t => t.RequestedDate)
+                .ToListAsync();
+
+            var transferOrders = transferRequests.Select(t =>
+            {
+                var productGroups = t.TransferDetails
+                    .GroupBy(d => d.ProductId)
+                    .Select(g => new { ProductName = g.First().Product.ProductName, Qty = g.Sum(x => x.Quantity) })
+                    .ToList();
+                
+                var firstProduct = productGroups.FirstOrDefault();
+                var productSummary = firstProduct != null 
+                    ? (productGroups.Count > 1 
+                        ? $"{firstProduct.ProductName} <span class='badge bg-secondary'>+{productGroups.Count - 1}</span>" 
+                        : firstProduct.ProductName)
+                    : "";
+
+                return new PendingTransferForStockOutViewModel
+                {
+                    TransferId = t.TransferId,
+                    TransferNumber = $"TR-{t.TransferId:D4}",
+                    DestinationWarehouse = t.ToWarehouse.WarehouseName,
+                    ProductSummary = productSummary,
+                    TotalQuantity = t.TransferDetails.Sum(d => d.Quantity),
+                    RequestedDate = t.RequestedDate,
+                    Status = t.Status ?? string.Empty,
+                    HasStockOutReceipt = t.StockOutReceipts.Any(),
+                    StockOutReceiptId = t.StockOutReceipts.FirstOrDefault()?.StockOutId
+                };
+            }).ToList();
+
             return new StockOutOrderListViewModel
             {
                 WarehouseId = warehouseId,
                 WarehouseName = orders.FirstOrDefault()?.Warehouse.WarehouseName ?? "Unknown",
                 Orders = list,
+                TransferOrders = transferOrders,
                 FilterCustomer = customer ?? string.Empty,
                 FilterStatus = status ?? string.Empty,
                 Page = page,
                 PageSize = pageSize,
                 TotalCount = totalCount,
-                TotalPages = totalPages
+                TotalPages = totalPages,
+                TransferPage = 1,
+                TransferPageSize = 0,
+                TransferTotalCount = transferOrders.Count,
+                TransferTotalPages = 1
             };
         }
 

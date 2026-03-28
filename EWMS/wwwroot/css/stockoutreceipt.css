@@ -46,12 +46,6 @@
 }
 
 .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    gap: 16px;
     padding-bottom: 16px;
     border-bottom: 2px solid var(--border);
 }

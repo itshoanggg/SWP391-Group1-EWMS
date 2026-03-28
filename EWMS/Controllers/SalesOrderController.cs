@@ -97,7 +97,7 @@ namespace EWMS.Controllers
                 return RedirectToAction("Index", "Home");
             }
 
-            var products = await _salesOrderService.GetProductsForSelectionAsync();
+            var products = await _salesOrderService.GetProductsForSelectionAsync(warehouseId);
             var warehouseName = await _userService.GetWarehouseNameByUserIdAsync(userId);
 
             ViewBag.Products = products;
@@ -122,7 +122,7 @@ namespace EWMS.Controllers
 
             if (!ModelState.IsValid)
             {
-                var products = await _salesOrderService.GetProductsForSelectionAsync();
+                var products = await _salesOrderService.GetProductsForSelectionAsync(warehouseId);
                 var warehouseName = await _userService.GetWarehouseNameByUserIdAsync(userId);
 
                 ViewBag.Products = products;
@@ -137,7 +137,7 @@ namespace EWMS.Controllers
             {
                 TempData["ErrorMessage"] = "Please add at least one product!";
 
-                var products = await _salesOrderService.GetProductsForSelectionAsync();
+                var products = await _salesOrderService.GetProductsForSelectionAsync(warehouseId);
                 var warehouseName = await _userService.GetWarehouseNameByUserIdAsync(userId);
                 ViewBag.Products = products;
                 ViewBag.WarehouseId = warehouseId;
@@ -199,8 +199,10 @@ namespace EWMS.Controllers
         [HttpGet]
         public async Task<IActionResult> GetProducts()
         {
-            var products =
-                await _salesOrderService.GetProductsForSelectionAsync();
+            var userId = _userService.GetCurrentUserId();
+            int warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
+            
+            var products = await _salesOrderService.GetProductsForSelectionAsync(warehouseId);
 
             return Json(products);
         }

@@ -37,6 +37,7 @@ namespace EWMS.Controllers
             }
 
             ViewBag.WarehouseId = warehouseId;
+            // Get pending transfers for stock-in (In Transit status)
             ViewBag.PendingTransferStockIns = await _transferService.GetPendingTransferStockInAsync(warehouseId);
             return View();
         }

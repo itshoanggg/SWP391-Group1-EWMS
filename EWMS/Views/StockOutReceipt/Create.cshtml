@@ -34,6 +34,10 @@
             <input type="hidden" name="SalesOrderId" value="@Model.SalesOrderId" />
             <input type="hidden" name="WarehouseId" value="@ViewBag.WarehouseId" />
             <input type="hidden" name="Reason" value="Sale" />
+            @if (Model.IsTransfer)
+            {
+                <input type="hidden" name="orderType" value="transfer" />
+            }
 
             <div class="detail-section">
                 <h4>Order Information</h4>
@@ -104,12 +108,18 @@
                                     <input type="number" class="form-control ship-qty" name="Details[@i].Quantity" value="@detail.Quantity" min="1" max="@detail.Quantity" data-required="@detail.Quantity" required oninput="updateInventoryStatus()" />
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Pickup Location <span class="text-danger">*</span></label>
+                                    <label class="form-label">Pickup Location <span class="text-danger">*</span> 
+                                        @if (Model.IsTransfer && detail.PrefilledLocationId.HasValue)
+                                        {
+                                            <small class="text-muted">(Pre-filled from transfer)</small>
+                                        }
+                                    </label>
                                     <select class="form-select location-select" 
                                             name="Details[@i].LocationId"
                                             data-product-id="@detail.ProductId" 
                                             data-quantity="@detail.Quantity"
                                             data-index="@i"
+                                            data-prefilled-location-id="@(detail.PrefilledLocationId?.ToString() ?? "")"
                                             required
                                             onchange="updateInventoryStatus()">
                                         <option value="">-- Select location --</option>
@@ -147,9 +157,11 @@
 
         async function loadAvailableLocations() {
             const selects = document.querySelectorAll('.location-select');
+            const isTransfer = @Model.IsTransfer.ToString().ToLower();
             
             for (const select of selects) {
                 const productId = select.getAttribute('data-product-id');
+                const prefilledLocationId = select.getAttribute('data-prefilled-location-id');
                 
                 try {
                     const response = await fetch(`/StockOutReceipt/GetAvailableLocations?warehouseId=${warehouseId}&productId=${productId}`);
@@ -165,6 +177,11 @@
                         option.setAttribute('data-location-name', loc.locationName || '');
                         select.appendChild(option);
                     });
+                    
+                    // Pre-fill location for transfer orders
+                    if (isTransfer && prefilledLocationId && prefilledLocationId !== '') {
+                        select.value = prefilledLocationId;
+                    }
                     
                 } catch (error) {
                     console.error('Error loading locations:', error);
@@ -238,8 +255,8 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            loadAvailableLocations();
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadAvailableLocations();
             updateInventoryStatus();
         });
 

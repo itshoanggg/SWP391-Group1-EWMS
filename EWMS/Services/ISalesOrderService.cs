@@ -8,7 +8,7 @@ namespace EWMS.Services
         Task<SalesOrderListViewModel> GetSalesOrdersAsync(int warehouseId, string? customer, string? status, int page, int pageSize);
         Task<SalesOrderViewModel?> GetSalesOrderByIdAsync(int salesOrderId);
         Task<(bool Success, string Message, int? OrderId)> CreateSalesOrderAsync(CreateSalesOrderViewModel model, int createdByUserId);
-        Task<List<ProductSelectViewModel>> GetProductsForSelectionAsync();
+        Task<List<ProductSelectViewModel>> GetProductsForSelectionAsync(int warehouseId);
         Task<bool> CancelSalesOrderAsync(int salesOrderId);
         Task<(bool Found, string? Name, string? Address)> GetCustomerByPhoneAsync(string phone);
     }

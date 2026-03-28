@@ -32,72 +32,29 @@
         </div>
     }
 
-    @if (pendingTransfers.Any())
-    {
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-right-left text-success"></i> Pending Transfer Stock-In
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>TRANSFER</th>
-                                <th>SOURCE WAREHOUSE</th>
-                                <th>PRODUCTS</th>
-                                <th class="text-end">QTY</th>
-                                <th>STATUS</th>
-                                <th>ACTION</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var transfer in pendingTransfers)
-                            {
-                                <tr>
-                                    <td><strong>TR-@transfer.TransferId.ToString("D4")</strong></td>
-                                    <td>@transfer.CounterpartyWarehouseName</td>
-                                    <td>@transfer.ProductSummary</td>
-                                    <td class="text-end">@transfer.TotalQuantity</td>
-                                    <td>
-                                        <span class="badge @(transfer.IsProcessed ? "bg-success" : "bg-warning text-dark")">
-                                            @(transfer.IsProcessed ? "Processed" : transfer.Status)
-                                        </span>
-                                    </td>
-                                    <td>
-                                        @if (transfer.IsProcessed)
-                                        {
-                                            <a class="btn btn-outline-secondary btn-sm" href="@Url.Action("Details", "Transfer", new { id = transfer.TransferId })">
-                                                <i class="fas fa-eye"></i> View Transfer
-                                            </a>
-                                        }
-                                        else
-                                        {
-                                            <a class="btn btn-success btn-sm" href="@Url.Action("TransferDetails", new { transferId = transfer.TransferId })">
-                                                <i class="fas fa-box-arrow-in-down"></i> Process Stock-In
-                                            </a>
-                                        }
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+    <!-- Main Card with Tabs -->
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="mb-0">Pending Orders</h3>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary active" id="btnPurchaseOrders" onclick="showPurchaseOrders()">
+                        <i class="bi bi-cart"></i> Purchase Orders
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" id="btnTransferOrders" onclick="showTransferOrders()">
+                        <i class="bi bi-arrow-left-right"></i> Transfer Orders
+                    </button>
                 </div>
             </div>
-        </div>
-    }
-
-    <!-- Filters -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-3">
-                    <label class="form-label">Status:</label>
-                    <select class="form-select" id="filter-status">
-                        <option value="">All</option>
-                        <option value="Ordered">Ordered</option>
+            
+            <!-- Filters for Purchase Orders -->
+            <div id="purchaseOrderFilters">
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        <label class="form-label small">Status:</label>
+                        <select class="form-select" id="filter-status">
+                            <option value="">All</option>
+                            <option value="Ordered">Ordered</option>
                         <option value="PartiallyReceived">Partially Received</option>
                     </select>
                 </div>
@@ -113,31 +70,28 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- Purchase Orders Table -->
-    <div class="card">
-        <div class="card-header">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <h5 class="mb-0">
-                    <i class="fas fa-list-ul text-primary"></i> Purchase Order List
-                </h5>
-                <div class="d-flex align-items-center gap-2">
-                    <label class="mb-0 text-muted page-size-label">
-                        <i class="fas fa-layer-group"></i> Show:
-                    </label>
-                    <select class="form-select form-select-sm" id="page-size-select" onchange="changePageSize()">
-                        <option value="10">10</option>
-                        <option value="25">25</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                    </select>
-                    <span class="text-muted page-size-label">entries</span>
-                </div>
-            </div>
-        </div>
+        
         <div class="card-body">
-            <div class="table-responsive">
+            <!-- Purchase Orders Section -->
+            <div id="purchaseOrdersSection">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list-ul text-primary"></i> Purchase Order List
+                    </h5>
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="mb-0 text-muted page-size-label">
+                            <i class="fas fa-layer-group"></i> Show:
+                        </label>
+                        <select class="form-select form-select-sm" id="page-size-select" onchange="changePageSize()">
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                        <span class="text-muted page-size-label">entries</span>
+                    </div>
+                </div>
+                <div class="table-responsive">
                 <table class="table table-hover" id="purchase-orders-table">
                     <thead>
                         <tr>
@@ -161,21 +115,82 @@
                         </tr>
                     </tbody>
                 </table>
-            </div>
-        </div>
-        <div class="card-footer">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                <div>
-                    <span id="pagination-info" class="d-flex align-items-center gap-2">
-                        <i class="fas fa-info-circle text-primary"></i>
-                        <span>Showing 0 to 0 of 0 entries</span>
-                    </span>
                 </div>
-                <nav aria-label="Table pagination">
-                    <div id="pagination-controls">
-                        <!-- Pagination will be rendered here by JavaScript -->
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3">
+                    <div>
+                        <span id="pagination-info" class="d-flex align-items-center gap-2">
+                            <i class="fas fa-info-circle text-primary"></i>
+                            <span>Showing 0 to 0 of 0 entries</span>
+                        </span>
                     </div>
-                </nav>
+                    <nav aria-label="Table pagination">
+                        <div id="pagination-controls">
+                            <!-- Pagination will be rendered here by JavaScript -->
+                        </div>
+                    </nav>
+                </div>
+            </div>
+            
+            <!-- Transfer Orders Section -->
+            <div id="transferOrdersSection" style="display: none;">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>TRANSFER ID</th>
+                                <th>SOURCE WAREHOUSE</th>
+                                <th>PRODUCTS</th>
+                                <th class="text-end">TOTAL QTY</th>
+                                <th>STATUS</th>
+                                <th>ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (pendingTransfers != null && pendingTransfers.Any())
+                            {
+                                @foreach (var transfer in pendingTransfers)
+                                {
+                                    <tr>
+                                        <td><strong>TR-@transfer.TransferId.ToString("D4")</strong></td>
+                                        <td>@transfer.CounterpartyWarehouseName</td>
+                                        <td>@transfer.ProductSummary</td>
+                                        <td class="text-end">@transfer.TotalQuantity</td>
+                                        <td>
+                                            <span class="badge @(transfer.IsProcessed ? "bg-success" : "bg-warning text-dark")">
+                                                @(transfer.IsProcessed ? "Processed" : transfer.Status)
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex gap-1 flex-wrap">
+                                                @if (transfer.IsProcessed)
+                                                {
+                                                    <a class="btn btn-outline-secondary btn-sm" href="@Url.Action("Details", "Transfer", new { id = transfer.TransferId })">
+                                                        <i class="fas fa-eye"></i> Details
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <a class="btn btn-success btn-sm" href="@Url.Action("TransferDetails", new { transferId = transfer.TransferId })">
+                                                        <i class="fas fa-box-arrow-in-down"></i> Receive
+                                                    </a>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-5">
+                                        <i class="bi bi-inbox" style="font-size: 48px; opacity: 0.3;"></i>
+                                        <p class="mt-2 mb-0">No pending transfer orders</p>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -223,13 +238,12 @@
                 </div>
                 <div class="row g-3 align-items-center">
                     <div class="col-auto">
-                        <label for="receipt-date-input" class="col-form-label"><i class="far fa-calendar-alt me-1"></i>Receipt Date <span class="text-danger">*</span></label>
+                        <label for="receipt-date-input" class="col-form-label"><i class="far fa-calendar-alt me-1"></i>Receipt Date</label>
                     </div>
                     <div class="col-auto">
-                        <input type="date" class="form-control" id="receipt-date-input" required />
+                        <input type="date" class="form-control" id="receipt-date-input" value="@DateTime.Today.ToString("yyyy-MM-dd")" readonly style="background-color: #e9ecef; cursor: not-allowed;" />
                     </div>
                     <div class="col-auto">
-                        <span id="receipt-date-hint" class="form-text text-muted">Please select a receipt date to proceed.</span>
                     </div>
                 </div>
                 <input type="hidden" id="ordered-po-id" />
@@ -250,6 +264,22 @@
     if (!warehouseId) {
         console.error('WarehouseId is not defined!');
         alert('Error: Warehouse could not be identified. Please log in again.');
+    }
+    
+    function showPurchaseOrders() {
+        document.getElementById('purchaseOrdersSection').style.display = 'block';
+        document.getElementById('transferOrdersSection').style.display = 'none';
+        document.getElementById('purchaseOrderFilters').style.display = 'block';
+        document.getElementById('btnPurchaseOrders').classList.add('active');
+        document.getElementById('btnTransferOrders').classList.remove('active');
+    }
+
+    function showTransferOrders() {
+        document.getElementById('purchaseOrdersSection').style.display = 'none';
+        document.getElementById('transferOrdersSection').style.display = 'block';
+        document.getElementById('purchaseOrderFilters').style.display = 'none';
+        document.getElementById('btnPurchaseOrders').classList.remove('active');
+        document.getElementById('btnTransferOrders').classList.add('active');
     }
 </script>
 <script src="~/js/Inventory/StockIn.js"></script>

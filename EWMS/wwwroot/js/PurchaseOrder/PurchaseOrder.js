@@ -36,7 +36,6 @@ async function loadSupplierInfo() {
 
     if (!supplierId) {
         document.getElementById('supplierInfo').style.display = 'none';
-        clearProductSelects();
         return;
     }
 
@@ -53,8 +52,7 @@ async function loadSupplierInfo() {
             document.getElementById('supplierInfo').style.display = 'none';
         }
 
-        // Load products by supplier
-        await loadProducts(supplierId);
+        // DO NOT filter products by supplier - products are already loaded and should stay the same
     } catch (error) {
         console.error('Error loading supplier info:', error);
         alert('Failed to load supplier information');
@@ -101,16 +99,25 @@ async function updateProduct(select, index) {
         // Check for duplicate products
         const selectedProductId = selectedOption.value;
         const allSelects = document.querySelectorAll('.product-select');
-        let duplicateCount = 0;
+        let isDuplicate = false;
         
         allSelects.forEach(s => {
-            if (s.value === selectedProductId) {
-                duplicateCount++;
+            // Check if another select (not this one) has the same product
+            if (s !== select && s.value === selectedProductId) {
+                isDuplicate = true;
             }
         });
 
-        if (duplicateCount > 1) {
-            showAlert('warning', `⚠️ Product "${selectedOption.text}" already selected! Quantities will be merged when creating the order.`);
+        if (isDuplicate) {
+            showAlert('error', `❌ Product "${selectedOption.text}" has already been selected! Please choose a different product.`);
+            // Reset the selection
+            select.value = '';
+            row.querySelector('.sku-display').textContent = '';
+            row.querySelector('.price-value').value = '';
+            row.querySelector('.price-display').value = '';
+            row.querySelector('.total-display').value = '0';
+            updateTotals();
+            return; // Stop processing
         }
 
         const sku = selectedOption.dataset.sku;
@@ -120,21 +127,22 @@ async function updateProduct(select, index) {
 
         row.querySelector('.sku-display').textContent = sku || '';
         
-        // Set suggested price from product (user can edit)
-        const priceInput = row.querySelector('.price-input');
-        if (!priceInput.value || priceInput.value === '0') {
-            // Only set if empty or zero
-            priceInput.value = costPrice || '';
-        }
+        // Set suggested price from product (always update when product changes)
+        const priceDisplay = row.querySelector('.price-display');
+        const priceValue = row.querySelector('.price-value');
+        const costPriceNum = parseInt(costPrice) || 0;
+        priceValue.value = costPriceNum;
+        priceDisplay.value = costPriceNum > 0 ? costPriceNum.toLocaleString('en-US') : '';
 
         calculateTotal(index);
 
         console.log('Calling filterSuppliersByProduct with productId:', selectedProductId);
-        // Filter suppliers based on selected product
+        // Filter suppliers based on selected product - this will reset supplier selection
         await filterSuppliersByProduct(selectedProductId);
     } else {
         row.querySelector('.sku-display').textContent = '';
-        row.querySelector('.price-input').value = '';
+        row.querySelector('.price-value').value = '';
+        row.querySelector('.price-display').value = '';
         row.querySelector('.total-display').value = '0';
     }
 
@@ -149,11 +157,10 @@ async function filterSuppliersByProduct(productId) {
         console.log('API Response for productId', productId, ':', data);
 
         const supplierSelect = document.getElementById('supplierSelect');
-        const currentValue = supplierSelect.value;
 
         if (data.success && data.suppliers && data.suppliers.length > 0) {
             console.log('Found', data.suppliers.length, 'suppliers, enabling dropdown');
-            // Enable and rebuild supplier dropdown
+            // Enable and rebuild supplier dropdown - ALWAYS RESET when product changes
             supplierSelect.disabled = false;
             supplierSelect.innerHTML = '<option value="">-- Select Supplier --</option>';
             
@@ -164,21 +171,14 @@ async function filterSuppliersByProduct(productId) {
                 supplierSelect.appendChild(option);
             });
 
-            // Restore previous selection if still available
-            if (currentValue) {
-                const optionExists = Array.from(supplierSelect.options).some(opt => opt.value === currentValue);
-                if (optionExists) {
-                    supplierSelect.value = currentValue;
-                } else {
-                    // Clear supplier info if current selection is no longer valid
-                    document.getElementById('supplierInfo').style.display = 'none';
-                }
-            }
+            // Hide supplier info since we reset the selection
+            document.getElementById('supplierInfo').style.display = 'none';
         } else {
             console.log('No suppliers found or API failed, disabling dropdown');
             // Disable supplier select and show warning
             supplierSelect.disabled = true;
             supplierSelect.innerHTML = '<option value="">-- No Suppliers Available --</option>';
+            document.getElementById('supplierInfo').style.display = 'none';
             showAlert('warning', '⚠️ No suppliers found for this product. Please select a different product.');
         }
     } catch (error) {
@@ -186,6 +186,7 @@ async function filterSuppliersByProduct(productId) {
         const supplierSelect = document.getElementById('supplierSelect');
         supplierSelect.disabled = true;
         supplierSelect.innerHTML = '<option value="">-- Error Loading Suppliers --</option>';
+        document.getElementById('supplierInfo').style.display = 'none';
     }
 }
 
@@ -197,16 +198,33 @@ function formatPrice(value) {
     return '0';
 }
 
+function handlePriceInput(input, index) {
+    // Remove any non-digit characters except decimal point
+    let value = input.value.replace(/[^\d.]/g, '');
+    
+    // Get the numeric value
+    const numericValue = parseFloat(value) || 0;
+    
+    // Update the hidden field with raw number
+    const row = input.closest('.product-row');
+    row.querySelector('.price-value').value = numericValue;
+    
+    // Format and display with commas
+    input.value = numericValue > 0 ? numericValue.toLocaleString('en-US') : '';
+    
+    calculateTotal(index);
+}
+
 function calculateTotal(index) {
     const row = document.querySelector(`.product-row[data-index="${index}"]`);
     const quantity = parseFloat(row.querySelector('.quantity-input').value) || 0;
     
-    // Get price directly as number (no formatting needed since input type is now number)
-    const price = parseFloat(row.querySelector('.price-input').value) || 0;
+    // Get price from hidden field
+    const price = parseFloat(row.querySelector('.price-value').value) || 0;
     
     const total = quantity * price;
 
-    row.querySelector('.total-display').value = total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    row.querySelector('.total-display').value = total.toLocaleString('en-US');
 
     updateTotals();
 }
@@ -238,8 +256,9 @@ function addProductRow() {
                            min="1" value="1" required onchange="calculateTotal(${productIndex})">
                 </td>
                 <td>
-                    <input type="number" name="Details[${productIndex}].UnitPrice" class="form-control price-input"
-                           min="0" step="0.01" required onchange="calculateTotal(${productIndex})" placeholder="Enter price">
+                    <input type="hidden" name="Details[${productIndex}].UnitPrice" class="price-value">
+                    <input type="text" class="form-control price-display"
+                           required oninput="handlePriceInput(this, ${productIndex})" placeholder="Enter price">
                 </td>
                 <td>
                     <input type="text" class="form-control total-display" readonly value="0">
@@ -253,16 +272,17 @@ function addProductRow() {
 
     tbody.appendChild(newRow);
 
-    // Load products into new select
+    // Load products into new select from the first row's options
+    const firstSelect = document.querySelector('.product-select');
     const newSelect = newRow.querySelector('.product-select');
-    productsData.forEach(product => {
-        const option = document.createElement('option');
-        option.value = product.productId;
-        option.text = `${product.productName} (${product.categoryName})`;
-        option.dataset.sku = 'SKU-' + String(product.productId).padStart(5, '0');
-        option.dataset.costPrice = product.costPrice;
-        newSelect.appendChild(option);
-    });
+    
+    if (firstSelect) {
+        // Copy all options from the first select (which has all products from ViewBag)
+        Array.from(firstSelect.options).forEach(option => {
+            const newOption = option.cloneNode(true);
+            newSelect.appendChild(newOption);
+        });
+    }
 
     productIndex++;
     updateTotals();

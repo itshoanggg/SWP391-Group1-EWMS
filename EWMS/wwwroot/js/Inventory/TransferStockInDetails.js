@@ -49,33 +49,269 @@ async function loadLocationsForProduct(productId, rowId) {
             locationsCache[productId] = await response.json();
         }
 
-        const select = document.getElementById(`location-${rowId}`);
-        select.innerHTML = '<option value="">-- Select Location --</option>';
-        (locationsCache[productId] || []).forEach(loc => {
-            const option = document.createElement('option');
-            option.value = loc.locationId;
-            option.textContent = `${loc.locationCode} - ${loc.locationName} (${loc.currentStock}/${loc.maxCapacity})`;
-            option.dataset.available = loc.maxCapacity - loc.currentStock;
-            select.appendChild(option);
-        });
+        populateLocationSelect(rowId, locationsCache[productId]);
     } catch (error) {
         console.error('Load locations failed:', error);
     }
 }
 
+function populateLocationSelect(rowId, locations) {
+    const select = document.getElementById(`location-${rowId}`);
+    if (!select) return;
+
+    select.innerHTML = '<option value="">-- Select Location --</option>';
+
+    // Track used locations and their quantities
+    const usedLocations = {};
+    
+    receiptItems.forEach(item => {
+        // Collect ALL rows using locations (except current row)
+        if (item.locationId && !isNaN(item.locationId) && item.rowId !== rowId) {
+            const qtyInput = document.getElementById(`qty-${item.rowId}`);
+            const qty = qtyInput ? parseInt(qtyInput.value) || 0 : item.receivedQty;
+            
+            if (!usedLocations[item.locationId]) {
+                usedLocations[item.locationId] = 0;
+            }
+            usedLocations[item.locationId] += qty;
+        }
+    });
+
+    locations.forEach(loc => {
+        const baseAvailable = loc.maxCapacity - loc.currentStock;
+        const usedQty = usedLocations[loc.locationId] || 0;
+        const actualAvailable = baseAvailable - usedQty;
+        
+        // Only show locations with available capacity
+        if (actualAvailable <= 0) {
+            return;
+        }
+
+        const option = document.createElement('option');
+        option.value = loc.locationId;
+        const totalUsed = loc.currentStock + usedQty;
+        option.textContent = `${loc.locationCode} - ${loc.locationName} (${totalUsed}/${loc.maxCapacity})`;
+        option.dataset.available = actualAvailable;
+        select.appendChild(option);
+    });
+}
+
 function handleQuantityChange(input) {
-    const item = receiptItems.find(x => x.rowId === input.dataset.rowId);
+    const rowId = input.dataset.rowId;
+    const item = receiptItems.find(x => x.rowId === rowId);
     if (item) {
-        item.receivedQty = parseInt(input.value) || 0;
+        const newQty = parseInt(input.value) || 0;
+        item.receivedQty = newQty;
+        
+        // Re-check capacity when quantity changes
+        const locationSelect = document.getElementById(`location-${rowId}`);
+        if (locationSelect && locationSelect.value) {
+            checkCapacity(rowId, newQty);
+        }
+        
+        // Refresh ALL location selects to update available capacity display
+        refreshAllLocationSelects();
     }
     updateSummary();
 }
 
-function handleLocationChange(select) {
-    const item = receiptItems.find(x => x.rowId === select.dataset.rowId);
+function refreshAllLocationSelects() {
+    receiptItems.forEach(item => {
+        const productId = item.productId;
+        if (locationsCache[productId]) {
+            populateLocationSelect(item.rowId, locationsCache[productId]);
+            
+            // Re-select the current location if it was set
+            if (item.locationId) {
+                const select = document.getElementById(`location-${item.rowId}`);
+                if (select) {
+                    const option = Array.from(select.options).find(opt => parseInt(opt.value) === item.locationId);
+                    if (option) {
+                        select.value = item.locationId;
+                    } else {
+                        // Location no longer available, clear it
+                        select.value = '';
+                        item.locationId = null;
+                        clearLocationInfo(item.rowId);
+                    }
+                }
+            }
+        }
+    });
+}
+
+async function handleLocationChange(select) {
+    const rowId = select.dataset.rowId;
+    const item = receiptItems.find(x => x.rowId === rowId);
     if (item) {
         item.locationId = parseInt(select.value) || null;
+        
+        // Check capacity for this location
+        const qtyInput = document.getElementById(`qty-${rowId}`);
+        const quantity = parseInt(qtyInput?.value) || 0;
+        if (select.value && quantity > 0) {
+            await checkCapacity(rowId, quantity);
+        } else {
+            clearLocationInfo(rowId);
+        }
     }
+}
+
+async function checkCapacity(rowId, quantity) {
+    const locationSelect = document.getElementById(`location-${rowId}`);
+    const locationId = parseInt(locationSelect.value);
+    
+    if (!locationId || quantity <= 0) {
+        clearLocationInfo(rowId);
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/StockIn/CheckLocationCapacity?locationId=${locationId}`);
+        const capacity = await response.json();
+        
+        const infoDiv = document.getElementById(`location-info-${rowId}`);
+        const available = capacity.maxCapacity - capacity.currentStock;
+        
+        if (quantity <= available) {
+            // Enough capacity
+            infoDiv.innerHTML = `<span class="text-success"><i class="fas fa-check-circle"></i> Available capacity: ${available} units</span>`;
+        } else {
+            // Not enough capacity - offer to split
+            infoDiv.innerHTML = `
+                <span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Only ${available} units available</span>
+                <button type="button" class="btn btn-sm btn-warning mt-1" onclick="splitToNewLocation('${rowId}', ${locationSelect.dataset.productId}, ${quantity}, ${available})">
+                    <i class="fas fa-plus"></i> Add Another Location
+                </button>
+            `;
+        }
+    } catch (error) {
+        console.error('Check capacity failed:', error);
+    }
+}
+
+function clearLocationInfo(rowId) {
+    const infoDiv = document.getElementById(`location-info-${rowId}`);
+    if (infoDiv) {
+        infoDiv.innerHTML = '';
+    }
+}
+
+function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
+    const tbody = document.getElementById('products-tbody');
+    const parentRow = document.getElementById(parentRowId);
+    
+    // Update parent row quantity to first location capacity
+    const parentQtyInput = document.getElementById(`qty-${parentRowId}`);
+    parentQtyInput.value = firstCapacity;
+    parentQtyInput.max = firstCapacity;
+    
+    const item = receiptItems.find(x => x.rowId === parentRowId);
+    if (item) {
+        item.receivedQty = firstCapacity;
+    }
+    
+    // Calculate remaining quantity
+    const remainingQty = totalQty - firstCapacity;
+    
+    // Create new row for remaining quantity
+    const newRowId = `${parentRowId}-split-${Date.now()}`;
+    const productInfo = productsData.find(p => p.productId === productId);
+    
+    const newRow = document.createElement('tr');
+    newRow.id = newRowId;
+    newRow.className = 'split-row';
+    newRow.innerHTML = `
+        <td><div class="sku-badge">${productInfo.sku}</div></td>
+        <td>
+            <div class="product-name">${productInfo.productName}</div>
+            <small class="text-muted">Split from parent row</small>
+        </td>
+        <td><span class="badge bg-info">${remainingQty}</span></td>
+        <td>
+            <input type="number"
+                   class="form-control qty-input"
+                   id="qty-${newRowId}"
+                   data-product-id="${productId}"
+                   data-row-id="${newRowId}"
+                   value="${remainingQty}"
+                   min="0"
+                   max="${remainingQty}"
+                   onchange="handleQuantityChange(this)">
+        </td>
+        <td>
+            <select class="form-select location-select"
+                    id="location-${newRowId}"
+                    data-product-id="${productId}"
+                    data-row-id="${newRowId}"
+                    onchange="handleLocationChange(this)">
+                <option value="">-- Select Location --</option>
+            </select>
+            <div class="location-info mt-1" id="location-info-${newRowId}"></div>
+            <button type="button" class="btn btn-sm btn-outline-danger mt-1" onclick="removeSplitRow('${newRowId}', '${parentRowId}', ${remainingQty})">
+                <i class="fas fa-trash"></i> Remove
+            </button>
+        </td>
+    `;
+    
+    // Insert new row after parent
+    parentRow.after(newRow);
+    
+    // Add to receiptItems
+    receiptItems.push({
+        rowId: newRowId,
+        productId: productId,
+        productName: productInfo.productName,
+        receivedQty: remainingQty,
+        locationId: null,
+        unitPrice: productInfo.unitPrice
+    });
+    
+    // Load locations for new row and refresh all selects
+    loadLocationsForProduct(productId, newRowId);
+    refreshAllLocationSelects();
+    clearLocationInfo(parentRowId);
+    updateSummary();
+}
+
+function removeSplitRow(rowId, parentRowId, qty) {
+    // Remove from DOM
+    const row = document.getElementById(rowId);
+    if (row) {
+        row.remove();
+    }
+    
+    // Remove from receiptItems
+    const index = receiptItems.findIndex(x => x.rowId === rowId);
+    if (index > -1) {
+        receiptItems.splice(index, 1);
+    }
+    
+    // Add quantity back to parent row
+    const parentQtyInput = document.getElementById(`qty-${parentRowId}`);
+    const currentMax = parseInt(parentQtyInput.max);
+    const newMax = currentMax + qty;
+    const currentValue = parseInt(parentQtyInput.value);
+    const newValue = currentValue + qty;
+    
+    parentQtyInput.max = newMax;
+    parentQtyInput.value = newValue;
+    
+    const parentItem = receiptItems.find(x => x.rowId === parentRowId);
+    if (parentItem) {
+        parentItem.receivedQty = newValue;
+    }
+    
+    clearLocationInfo(parentRowId);
+    refreshAllLocationSelects();
+    
+    // Re-check capacity for parent row after merging quantity back
+    const parentLocationSelect = document.getElementById(`location-${parentRowId}`);
+    if (parentLocationSelect && parentLocationSelect.value) {
+        checkCapacity(parentRowId, newValue);
+    }
+    
+    updateSummary();
 }
 
 function updateSummary() {
@@ -103,11 +339,19 @@ async function confirmTransferStockIn() {
     const totalOrdered = productsData.reduce((sum, p) => sum + p.remainingQty, 0);
     const totalReceived = receiptItems.reduce((sum, item) => sum + item.receivedQty, 0);
 
-    if (totalReceived !== totalOrdered) {
-        showAlert('Received quantity must match the transfer stock-out quantity.', 'warning', 'Validation Error');
+    // Validate that at least some quantity is being received
+    if (totalReceived === 0) {
+        showAlert('You must receive at least some quantity.', 'warning', 'Validation Error');
         return;
     }
 
+    // Validate that received quantity doesn't exceed ordered
+    if (totalReceived > totalOrdered) {
+        showAlert('Received quantity cannot exceed the transfer quantity.', 'warning', 'Validation Error');
+        return;
+    }
+
+    // Validate locations for items with quantity > 0
     for (const item of receiptItems) {
         if (item.receivedQty > 0 && !item.locationId) {
             showAlert(`Please select a storage location for ${item.productName}.`, 'warning', 'Validation Error');
@@ -115,7 +359,13 @@ async function confirmTransferStockIn() {
         }
     }
 
-    showConfirm('Are you sure you want to confirm stock-in for this transfer?', async () => {
+    // Determine if this is a partial or full receipt
+    const isPartial = totalReceived < totalOrdered;
+    const confirmMessage = isPartial
+        ? `You are receiving ${totalReceived} out of ${totalOrdered} units.\nThis is a PARTIAL receipt. The transfer will remain active for the remaining quantity.\n\nProceed with partial stock-in?`
+        : `You are receiving all ${totalReceived} units.\nThis will COMPLETE the transfer.\n\nProceed with stock-in?`;
+
+    showConfirm(confirmMessage, async () => {
         const requestData = {
             transferId: transferId,
             warehouseId: warehouseId,

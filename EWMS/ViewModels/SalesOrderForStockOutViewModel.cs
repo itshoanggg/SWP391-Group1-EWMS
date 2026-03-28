@@ -16,5 +16,6 @@ namespace EWMS.ViewModels
         public bool HasStockOutReceipt { get; set; }
         public int? StockOutReceiptId { get; set; }
         public List<SalesOrderDetailViewModel> Details { get; set; } = new List<SalesOrderDetailViewModel>();
+        public bool IsTransfer { get; set; }
     }
 }

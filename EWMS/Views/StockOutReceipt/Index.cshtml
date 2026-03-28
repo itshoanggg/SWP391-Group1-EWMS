@@ -30,90 +30,53 @@
     </div>
 }
 
-@{
-    var pendingTransfers = ViewBag.PendingTransferStockOuts as List<EWMS.ViewModels.PendingTransferReceiptViewModel>
-        ?? new List<EWMS.ViewModels.PendingTransferReceiptViewModel>();
-}
-
-@if (pendingTransfers.Any())
-{
-    <div class="card mb-4">
-        <div class="card-header">
-            <h3 class="mb-0">Pending Transfer Stock-Out</h3>
-        </div>
-        <div class="table-container">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Transfer</th>
-                        <th>Destination Warehouse</th>
-                        <th>Products</th>
-                        <th>Total Qty</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var transfer in pendingTransfers)
-                    {
-                        <tr>
-                            <td><strong>TR-@transfer.TransferId.ToString("D4")</strong></td>
-                            <td>@transfer.CounterpartyWarehouseName</td>
-                            <td>@transfer.ProductSummary</td>
-                            <td>@transfer.TotalQuantity</td>
-                            <td>
-                                <span class="badge @(transfer.IsProcessed ? "badge-completed" : "badge-pending")">
-                                    @(transfer.IsProcessed ? "Processed" : transfer.Status)
-                                </span>
-                            </td>
-                            <td>
-                                @if (transfer.IsProcessed)
-                                {
-                                    <a class="btn btn-success btn-sm" href="@Url.Action("Details", "Transfer", new { id = transfer.TransferId })">
-                                        <i class="bi bi-eye"></i> View Transfer
-                                    </a>
-                                }
-                                else
-                                {
-                                    <a class="btn btn-warning btn-sm" href="@Url.Action("CreateTransfer", new { transferId = transfer.TransferId })">
-                                        <i class="bi bi-plus-circle"></i> Process Stock-Out
-                                    </a>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    </div>
-}
-
-<!-- Pending Sales Orders Card -->
+<!-- Pending Orders Card -->
 <div class="card">
-    <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-        <h3 class="mb-0">Pending Orders List</h3>
-        <form asp-action="Index" method="get" class="w-100 mt-2">
-            <div class="row g-2">
-                <div class="col-md-4">
-                    <input type="text" name="customer" value="@Model.FilterCustomer" class="form-control" placeholder="Customer name or phone" />
-                </div>
-                <div class="col-md-2">
-                    <select name="status" class="form-select">
-                        <option value="" selected="@(string.IsNullOrEmpty(Model.FilterStatus) ? "selected" : null)">All Status</option>
-                        <option value="Pending" selected="@(Model.FilterStatus == "Pending" ? "selected" : null)">Pending</option>
-                        <option value="Partial" selected="@(Model.FilterStatus == "Partial" ? "selected" : null)">Partial</option>
-                    </select>
-                </div>
-                <div class="col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-outline-primary">Filter</button>
-                    <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
-                </div>
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0">Pending Orders</h3>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-primary active" id="btnSalesOrders" onclick="showSalesOrders()">
+                    <i class="bi bi-cart"></i> Sales Orders
+                </button>
+                <button type="button" class="btn btn-outline-primary" id="btnTransferOrders" onclick="showTransferOrders()">
+                    <i class="bi bi-arrow-left-right"></i> Transfer Orders
+                </button>
             </div>
-        </form>
+        </div>
+        
+        <!-- Sales Orders Filter - Full width row below -->
+        <div id="salesOrderFilters">
+            <form asp-action="Index" method="get" id="filterForm">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label small">Customer Name or Phone</label>
+                        <input type="text" name="customer" value="@Model.FilterCustomer" class="form-control" placeholder="Search customer..." />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Status</label>
+                        <select name="status" class="form-select">
+                            <option value="" selected="@(string.IsNullOrEmpty(Model.FilterStatus) ? "selected" : null)">All</option>
+                            <option value="Pending" selected="@(Model.FilterStatus == "Pending" ? "selected" : null)">Pending</option>
+                            <option value="Partial" selected="@(Model.FilterStatus == "Partial" ? "selected" : null)">Partial</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex gap-2">
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="bi bi-funnel"></i> Filter
+                        </button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Reset
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
-
-    <div class="table-container">
-        <table class="table" id="ordersTable">
+    
+    <div class="card-body">
+        <!-- Sales Orders Table -->
+        <table class="table" id="salesOrdersTable">
             <thead>
                 <tr>
                     <th>Order ID</th>
@@ -151,23 +114,25 @@
                                 }
                             </td>
                             <td>
-                                <button class="btn btn-primary btn-sm" onclick="viewOrderDetail(@order.SalesOrderId)">
-                                    <i class="bi bi-eye"></i> View Details
-                                </button>
-                                @if (order.HasStockOutReceipt && order.StockOutReceiptId.HasValue)
-                                {
-                                    <a href="@Url.Action("Details", new { id = order.StockOutReceiptId })" 
-                                       class="btn btn-success btn-sm">
-                                        <i class="bi bi-file-earmark-check"></i> View Receipt
-                                    </a>
-                                }
-                                else
-                                {
-                                    <a href="@Url.Action("Create", new { orderId = order.SalesOrderId })" 
-                                       class="btn btn-warning btn-sm">
-                                        <i class="bi bi-plus-circle"></i> Create Receipt
-                                    </a>
-                                }
+                                <div class="d-flex gap-1 flex-wrap">
+                                    <button class="btn btn-primary btn-sm" onclick="viewOrderDetail(@order.SalesOrderId)">
+                                        <i class="bi bi-eye"></i> Details
+                                    </button>
+                                    @if (order.HasStockOutReceipt && order.StockOutReceiptId.HasValue)
+                                    {
+                                        <a href="@Url.Action("Details", new { id = order.StockOutReceiptId })" 
+                                           class="btn btn-success btn-sm">
+                                            <i class="bi bi-file-earmark-check"></i> Receipt
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <a href="@Url.Action("Create", new { orderId = order.SalesOrderId })" 
+                                           class="btn btn-warning btn-sm">
+                                            <i class="bi bi-plus-circle"></i> Create
+                                        </a>
+                                    }
+                                </div>
                             </td>
                         </tr>
                     }
@@ -177,31 +142,115 @@
                     <tr>
                         <td colspan="7" class="text-center text-muted py-5">
                             <i class="bi bi-inbox" style="font-size: 48px; opacity: 0.3;"></i>
-                            <p class="mt-2 mb-0">No pending orders</p>
+                            <p class="mt-2 mb-0">No pending sales orders</p>
                         </td>
                     </tr>
                 }
             </tbody>
         </table>
-        @if (Model.TotalPages > 1)
-        {
-            <nav aria-label="Page navigation" class="mt-3">
-                <ul class="pagination justify-content-center">
-                    <li class="page-item @(Model.Page <= 1 ? "disabled" : null)">
-                        <a class="page-link" asp-action="Index" asp-route-customer="@Model.FilterCustomer" asp-route-status="@Model.FilterStatus" asp-route-page="@(Model.Page - 1)">Previous</a>
-                    </li>
-                    @for (int i = 1; i <= Model.TotalPages; i++)
+
+        <!-- Transfer Orders Table -->
+        <table class="table" id="transferOrdersTable" style="display: none;">
+            <thead>
+                <tr>
+                    <th style="width: 10%">Transfer ID</th>
+                    <th style="width: 20%">Destination Warehouse</th>
+                    <th style="width: 15%">Products</th>
+                    <th style="width: 10%">Total Quantity</th>
+                    <th style="width: 12%">Requested Date</th>
+                    <th style="width: 10%">Status</th>
+                    <th style="width: 23%">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.TransferOrders != null && Model.TransferOrders.Any())
+                {
+                    @foreach (var transfer in Model.TransferOrders)
                     {
-                        <li class="page-item @(i == Model.Page ? "active" : null)">
-                            <a class="page-link" asp-action="Index" asp-route-customer="@Model.FilterCustomer" asp-route-status="@Model.FilterStatus" asp-route-page="@i">@i</a>
-                        </li>
+                        <tr data-status="@transfer.Status" data-created="@(transfer.RequestedDate?.ToString("yyyy-MM-dd") ?? "")">
+                            <td><strong>@transfer.TransferNumber</strong></td>
+                            <td>@transfer.DestinationWarehouse</td>
+                            <td>@Html.Raw(transfer.ProductSummary)</td>
+                            <td><strong>@transfer.TotalQuantity</strong></td>
+                            <td>@(transfer.RequestedDate?.ToString("dd/MM/yyyy") ?? "N/A")</td>
+                            <td>
+                                @if (transfer.Status == "Pending")
+                                {
+                                    <span class="badge badge-pending">Pending</span>
+                                }
+                                else if (transfer.Status == "Approved")
+                                {
+                                    <span class="badge badge-partial">Approved</span>
+                                }
+                                else if (transfer.Status == "Partial")
+                                {
+                                    <span class="badge badge-partial">Partial</span>
+                                }
+                                else if (transfer.Status == "In Transit")
+                                {
+                                    <span class="badge bg-info">In Transit</span>
+                                }
+                                else if (transfer.Status == "Completed")
+                                {
+                                    <span class="badge badge-completed">Completed</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="d-flex gap-1 flex-wrap">
+                                    <button class="btn btn-primary btn-sm" onclick="viewTransferDetail(@transfer.TransferId)">
+                                        <i class="bi bi-eye"></i> Details
+                                    </button>
+                                    @if (transfer.HasStockOutReceipt && transfer.StockOutReceiptId.HasValue)
+                                    {
+                                        <a href="@Url.Action("Details", new { id = transfer.StockOutReceiptId })" 
+                                           class="btn btn-success btn-sm">
+                                            <i class="bi bi-file-earmark-check"></i> Receipt
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <a href="@Url.Action("Create", new { orderId = transfer.TransferId, orderType = "transfer" })" 
+                                           class="btn btn-warning btn-sm">
+                                            <i class="bi bi-plus-circle"></i> Create
+                                        </a>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
                     }
-                    <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : null)">
-                        <a class="page-link" asp-action="Index" asp-route-customer="@Model.FilterCustomer" asp-route-status="@Model.FilterStatus" asp-route-page="@(Model.Page + 1)">Next</a>
-                    </li>
-                </ul>
-            </nav>
-        }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox" style="font-size: 48px; opacity: 0.3;"></i>
+                            <p class="mt-2 mb-0">No pending transfer orders</p>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div id="salesOrderPagination">
+            @if (Model.TotalPages > 1)
+            {
+                <nav aria-label="Page navigation" class="mt-3">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item @(Model.Page <= 1 ? "disabled" : null)">
+                            <a class="page-link" asp-action="Index" asp-route-customer="@Model.FilterCustomer" asp-route-status="@Model.FilterStatus" asp-route-page="@(Model.Page - 1)">Previous</a>
+                        </li>
+                        @for (int i = 1; i <= Model.TotalPages; i++)
+                        {
+                            <li class="page-item @(i == Model.Page ? "active" : null)">
+                                <a class="page-link" asp-action="Index" asp-route-customer="@Model.FilterCustomer" asp-route-status="@Model.FilterStatus" asp-route-page="@i">@i</a>
+                            </li>
+                        }
+                        <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : null)">
+                            <a class="page-link" asp-action="Index" asp-route-customer="@Model.FilterCustomer" asp-route-status="@Model.FilterStatus" asp-route-page="@(Model.Page + 1)">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+        </div>
     </div>
 </div>
 
@@ -374,10 +423,33 @@
             }
         }
 
+        async function viewTransferDetail(transferId) {
+            // Redirect to transfer details page with return URL
+            window.location.href = `/Transfer/Details/${transferId}?returnUrl=${encodeURIComponent('/StockOutReceipt/Index')}`;
+        }
+
         function goToCreateReceipt() {
             if (currentOrderId) {
                 window.location.href = `/StockOutReceipt/Create?orderId=${currentOrderId}`;
             }
+        }
+
+        function showSalesOrders() {
+            document.getElementById('salesOrdersTable').style.display = 'table';
+            document.getElementById('transferOrdersTable').style.display = 'none';
+            document.getElementById('salesOrderFilters').style.display = 'block';
+            document.getElementById('salesOrderPagination').style.display = 'block';
+            document.getElementById('btnSalesOrders').classList.add('active');
+            document.getElementById('btnTransferOrders').classList.remove('active');
+        }
+
+        function showTransferOrders() {
+            document.getElementById('salesOrdersTable').style.display = 'none';
+            document.getElementById('transferOrdersTable').style.display = 'table';
+            document.getElementById('salesOrderFilters').style.display = 'none';
+            document.getElementById('salesOrderPagination').style.display = 'none';
+            document.getElementById('btnSalesOrders').classList.remove('active');
+            document.getElementById('btnTransferOrders').classList.add('active');
         }
 
         document.getElementById('statusFilter').addEventListener('change', applyFilters);

@@ -160,6 +160,33 @@
 
             const select = line.querySelector('.product-select');
             const selectedOption = select.options[select.selectedIndex];
+            const selectedProductId = select.value;
+            
+            // Check for duplicate products
+            if (selectedProductId) {
+                const allSelects = document.querySelectorAll('.product-select');
+                let isDuplicate = false;
+                
+                allSelects.forEach(s => {
+                    // Check if another select (not this one) has the same product
+                    if (s !== select && s.value === selectedProductId) {
+                        isDuplicate = true;
+                    }
+                });
+                
+                if (isDuplicate) {
+                    alert('❌ This product has already been selected! Please choose a different product.');
+                    // Reset the selection
+                    select.value = '';
+                    const priceInputHidden = line.querySelector('.price-input-hidden');
+                    const priceInputDisplay = line.querySelector('.price-input-display');
+                    priceInputHidden.value = '';
+                    priceInputDisplay.value = '';
+                    line.querySelector('.total-input').value = '';
+                    return;
+                }
+            }
+            
             const price = selectedOption.getAttribute('data-price');
             const priceInputHidden = line.querySelector('.price-input-hidden');
             const priceInputDisplay = line.querySelector('.price-input-display');

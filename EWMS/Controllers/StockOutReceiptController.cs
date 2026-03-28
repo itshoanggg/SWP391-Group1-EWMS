@@ -40,7 +40,6 @@ namespace EWMS.Controllers
                     warehouseId, customer, status, page, pageSize);
 
             ViewBag.WarehouseId = warehouseId;
-            ViewBag.PendingTransferStockOuts = await _transferService.GetPendingTransferStockOutAsync(warehouseId);
 
             return View(viewModel);
         }
@@ -138,17 +137,8 @@ namespace EWMS.Controllers
             return View(receipt);
         }
 
-        public async Task<IActionResult> Create(int orderId)
+        public async Task<IActionResult> Create(int orderId, string? orderType = null)
         {
-            var order =
-                await _stockOutReceiptService.GetSalesOrderForStockOutAsync(orderId);
-
-            if (order == null)
-            {
-                TempData["ErrorMessage"] = "Order not found!";
-                return RedirectToAction(nameof(Index));
-            }
-
             var userId = _userService.GetCurrentUserId();
             if (userId == 0) return RedirectToAction("Login", "Account");
             int warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
@@ -159,10 +149,41 @@ namespace EWMS.Controllers
             }
 
             var warehouseName = await _userService.GetWarehouseNameByUserIdAsync(userId);
-
             ViewBag.WarehouseId = warehouseId;
             ViewBag.WarehouseName = warehouseName ?? "Unknown";
 
+            // Handle transfer orders
+            if (orderType == "transfer")
+            {
+                try
+                {
+                    var transferModel = await _transferService.GetTransferForStockOutAsync(orderId, warehouseId);
+                    if (transferModel == null)
+                    {
+                        TempData["ErrorMessage"] = "Transfer not found or cannot be processed.";
+                        return RedirectToAction(nameof(Index));
+                    }
+                    
+                    ViewBag.OrderType = "transfer";
+                    ViewBag.IsTransfer = true;
+                    return View(transferModel);
+                }
+                catch (Exception ex)
+                {
+                    TempData["ErrorMessage"] = ex.Message;
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+
+            // Handle sales orders
+            var order = await _stockOutReceiptService.GetSalesOrderForStockOutAsync(orderId);
+            if (order == null)
+            {
+                TempData["ErrorMessage"] = "Order not found!";
+                return RedirectToAction(nameof(Index));
+            }
+
+            ViewBag.OrderType = "sales";
             return View(order);
         }
 
@@ -198,73 +219,94 @@ namespace EWMS.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(CreateStockOutReceiptViewModel model)
+        public async Task<IActionResult> Create(CreateStockOutReceiptViewModel model, string? orderType = null)
         {
             var userId = _userService.GetCurrentUserId();
             if (userId == 0) return RedirectToAction("Login", "Account");
             
             if (!ModelState.IsValid)
             {
-                TempData["ErrorMessage"] =
-                    "Please check the stock out receipt information!";
-
-                var order =
-                    await _stockOutReceiptService.GetSalesOrderForStockOutAsync(model.SalesOrderId);
-
+                TempData["ErrorMessage"] = "Please check the stock out receipt information!";
                 var warehouseName = await _userService.GetWarehouseNameByUserIdAsync(userId);
-
                 ViewBag.WarehouseId = model.WarehouseId;
                 ViewBag.WarehouseName = warehouseName ?? "Unknown";
+                ViewBag.OrderType = orderType ?? "sales";
 
+                if (orderType == "transfer")
+                {
+                    var transfer = await _transferService.GetTransferForStockOutAsync(model.SalesOrderId, model.WarehouseId);
+                    return View(transfer);
+                }
+                
+                var order = await _stockOutReceiptService.GetSalesOrderForStockOutAsync(model.SalesOrderId);
                 return View(order);
             }
 
             if (model.Details == null || !model.Details.Any())
             {
-                TempData["ErrorMessage"] =
-                    "Please select pickup location for all products!";
-
-                var order =
-                    await _stockOutReceiptService.GetSalesOrderForStockOutAsync(model.SalesOrderId);
-
+                TempData["ErrorMessage"] = "Please select pickup location for all products!";
                 var warehouseName = await _userService.GetWarehouseNameByUserIdAsync(userId);
-
                 ViewBag.WarehouseId = model.WarehouseId;
                 ViewBag.WarehouseName = warehouseName ?? "Unknown";
+                ViewBag.OrderType = orderType ?? "sales";
 
+                if (orderType == "transfer")
+                {
+                    var transfer = await _transferService.GetTransferForStockOutAsync(model.SalesOrderId, model.WarehouseId);
+                    return View(transfer);
+                }
+
+                var order = await _stockOutReceiptService.GetSalesOrderForStockOutAsync(model.SalesOrderId);
                 return View(order);
             }
 
             try
             {
-                var result =
-                    await _stockOutReceiptService.CreateStockOutReceiptAsync(
-                        model, userId);
+                // Handle transfer orders
+                if (orderType == "transfer")
+                {
+                    var transferModel = new CreateTransferStockOutViewModel
+                    {
+                        TransferId = model.SalesOrderId,
+                        WarehouseId = model.WarehouseId,
+                        IssuedDate = model.IssuedDate,
+                        Details = model.Details
+                    };
+                    
+                    var receiptId = await _transferService.ProcessTransferStockOutAsync(transferModel, userId);
+                    TempData["SuccessMessage"] = "Transfer stock-out processed successfully.";
+                    return RedirectToAction(nameof(Details), new { id = receiptId });
+                }
+
+                // Handle sales orders
+                var result = await _stockOutReceiptService.CreateStockOutReceiptAsync(model, userId);
 
                 if (result.Success)
                 {
                     TempData["SuccessMessage"] = result.Message;
-                    return RedirectToAction(nameof(Details),
-                        new { id = result.ReceiptId });
+                    return RedirectToAction(nameof(Details), new { id = result.ReceiptId });
                 }
 
                 TempData["ErrorMessage"] = result.Message;
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] =
-                    $"System error: {ex.Message}";
+                TempData["ErrorMessage"] = $"System error: {ex.Message}";
             }
-
-            var retryOrder =
-                await _stockOutReceiptService.GetSalesOrderForStockOutAsync(model.SalesOrderId);
 
             int retryWarehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             var retryWarehouseName = await _userService.GetWarehouseNameByUserIdAsync(userId);
-            
             ViewBag.WarehouseId = retryWarehouseId;
             ViewBag.WarehouseName = retryWarehouseName ?? "Unknown";
+            ViewBag.OrderType = orderType ?? "sales";
 
+            if (orderType == "transfer")
+            {
+                var retryTransfer = await _transferService.GetTransferForStockOutAsync(model.SalesOrderId, model.WarehouseId);
+                return View(retryTransfer);
+            }
+
+            var retryOrder = await _stockOutReceiptService.GetSalesOrderForStockOutAsync(model.SalesOrderId);
             return View(retryOrder);
         }
 

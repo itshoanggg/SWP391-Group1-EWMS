@@ -279,7 +279,7 @@
             document.getElementById('globalSuccess').style.display = 'none';
         }
 
-        function onWarehouseChange() {
+        async function onWarehouseChange() {
             const fromWh = document.getElementById('fromWarehouse').value;
             const toWh = document.getElementById('toWarehouse').value;
             const section = document.getElementById('productsSection');
@@ -289,6 +289,9 @@
                 rackCache = {};
                 locationCache = {};
                 stockLocationCache = {};
+                
+                // Load products for source warehouse
+                await loadProductsForWarehouse(fromWh);
             } else {
                 section.style.display = 'none';
                 if (fromWh && toWh && fromWh === toWh) {
@@ -296,6 +299,26 @@
                 } else {
                     hideGlobalMessages();
                 }
+            }
+        }
+        
+        async function loadProductsForWarehouse(warehouseId) {
+            try {
+                const res = await fetch(`/Transfer/GetProductsByWarehouse?warehouseId=${warehouseId}`);
+                const products = await res.json();
+                if (products.error) {
+                    showGlobalError(products.error);
+                    productData = [];
+                } else {
+                    productData = products.map(p => ({
+                        productId: p.productId,
+                        productName: p.productName,
+                        unit: p.sku || ''
+                    }));
+                }
+            } catch (err) {
+                showGlobalError('Failed to load products: ' + err.message);
+                productData = [];
             }
         }
 
@@ -378,7 +401,12 @@
             const fromWh = document.getElementById('fromWarehouse').value;
             const stockLocs = await loadProductStockLocations(fromWh, productId);
             const totalAvail = stockLocs.reduce((s, l) => s + l.availableQuantity, 0);
-            document.getElementById(`availableInfo-${id}`).textContent = `Total available: ${totalAvail} units`;
+            
+            // Store total available for this product
+            const availableInfoEl = document.getElementById(`availableInfo-${id}`);
+            availableInfoEl.textContent = `Total available: ${totalAvail} units`;
+            availableInfoEl.dataset.totalAvailable = totalAvail;
+            
             document.getElementById(`btnAddSplit-${id}`).disabled = false;
 
             // Show rack-level breakdown
@@ -427,7 +455,7 @@
             const toRacks = await loadRacks(toWh);
 
             const html = `
-                <div class="split-row" id="split-${id}-${splitId}">
+                <div class="split-row" id="split-${id}-${splitId}" data-split="${splitId}">
                     <span class="row-index">#${splitId}</span>
                     <button type="button" class="btn btn-sm btn-outline-danger position-absolute" 
                             style="top:5px;right:5px;" onclick="removeSplit(${id},${splitId})">
@@ -436,7 +464,7 @@
                     <div class="row mb-2">
                         <div class="col-md-3">
                             <label class="form-label" style="font-size:12px;">Source Rack</label>
-                            <select class="form-select form-select-sm from-rack" data-split="${splitId}" 
+                            <select class="form-select form-select-sm from-rack" 
                                     onchange="onFromRackChange(${id},${splitId})" required>
                                 <option value="">-- Rack --</option>
                                 ${fromRacks.map(r => `<option value="${r}">${r}</option>`).join('')}
@@ -444,7 +472,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label" style="font-size:12px;">Source Location</label>
-                            <select class="form-select form-select-sm from-location" data-split="${splitId}" 
+                            <select class="form-select form-select-sm from-location" 
                                     onchange="onFromLocationChange(${id},${splitId})" required>
                                 <option value="">-- Location --</option>
                             </select>
@@ -452,12 +480,12 @@
                         <div class="col-md-2">
                             <label class="form-label" style="font-size:12px;">Qty</label>
                             <input type="number" class="form-control form-control-sm split-qty" 
-                                   data-split="${splitId}" min="1" value="1"
-                                   onchange="validateSplit(${id})" required />
+                                   min="1" value="1"
+                                   oninput="validateSplit(${id})" required />
                         </div>
                         <div class="col-md-2">
                             <label class="form-label" style="font-size:12px;">Dest Rack</label>
-                            <select class="form-select form-select-sm to-rack" data-split="${splitId}" 
+                            <select class="form-select form-select-sm to-rack" 
                                     onchange="onToRackChange(${id},${splitId})" required>
                                 <option value="">-- Rack --</option>
                                 ${toRacks.map(r => `<option value="${r}">${r}</option>`).join('')}
@@ -465,7 +493,8 @@
                         </div>
                         <div class="col-md-2">
                             <label class="form-label" style="font-size:12px;">Dest Location</label>
-                            <select class="form-select form-select-sm to-location" data-split="${splitId}" required>
+                            <select class="form-select form-select-sm to-location" 
+                                    onchange="onToLocationChange(${id},${splitId})" required>
                                 <option value="">-- Location --</option>
                             </select>
                         </div>
@@ -475,6 +504,7 @@
                 </div>
             `;
             document.getElementById(`splits-${id}`).insertAdjacentHTML('beforeend', html);
+            validateSplit(id);
         }
 
         function removeSplit(id, splitId) {
@@ -545,7 +575,10 @@
             const qtyInput = row.querySelector('.split-qty');
             const stockInfoEl = document.getElementById(`stockInfo-${id}-${splitId}`);
 
-            if (!locSelect.value) return;
+            if (!locSelect.value) {
+                validateSplit(id);
+                return;
+            }
 
             const selectedOpt = locSelect.options[locSelect.selectedIndex];
             const available = parseInt(selectedOpt.dataset.available || '0');
@@ -558,6 +591,10 @@
             stockInfoEl.innerHTML = `<i class="bi bi-check-circle me-1" style="color:#28a745;"></i>Selected location has <strong>${available} units</strong> available. Max you can transfer from here: <strong>${available}</strong>`;
             stockInfoEl.style.display = 'block';
 
+            validateSplit(id);
+        }
+        
+        function onToLocationChange(id, splitId) {
             validateSplit(id);
         }
 
@@ -598,17 +635,24 @@
             let allValid = splits.length > 0;
             let errorMessages = [];
 
-            splits.forEach(split => {
+            splits.forEach((split, index) => {
+                const splitNum = index + 1;
                 const qty = parseInt(split.querySelector('.split-qty').value) || 0;
                 const fromLoc = split.querySelector('.from-location');
                 const toLoc = split.querySelector('.to-location');
+                const fromRack = split.querySelector('.from-rack');
+                const toRack = split.querySelector('.to-rack');
                 const fromLocVal = fromLoc.value;
                 const toLocVal = toLoc.value;
 
-                if (qty < 1) {
+                // Check if all fields are filled
+                if (!fromRack.value || !fromLocVal || !toRack.value || !toLocVal || qty < 1) {
                     allValid = false;
                 }
-                splitTotal += qty;
+                
+                if (qty > 0) {
+                    splitTotal += qty;
+                }
 
                 // Validate source stock
                 if (fromLocVal && qty > 0) {
@@ -616,7 +660,7 @@
                     const available = parseInt(fromOpt.dataset.available || '0');
                     if (qty > available) {
                         allValid = false;
-                        errorMessages.push(`Split #${split.dataset.split}: You entered ${qty} but this location only has ${available} units available.`);
+                        errorMessages.push(`Split #${splitNum}: You entered ${qty} but this location only has ${available} units available.`);
                     }
                 }
 
@@ -626,7 +670,7 @@
                     const space = parseInt(toOpt.dataset.space || '0');
                     if (qty > space) {
                         allValid = false;
-                        errorMessages.push(`Split #${split.dataset.split}: Destination location has space for only ${space} more units.`);
+                        errorMessages.push(`Split #${splitNum}: Destination location has space for only ${space} more units.`);
                     }
                 }
             });
@@ -641,12 +685,10 @@
                 card.classList.remove('has-error');
             }
 
-            // Show running total
+            // Only show total available, no transferring message
             const availableInfoEl = document.getElementById(`availableInfo-${id}`);
-            const totalAvailText = availableInfoEl.textContent;
-            if (splits.length > 0) {
-                availableInfoEl.innerHTML = totalAvailText + ` | <span class="remaining-badge ${splitTotal > 0 ? 'remaining-ok' : ''}">Transferring: ${splitTotal} units across ${splits.length} rack line(s)</span>`;
-            }
+            const totalAvail = availableInfoEl.dataset.totalAvailable || '0';
+            availableInfoEl.innerHTML = `Total available: ${totalAvail} units`;
 
             document.getElementById(`btnConfirm-${id}`).disabled = !allValid;
             return allValid;
@@ -663,12 +705,22 @@
 
             const items = [];
             let totalQty = 0;
+            let hasInvalidSplit = false;
+            
             splits.forEach(split => {
-                const qty = parseInt(split.querySelector('.split-qty').value);
-                totalQty += qty;
-                const fromLocId = parseInt(split.querySelector('.from-location').value);
-                const toLocId = parseInt(split.querySelector('.to-location').value);
+                const qty = parseInt(split.querySelector('.split-qty').value) || 0;
+                const fromLocId = parseInt(split.querySelector('.from-location').value) || 0;
+                const toLocId = parseInt(split.querySelector('.to-location').value) || 0;
+                const fromRack = split.querySelector('.from-rack').value;
+                const toRack = split.querySelector('.to-rack').value;
 
+                // Skip empty/incomplete splits
+                if (!fromRack || !fromLocId || !toRack || !toLocId || qty < 1) {
+                    hasInvalidSplit = true;
+                    return;
+                }
+
+                totalQty += qty;
                 const fromLoc = split.querySelector('.from-location');
                 const toLoc = split.querySelector('.to-location');
                 const fromLocText = fromLoc.options[fromLoc.selectedIndex].text;
@@ -682,6 +734,12 @@
                     toLocationText: toLocText
                 });
             });
+            
+            // Don't confirm if there are no valid items
+            if (items.length === 0 || hasInvalidSplit) {
+                showGlobalError('Please complete all rack line fields before confirming.');
+                return;
+            }
 
             // Remove existing entry for this product (if re-confirming)
             confirmedItems = confirmedItems.filter(x => x.productCardId !== id);

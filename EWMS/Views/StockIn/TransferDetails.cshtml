@@ -61,9 +61,11 @@
                         <tr>
                             <th style="width: 10%">SKU</th>
                             <th style="width: 25%">PRODUCT NAME</th>
-                            <th style="width: 10%">TRANSFER QTY</th>
-                            <th style="width: 10%">ACTUAL RECEIVED</th>
-                            <th style="width: 35%">STORAGE LOCATION</th>
+                            <th style="width: 10%">SHIPPED QTY</th>
+                            <th style="width: 10%">RECEIVED</th>
+                            <th style="width: 10%">REMAINING</th>
+                            <th style="width: 10%">RECEIVE NOW</th>
+                            <th style="width: 25%">STORAGE LOCATION</th>
                         </tr>
                     </thead>
                     <tbody id="products-tbody">
@@ -76,16 +78,18 @@
                                 <td>
                                     <div class="product-name">@detail.ProductName</div>
                                 </td>
-                                <td><span class="badge bg-secondary">@detail.Quantity</span></td>
+                                <td><span class="badge bg-info">@detail.Quantity</span></td>
+                                <td><span class="badge bg-success">@detail.ReceivedQuantity</span></td>
+                                <td><span class="badge bg-warning text-dark">@detail.RemainingQuantity</span></td>
                                 <td>
                                     <input type="number"
                                            class="form-control qty-input"
                                            id="qty-@rowId"
                                            data-product-id="@detail.ProductId"
                                            data-row-id="@rowId"
-                                           value="@detail.Quantity"
+                                           value="@detail.RemainingQuantity"
                                            min="0"
-                                           max="@detail.Quantity"
+                                           max="@detail.RemainingQuantity"
                                            onchange="handleQuantityChange(this)">
                                 </td>
                                 <td>
@@ -178,7 +182,8 @@
                 productName = d.ProductName,
                 categoryName = "",
                 orderedQty = d.Quantity,
-                remainingQty = d.Quantity,
+                receivedQty = d.ReceivedQuantity,
+                remainingQty = d.RemainingQuantity,
                 unitPrice = d.UnitPrice,
                 sku = $"SKU-{d.ProductId:D5}"
             })));

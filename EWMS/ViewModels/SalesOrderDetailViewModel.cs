@@ -8,5 +8,7 @@
         public decimal UnitPrice { get; set; }
         public decimal TotalPrice { get; set; }
         public string Unit { get; set; } = string.Empty;
+        public int? PrefilledLocationId { get; set; }
+        public string? PrefilledLocationName { get; set; }
     }
 }

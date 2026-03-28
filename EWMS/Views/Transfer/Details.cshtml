@@ -77,9 +77,18 @@
             <p class="text-muted mb-0">Cross-warehouse transfer details</p>
         </div>
         <div class="d-flex gap-2">
-            <a href="@Url.Action("Index", "Transfer")" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left me-2"></i>Back to List
-            </a>
+            @if (ViewBag.ReturnUrl != null)
+            {
+                <a href="@ViewBag.ReturnUrl" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-2"></i>Back to List
+                </a>
+            }
+            else
+            {
+                <a href="@Url.Action("Index", "Transfer")" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-2"></i>Back to List
+                </a>
+            }
         </div>
     </div>
 

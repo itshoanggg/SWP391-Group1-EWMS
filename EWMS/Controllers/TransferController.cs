@@ -87,7 +87,7 @@ namespace EWMS.Controllers
                 return Json(new
                 {
                     success = true,
-                    message = $"Transfer TR-{transferId:D4} created and processed successfully! Stock-out and stock-in have been completed.",
+                    message = $"Transfer TR-{transferId:D4} created successfully with Pending status. The transfer will appear in StockOut for the source warehouse to process.",
                     transferId
                 });
             }
@@ -106,7 +106,7 @@ namespace EWMS.Controllers
             }
         }
 
-        public async Task<IActionResult> Details(int id)
+        public async Task<IActionResult> Details(int id, string? returnUrl = null)
         {
             var transfer = await _transferService.GetTransferByIdAsync(id);
             if (transfer == null)
@@ -122,6 +122,7 @@ namespace EWMS.Controllers
             ViewBag.Warehouses = warehouses;
             ViewBag.UserWarehouseId = warehouseId;
             ViewBag.IsManager = isManager;
+            ViewBag.ReturnUrl = returnUrl;
 
             return View(transfer);
         }

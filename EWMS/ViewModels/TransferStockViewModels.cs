@@ -71,7 +71,9 @@ namespace EWMS.ViewModels
         public int ProductId { get; set; }
         public string ProductName { get; set; } = string.Empty;
         public string Unit { get; set; } = string.Empty;
-        public int Quantity { get; set; }
+        public int Quantity { get; set; }  // Total shipped quantity
+        public int ReceivedQuantity { get; set; }  // Already received
+        public int RemainingQuantity { get; set; }  // Remaining to receive
         public decimal UnitPrice { get; set; }
     }
 

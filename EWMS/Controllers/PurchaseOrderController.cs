@@ -88,9 +88,16 @@ namespace EWMS.Controllers
                 "SupplierName"
             );
 
-            // Load all products for initial dropdown with additional data
+            // Load products that are available in this warehouse
+            var warehouseProducts = await _productRepository.Context.Inventories
+                .Where(i => i.Location.WarehouseId == warehouseId)
+                .Select(i => i.ProductId)
+                .Distinct()
+                .ToListAsync();
+            
             var allProducts = await _productRepository.Context.Products
                 .Include(p => p.Category)
+                .Where(p => warehouseProducts.Contains(p.ProductId))
                 .OrderBy(p => p.ProductName)
                 .ToListAsync();
             
