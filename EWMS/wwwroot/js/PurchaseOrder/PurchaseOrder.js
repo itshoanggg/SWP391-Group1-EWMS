@@ -328,9 +328,14 @@ function clearProductSelects() {
 ========================================================= */
 
 async function cancelPurchaseOrder(id) {
-    if (!confirm('Are you sure you want to cancel this order?')) {
-        return;
-    }
+    // Show confirmation modal
+    showCancelConfirmationModal(id);
+}
+
+async function confirmCancelOrder(id) {
+    // Hide the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('cancelOrderModal'));
+    modal.hide();
 
     try {
         const response = await fetch(`/PurchaseOrder/Cancel/${id}`, {
@@ -352,6 +357,49 @@ async function cancelPurchaseOrder(id) {
         console.error('Error:', error);
         showAlert('error', 'An error occurred while cancelling order');
     }
+}
+
+function showCancelConfirmationModal(orderId) {
+    // Check if modal already exists, if not create it
+    let modal = document.getElementById('cancelOrderModal');
+    if (!modal) {
+        const modalHtml = `
+            <div class="modal fade" id="cancelOrderModal" tabindex="-1" aria-labelledby="cancelOrderModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header bg-gradient-primary text-white">
+                            <h5 class="modal-title" id="cancelOrderModalLabel">
+                                <i class="fas fa-exclamation-triangle"></i> Cancel Purchase Order
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="mb-0">Are you sure you want to cancel this purchase order?</p>
+                            <p class="text-muted small mt-2">This action cannot be undone.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                <i class="fas fa-times"></i> No, Keep Order
+                            </button>
+                            <button type="button" class="btn btn-primary" id="confirmCancelBtn">
+                                <i class="fas fa-check"></i> Yes, Cancel Order
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        modal = document.getElementById('cancelOrderModal');
+    }
+
+    // Set up the confirm button click handler with the order ID
+    const confirmBtn = document.getElementById('confirmCancelBtn');
+    confirmBtn.onclick = () => confirmCancelOrder(orderId);
+
+    // Show the modal
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
 }
 
 /* =========================================================

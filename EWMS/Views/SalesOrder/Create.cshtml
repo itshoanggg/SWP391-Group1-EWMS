@@ -175,7 +175,7 @@
                 });
                 
                 if (isDuplicate) {
-                    alert('❌ This product has already been selected! Please choose a different product.');
+                    showDuplicateProductModal();
                     // Reset the selection
                     select.value = '';
                     const priceInputHidden = line.querySelector('.price-input-hidden');
@@ -337,6 +337,42 @@
             alertDiv.innerHTML = '';
         }
 
+        function showDuplicateProductModal() {
+            // Check if modal already exists, if not create it
+            let modal = document.getElementById('duplicateProductModal');
+            if (!modal) {
+                const modalHtml = `
+                    <div class="modal fade" id="duplicateProductModal" tabindex="-1" aria-labelledby="duplicateProductModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header bg-gradient-primary text-white">
+                                    <h5 class="modal-title" id="duplicateProductModalLabel">
+                                        <i class="fas fa-exclamation-triangle"></i> Duplicate Product
+                                    </h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="mb-0">This product has already been selected!</p>
+                                    <p class="text-muted small mt-2">Please choose a different product.</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+                                        <i class="fas fa-check"></i> OK
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                modal = document.getElementById('duplicateProductModal');
+            }
+
+            // Show the modal
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+        }
+
         function reindexFormInputs() {
             const productLines = document.querySelectorAll('.product-line');
             productLines.forEach((line, index) => {
@@ -415,6 +451,12 @@
             --success-color: #28a745;
             --danger-color: #dc3545;
             --warning-color: #ffc107;
+            --accent: #2c3e50;
+            --accent-hover: #34495e;
+        }
+
+        .bg-gradient-primary {
+            background: linear-gradient(180deg, var(--accent), var(--accent-hover));
         }
 
         .page-header {

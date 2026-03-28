@@ -1,0 +1,356 @@
+@startuml EWMS_Package_Diagram
+!theme plain
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+title EWMS - Package Diagram\nElectronic Warehouse Management System Architecture
+
+' Presentation Layer
+package "Presentation Layer" <<Rectangle>> #E3F2FD {
+    package "Views" <<Folder>> #BBDEFB {
+        component [Account Views] as AccountV
+        component [Product Views] as ProductV
+        component [Purchase Order Views] as POV
+        component [Sales Order Views] as SOV
+        component [Stock Views] as StockV
+        component [StockIn Views] as StockInV
+        component [StockOut Views] as StockOutV
+        component [Warehouse Views] as WarehouseV
+        component [Transfer Views] as TransferV
+        component [Reports Views] as ReportsV
+        component [User Views] as UserV
+    }
+    
+    package "Controllers" <<Folder>> #90CAF9 {
+        component [AccountController] as AccountC
+        component [ProductController] as ProductC
+        component [PurchaseOrderController] as POC
+        component [SalesOrderController] as SOC
+        component [StockController] as StockC
+        component [StockinController] as StockInC
+        component [StockOutReceiptController] as StockOutC
+        component [WarehouseController] as WarehouseC
+        component [TransferController] as TransferC
+        component [ReportsController] as ReportsC
+        component [UsersController] as UsersC
+        component [InventoryDashboardController] as DashboardC
+        component [HomeController] as HomeC
+    }
+    
+    package "ViewModels" <<Folder>> #64B5F6 {
+        component [LoginViewModels] as LoginVM
+        component [ProductViewModels] as ProductVM
+        component [PurchaseOrderViewModels] as POVM
+        component [SalesOrderViewModel] as SOVM
+        component [StockInViewModels] as StockInVM
+        component [StockOutReceiptViewModel] as StockOutVM
+        component [WarehouseViewModels] as WarehouseVM
+        component [TransferViewModels] as TransferVM
+        component [InventoryReportViewModels] as ReportVM
+        component [UserViewModels] as UserVM
+        component [StockHistoryViewModel] as StockHistoryVM
+    }
+}
+
+' Business Logic Layer
+package "Business Logic Layer" <<Rectangle>> #FFF9C4 {
+    package "Services" <<Folder>> #FFF59D {
+        component [UserService] as UserS
+        component [PurchaseOrderService] as POS
+        component [SalesOrderService] as SOS
+        component [StockInService] as StockInS
+        component [StockOutReceiptService] as StockOutS
+        component [StockService] as StockS
+        component [SupplierService] as SupplierS
+        component [WarehouseService] as WarehouseS
+        component [TransferService] as TransferS
+        component [DashboardService] as DashboardS
+        component [InventoryReportService] as ReportS
+        component [InventoryCheckService] as InventoryCheckS
+    }
+    
+    package "Services/Interfaces" <<Folder>> #FFF176 {
+        interface "IUserService" as IUserS
+        interface "IPurchaseOrderService" as IPOS
+        interface "ISalesOrderService" as ISOS
+        interface "IStockInService" as IStockInS
+        interface "IStockOutReceiptService" as IStockOutS
+        interface "IStockService" as IStockS
+        interface "ISupplierService" as ISupplierS
+        interface "IWarehouseService" as IWarehouseS
+        interface "ITransferService" as ITransferS
+        interface "IDashboardService" as IDashboardS
+        interface "IInventoryReportService" as IReportS
+        interface "IInventoryCheckService" as IInventoryCheckS
+    }
+}
+
+' Data Transfer Layer
+package "Data Transfer Layer" <<Rectangle>> #F8BBD0 {
+    package "DTOs" <<Folder>> #F48FB1 {
+        component [CommonDTOs] as CommonDTO
+        component [DashboardDTOs] as DashboardDTO
+        component [PurchaseOrderDTOs] as PODTO
+        component [StockDTOs] as StockDTO
+        component [UserDto] as UserDTO
+        component [InventoryCheckDto] as InventoryCheckDTO
+        component [InventoryCheckRequest] as InventoryCheckRequest
+        component [InventoryCheckResult] as InventoryCheckResult
+        component [LocationInventoryDto] as LocationInventoryDTO
+        component [ProductQuantityDto] as ProductQuantityDTO
+        component [PurchaseOrderAllocationDTO] as POAllocationDTO
+    }
+}
+
+' Data Access Layer
+package "Data Access Layer" <<Rectangle>> #C8E6C9 {
+    package "Repositories" <<Folder>> #A5D6A7 {
+        component [GenericRepository] as GenericRepo
+        component [ProductRepository] as ProductRepo
+        component [PurchaseOrderRepository] as PORepo
+        component [SalesOrderRepository] as SORepo
+        component [StockInRepository] as StockInRepo
+        component [StockOutReceiptRepository] as StockOutRepo
+        component [SupplierRepository] as SupplierRepo
+        component [WarehouseRepository] as WarehouseRepo
+        component [LocationRepository] as LocationRepo
+        component [InventoryRepository] as InventoryRepo
+        component [UserWarehouseRepository] as UserWarehouseRepo
+        component [UnitOfWork] as UnitOfWork
+    }
+    
+    package "Repositories/Interfaces" <<Folder>> #81C784 {
+        interface "IGenericRepository" as IGenericRepo
+        interface "IProductRepository" as IProductRepo
+        interface "IPurchaseOrderRepository" as IPORepo
+        interface "ISalesOrderRepository" as ISORepo
+        interface "IStockInRepository" as IStockInRepo
+        interface "IStockOutReceiptRepository" as IStockOutRepo
+        interface "ISupplierRepository" as ISupplierRepo
+        interface "IWarehouseRepository" as IWarehouseRepo
+        interface "ILocationRepository" as ILocationRepo
+        interface "IInventoryRepository" as IInventoryRepo
+        interface "IUserWarehouseRepository" as IUserWarehouseRepo
+        interface "IUnitOfWork" as IUnitOfWork
+    }
+    
+    package "Models" <<Folder>> #66BB6A {
+        component [EWMSDbContext] as DbContext
+        component [User] as UserM
+        component [Role] as RoleM
+        component [Product] as ProductM
+        component [ProductCategory] as CategoryM
+        component [PurchaseOrder] as POM
+        component [PurchaseOrderDetail] as PODM
+        component [SalesOrder] as SOM
+        component [SalesOrderDetail] as SODM
+        component [StockInReceipt] as StockInM
+        component [StockInDetail] as StockInDetailM
+        component [StockOutReceipt] as StockOutM
+        component [StockOutDetail] as StockOutDetailM
+        component [Warehouse] as WarehouseM
+        component [Location] as LocationM
+        component [Inventory] as InventoryM
+        component [Supplier] as SupplierM
+        component [TransferRequest] as TransferM
+        component [TransferDetail] as TransferDetailM
+        component [ActivityLog] as ActivityLogM
+        component [UserWarehouse] as UserWarehouseM
+    }
+}
+
+' External Layer
+package "External Dependencies" <<Rectangle>> #E0E0E0 {
+    database "SQL Server\nDatabase" as DB
+    component [ASP.NET Core\nFramework] as ASPNET
+    component [Entity Framework\nCore] as EF
+}
+
+' ===== RELATIONSHIPS =====
+
+' Controllers -> Services
+AccountC ..> IUserS : uses
+ProductC ..> IStockS : uses
+POC ..> IPOS : uses
+SOC ..> ISOS : uses
+StockInC ..> IStockInS : uses
+StockInC ..> IUserS : uses
+StockOutC ..> IStockOutS : uses
+StockOutC ..> IUserS : uses
+WarehouseC ..> IWarehouseS : uses
+TransferC ..> ITransferS : uses
+DashboardC ..> IDashboardS : uses
+ReportsC ..> IReportS : uses
+
+' Controllers -> ViewModels
+AccountC ..> LoginVM : uses
+ProductC ..> ProductVM : uses
+POC ..> POVM : uses
+SOC ..> SOVM : uses
+StockInC ..> StockInVM : uses
+StockOutC ..> StockOutVM : uses
+WarehouseC ..> WarehouseVM : uses
+TransferC ..> TransferVM : uses
+
+' Controllers -> Views
+AccountC --> AccountV : renders
+ProductC --> ProductV : renders
+POC --> POV : renders
+SOC --> SOV : renders
+StockInC --> StockInV : renders
+StockOutC --> StockOutV : renders
+WarehouseC --> WarehouseV : renders
+TransferC --> TransferV : renders
+ReportsC --> ReportsV : renders
+
+' Views -> ViewModels
+AccountV ..> LoginVM : binds
+ProductV ..> ProductVM : binds
+POV ..> POVM : binds
+SOV ..> SOVM : binds
+StockInV ..> StockInVM : binds
+StockOutV ..> StockOutVM : binds
+WarehouseV ..> WarehouseVM : binds
+TransferV ..> TransferVM : binds
+
+' Services implement Interfaces
+UserS ..|> IUserS : implements
+POS ..|> IPOS : implements
+SOS ..|> ISOS : implements
+StockInS ..|> IStockInS : implements
+StockOutS ..|> IStockOutS : implements
+StockS ..|> IStockS : implements
+SupplierS ..|> ISupplierS : implements
+WarehouseS ..|> IWarehouseS : implements
+TransferS ..|> ITransferS : implements
+DashboardS ..|> IDashboardS : implements
+ReportS ..|> IReportS : implements
+InventoryCheckS ..|> IInventoryCheckS : implements
+
+' Services -> Repositories
+POS ..> IUnitOfWork : uses
+SOS ..> IUnitOfWork : uses
+StockInS ..> IUnitOfWork : uses
+StockOutS ..> IUnitOfWork : uses
+StockS ..> IUnitOfWork : uses
+SupplierS ..> IUnitOfWork : uses
+WarehouseS ..> IUnitOfWork : uses
+TransferS ..> IUnitOfWork : uses
+DashboardS ..> IUnitOfWork : uses
+ReportS ..> IUnitOfWork : uses
+
+' Services -> DTOs
+POS ..> PODTO : uses
+SOS ..> CommonDTO : uses
+StockInS ..> StockDTO : uses
+StockOutS ..> StockDTO : uses
+DashboardS ..> DashboardDTO : uses
+ReportS ..> InventoryCheckDTO : uses
+InventoryCheckS ..> InventoryCheckRequest : uses
+InventoryCheckS ..> InventoryCheckResult : uses
+
+' Repositories implement Interfaces
+GenericRepo ..|> IGenericRepo : implements
+ProductRepo ..|> IProductRepo : implements
+PORepo ..|> IPORepo : implements
+SORepo ..|> ISORepo : implements
+StockInRepo ..|> IStockInRepo : implements
+StockOutRepo ..|> IStockOutRepo : implements
+SupplierRepo ..|> ISupplierRepo : implements
+WarehouseRepo ..|> IWarehouseRepo : implements
+LocationRepo ..|> ILocationRepo : implements
+InventoryRepo ..|> IInventoryRepo : implements
+UserWarehouseRepo ..|> IUserWarehouseRepo : implements
+UnitOfWork ..|> IUnitOfWork : implements
+
+' UnitOfWork -> Repositories
+UnitOfWork *-- IProductRepo
+UnitOfWork *-- IPORepo
+UnitOfWork *-- ISORepo
+UnitOfWork *-- IStockInRepo
+UnitOfWork *-- IStockOutRepo
+UnitOfWork *-- ISupplierRepo
+UnitOfWork *-- IWarehouseRepo
+UnitOfWork *-- ILocationRepo
+UnitOfWork *-- IInventoryRepo
+UnitOfWork *-- IUserWarehouseRepo
+
+' Repositories -> DbContext
+GenericRepo ..> DbContext : uses
+ProductRepo --|> GenericRepo : extends
+PORepo --|> GenericRepo : extends
+SORepo --|> GenericRepo : extends
+StockInRepo --|> GenericRepo : extends
+StockOutRepo --|> GenericRepo : extends
+SupplierRepo --|> GenericRepo : extends
+WarehouseRepo --|> GenericRepo : extends
+LocationRepo --|> GenericRepo : extends
+InventoryRepo --|> GenericRepo : extends
+UserWarehouseRepo --|> GenericRepo : extends
+
+' DbContext -> Models
+DbContext *-- UserM
+DbContext *-- RoleM
+DbContext *-- ProductM
+DbContext *-- CategoryM
+DbContext *-- POM
+DbContext *-- PODM
+DbContext *-- SOM
+DbContext *-- SODM
+DbContext *-- StockInM
+DbContext *-- StockInDetailM
+DbContext *-- StockOutM
+DbContext *-- StockOutDetailM
+DbContext *-- WarehouseM
+DbContext *-- LocationM
+DbContext *-- InventoryM
+DbContext *-- SupplierM
+DbContext *-- TransferM
+DbContext *-- TransferDetailM
+DbContext *-- ActivityLogM
+DbContext *-- UserWarehouseM
+
+' External Dependencies
+DbContext ..> EF : uses
+DbContext ..> DB : connects to
+ASPNET ..> Controllers : hosts
+
+' Legend
+legend right
+    |= Symbol |= Meaning |
+    | ..> | Uses / Depends on |
+    | --> | Renders / Returns |
+    | ..|> | Implements |
+    | --|> | Extends / Inherits |
+    | *-- | Contains / Aggregates |
+endlegend
+
+note top of "Presentation Layer"
+    **MVC Pattern**
+    Controllers handle HTTP requests,
+    use Services for business logic,
+    and return Views with ViewModels
+end note
+
+note top of "Business Logic Layer"
+    **Service Layer Pattern**
+    Services contain business logic,
+    orchestrate operations across
+    multiple repositories
+end note
+
+note top of "Data Access Layer"
+    **Repository Pattern + Unit of Work**
+    Repositories abstract data access,
+    UnitOfWork coordinates transactions,
+    Generic Repository provides base CRUD
+end note
+
+note top of "Data Transfer Layer"
+    **DTOs for Data Transfer**
+    Lightweight objects for
+    transferring data between layers
+    and external API responses
+end note
+
+@enduml
