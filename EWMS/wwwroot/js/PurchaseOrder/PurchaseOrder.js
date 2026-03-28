@@ -1,14 +1,9 @@
-﻿/* =========================================================
-   PURCHASE ORDER MODULE - JAVASCRIPT FUNCTIONS
-========================================================= */
+﻿
 
-// Global variables
 let productIndex = 1;
 let productsData = [];
 
-/* =========================================================
-   INDEX PAGE FUNCTIONS
-========================================================= */
+
 
 // Search functionality
 function initializeSearch() {
@@ -30,7 +25,6 @@ function initializeSearch() {
    CREATE PAGE FUNCTIONS
 ========================================================= */
 
-// Load supplier info and products
 async function loadSupplierInfo() {
     const supplierId = document.getElementById('supplierSelect').value;
 
@@ -40,7 +34,6 @@ async function loadSupplierInfo() {
     }
 
     try {
-        // Fetch supplier info from API
         const response = await fetch(`/PurchaseOrder/GetSupplierInfo?supplierId=${supplierId}`);
         const data = await response.json();
 
@@ -52,7 +45,6 @@ async function loadSupplierInfo() {
             document.getElementById('supplierInfo').style.display = 'none';
         }
 
-        // DO NOT filter products by supplier - products are already loaded and should stay the same
     } catch (error) {
         console.error('Error loading supplier info:', error);
         alert('Failed to load supplier information');

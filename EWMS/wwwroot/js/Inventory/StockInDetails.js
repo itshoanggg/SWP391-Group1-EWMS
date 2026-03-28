@@ -1,7 +1,4 @@
-﻿/* =========================================================
-   GOODS RECEIPT - MAIN LOGIC (WITH DEBUG)
-========================================================= */
-
+﻿
 let productsData = [];
 let locationsCache = {};
 let receiptItems = [];
@@ -21,7 +18,6 @@ function showAlert(message, type = 'info', title = null) {
     const titleElement = document.getElementById('alertModalTitle');
     const body = document.getElementById('alertModalBody');
     
-    // Set colors based on type
     const types = {
         'success': { bg: 'bg-success text-white', icon: 'fa-check-circle', title: 'Success' },
         'error': { bg: 'bg-danger text-white', icon: 'fa-exclamation-circle', title: 'Error' },
@@ -45,11 +41,10 @@ function showConfirm(message, onConfirm) {
     
     body.innerHTML = message.replace(/\n/g, '<br>');
     
-    // Remove old event listeners
+
     const newOkBtn = okBtn.cloneNode(true);
     okBtn.parentNode.replaceChild(newOkBtn, okBtn);
-    
-    // Add new event listener
+
     newOkBtn.addEventListener('click', () => {
         modal.hide();
         if (onConfirm) onConfirm();
@@ -66,7 +61,7 @@ async function loadPurchaseOrderInfo() {
         const response = await fetch(`/StockIn/GetPurchaseOrderInfo?purchaseOrderId=${purchaseOrderId}`);
         const data = await response.json();
 
-        // DEBUG: console.log removed
+
 
         if (data.error) {
             console.error('Error:', data.error);
@@ -78,7 +73,6 @@ async function loadPurchaseOrderInfo() {
         document.getElementById('supplier-code').textContent = `NCC-${data.supplierId}`;
         document.getElementById('supplier-phone').textContent = data.supplierPhone || 'N/A';
 
-        // Only show alert if NOT in read-only mode
         if (data.hasStockIn && !window.readOnlyMode) {
             showAlert('This purchase order has been fully received!', 'info', 'Purchase Order Status');
             const btnConfirm = document.getElementById('btn-confirm');
@@ -94,7 +88,7 @@ async function loadProducts() {
         const response = await fetch(`/StockIn/GetPurchaseOrderProducts?purchaseOrderId=${purchaseOrderId}`);
         const data = await response.json();
 
-        // DEBUG: console.log removed
+
 
         if (data.error) {
             console.error('Error:', data.error);
@@ -102,8 +96,6 @@ async function loadProducts() {
         }
 
         productsData = data;
-
-        // DEBUG - Check products loaded
         console.log('Products loaded:', productsData.length);
 
         renderProductsTable();
@@ -125,8 +117,7 @@ function renderProductsTable() {
     let hiddenCount = 0;
 
     productsData.forEach((product, index) => {
-        // In ReadOnly mode, show all products (including fully received ones)
-        // In edit mode, skip products with remainingQty <= 0
+
         if (!window.readOnlyMode && product.remainingQty <= 0) {
             hiddenCount++;
             return;
@@ -136,14 +127,14 @@ function renderProductsTable() {
 
         const rowId = `product-${product.productId}-${index}`;
         
-        // Get allocations for this product (if in ReadOnly mode)
+
         const allocations = window.readOnlyMode ? (window.allocationsData?.[product.productId] || []) : [];
         
         const row = document.createElement('tr');
         row.id = rowId;
         
         if (window.readOnlyMode) {
-            // ReadOnly mode: Display received quantity and locations
+
             const locationsList = allocations.map(alloc => 
                 `<div class="mb-1">
                     <span class="badge bg-info">${alloc.locationCode}</span> 
@@ -212,7 +203,6 @@ function renderProductsTable() {
 
         tbody.appendChild(row);
         
-        // Only load locations in edit mode
         if (!window.readOnlyMode) {
             loadLocationsForProduct(product.productId, rowId);
         }
@@ -229,11 +219,7 @@ function renderProductsTable() {
         });
     });
 
-    // DEBUG: console.log removed
-
-    // ? KI?M TRA N?U KH�NG C�N S?N PH?M N�O
     if (receiptItems.length === 0) {
-        // DEBUG: console.log removed
         tbody.innerHTML = `
             <tr>
                 <td colspan="6" class="text-center py-4">
@@ -270,18 +256,16 @@ async function loadLocationsForProduct(productId, rowId) {
     }
 }
 
-function populateLocationSelect(rowId, locations, excludedLocationId = null) { /* ensure options carry available capacity for immediate enforcement */
+function populateLocationSelect(rowId, locations, excludedLocationId = null) { 
     const select = document.getElementById(`location-${rowId}`);
     if (!select) return;
 
     select.innerHTML = '<option value="">-- Select Location --</option>';
 
-    // Track used locations and their remaining capacity (for ALL products)
+
     const usedLocations = {};
     
     receiptItems.forEach(item => {
-        // ? �?m T?T C? c�c row kh�c (b?t k? product) d� d�ng location
-        // V� capacity KH�NG ph�n bi?t product: 200 capacity = 200 s?n ph?m b?t k?
         if (item.locationId && !isNaN(item.locationId) && item.rowId !== rowId) {
             const qtyInput = document.getElementById(`qty-${item.rowId}`);
             const qty = qtyInput ? parseInt(qtyInput.value) || 0 : item.receivedQty;
@@ -298,10 +282,8 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
     locations.forEach(loc => {
         const baseAvailable = loc.maxCapacity - loc.currentStock;
         
-        // ? T�nh t?ng s? lu?ng d� du?c ph�n b? v�o location n�y (T?T C? c�c rows, bao g?m c? row hi?n t?i)
         let totalUsedQty = usedLocations[loc.locationId] || 0;
         
-        // ? Th�m quantity c?a row HI?N T?I n?u n� cung dang Select location n�y
         const currentItem = receiptItems.find(i => i.rowId === rowId);
         if (currentItem && currentItem.locationId === loc.locationId) {
             const currentQtyInput = document.getElementById(`qty-${rowId}`);
@@ -312,7 +294,7 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
         const actualAvailable = baseAvailable - (usedLocations[loc.locationId] || 0);
         
         
-        // Only show locations with actual available capacity
+   
         if (actualAvailable <= 0) {
             return;
         }
@@ -322,7 +304,6 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
 
         const option = document.createElement('option');
         option.value = loc.locationId;
-        // Display TOTAL used quantity (including current row)
         option.textContent = `${loc.locationCode} - ${loc.locationName} (${loc.currentStock + totalUsedQty}/${loc.maxCapacity})`;
         option.dataset.available = actualAvailable;
         select.appendChild(option);
@@ -335,7 +316,6 @@ function populateLocationSelect(rowId, locations, excludedLocationId = null) { /
    HANDLE QUANTITY CHANGE
 ========================================================= */
 function handleQuantityChange(input) {
-    // Enforce minimum value of 1
     if (input.value < 1) {
         input.value = 1;
         showAlert('Actual received quantity must be at least 1.', 'warning', 'Invalid Quantity');
@@ -370,27 +350,20 @@ function handleLocationChange(select) {
     const oldLocationId = item.locationId;
     item.locationId = locationId;
 
-    // If a location is selected, enforce capacity and still show split-suggestion when overflow
     if (locationId) {
         const option = select.options[select.selectedIndex];
         const available = parseInt(option?.dataset?.available || '0');
-
-        // Respect both remaining order qty (existing input max) and rack availability
-        const remainingMax = parseInt(qtyInput.max) || qty; // current logical ceiling for this row
+        const remainingMax = parseInt(qtyInput.max) || qty;
         const newMax = Math.min(remainingMax, isNaN(available) ? remainingMax : available);
 
         qtyInput.max = newMax;
 
         if (qty > newMax) {
-            // 1) Show split suggestion for the overflow amount based on the original qty
             checkCapacity(rowId, qty);
-            // 2) Then cap the actual input value to the rack capacity so user can't exceed it
             qty = newMax;
             qtyInput.value = newMax;
             item.receivedQty = newMax;
-            // Do NOT call checkCapacity again here to keep the split button visible with the remaining quantity
         } else if (qty > 0) {
-            // Within capacity ? just confirm info panel
             checkCapacity(rowId, qty);
         } else {
             clearLocationInfo(rowId);
@@ -400,9 +373,6 @@ function handleLocationChange(select) {
     }
 
 
-
-    // ? Refresh T?T C? dropdowns khi location changes
-    // V� capacity KH�NG ph�n bi?t product, vi?c Select location cho 1 product ?nh hu?ng d?n t?t c?
     if (oldLocationId !== item.locationId) {
         refreshAllLocationSelects();
     }
@@ -532,7 +502,6 @@ function splitToNewLocation(parentRowId, productId, totalQty, firstCapacity) {
     receiptItems.push(newItem);
     
 
-    // Populate dropdown - it will automatically exclude used-up locations
     populateLocationSelect(newRowId, locationsCache[productId]);
     updateSummary();
 }
@@ -561,7 +530,6 @@ function removeSplitRow(rowId, parentRowId, qty) {
 /* =========================================================
    LOCATION MODAL
 ========================================================= */
-/* Modal selection removed as location is chosen via combobox */
 function showLocationModal_removed() {
     const productInfo = productsData.find(p => p.productId === productId);
     const qtyInput = document.getElementById(`qty-${rowId}`);
@@ -596,7 +564,6 @@ function showLocationModal_removed() {
     modal.show();
 }
 
-/* Modal selection removed */
 function selectLocationFromModal_removed() {
     const select = document.getElementById(`location-${rowId}`);
     select.value = locationId;
@@ -612,8 +579,6 @@ function updateSummary() {
     const totalOrdered = productsData.reduce((sum, p) => sum + p.remainingQty, 0);
     const totalReceived = receiptItems.reduce((sum, item) => sum + item.receivedQty, 0);
     const difference = totalOrdered - totalReceived;
-
-    // DEBUG: console.log removed
 
     document.getElementById('total-sku').textContent = formatNumber(totalSku);
     document.getElementById('total-ordered').textContent = formatNumber(totalOrdered);
@@ -636,7 +601,6 @@ function updateSummary() {
    CONFIRM STOCK IN
 ========================================================= */
 async function confirmStockIn() {
-    // Validate all quantities are >= 1
     let hasInvalidQuantity = false;
     receiptItems.forEach(item => {
         if (item.receivedQty < 1) {
@@ -650,7 +614,6 @@ async function confirmStockIn() {
     }
     const errors = [];
 
-    // Check if there are excess items
     const totalOrdered = productsData.reduce((sum, p) => sum + p.remainingQty, 0);
     const totalReceived = receiptItems.reduce((sum, item) => sum + item.receivedQty, 0);
     
@@ -677,7 +640,6 @@ async function confirmStockIn() {
             errors.push(`${item.productName}: Please select a storage location`);
         }
         
-        // Check each product individually
         const product = productsData.find(p => p.productId === item.productId);
         if (product) {
             const productTotalReceived = receiptItems
@@ -725,7 +687,6 @@ async function performStockIn() {
             }))
     };
 
-    // DEBUG: console.log removed
 
     try {
         const response = await fetch('/StockIn/ConfirmStockIn', {
@@ -776,16 +737,13 @@ function refreshAllLocationSelects() {
 
         const currentValue = item.locationId;
         
-        // Repopulate dropdown with updated availability (for all products)
         populateLocationSelect(item.rowId, locations);
         
-        // Restore previously selected value if still exists
         if (currentValue) {
             const optionExists = Array.from(select.options).some(opt => parseInt(opt.value) === currentValue);
             if (optionExists) {
                 select.value = currentValue;
             } else {
-                // Location no longer available, clear selection
                 item.locationId = null;
             }
         }
@@ -805,7 +763,6 @@ async function loadAllocations() {
             return {};
         }
         
-        // Group allocations by productId
         const allocationsByProduct = {};
         allocations.forEach(alloc => {
             if (!allocationsByProduct[alloc.productId]) {
@@ -828,7 +785,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await loadPurchaseOrderInfo();
     
-    // Load allocations first in ReadOnly mode
     if (window.readOnlyMode) {
         window.allocationsData = await loadAllocations();
     }

@@ -1,6 +1,4 @@
-﻿/* =========================================================
-   STOCK MANAGEMENT - JAVASCRIPT
-========================================================= */
+﻿
 
 const warehouseId = window.warehouseId;
 let selectedRack = window.selectedRack;
@@ -10,7 +8,6 @@ let locationsData = [];
 let productsData = [];
 let selectedLocationId = null;
 
-// Format helpers
 function formatNumber(value) {
     return new Intl.NumberFormat('vi-VN').format(value);
 }
@@ -41,7 +38,6 @@ async function loadRacks() {
 
         racksData = data;
 
-        // Auto select rack from URL or first rack
         if (racksData.length > 0) {
             const rackToSelect = racksData.find(r => r.rack === selectedRack)
                 ? selectedRack
@@ -93,14 +89,7 @@ async function loadProducts(locationId) {
         console.error('Load products failed:', error);
     }
 }
-
-/* =========================================================
-   RENDER NAV - RACK & LOCATION
-   Stock.js render locations to nav when on Stock page
-========================================================= */
-
 function renderNavLocations(rack) {
-    // Find rack's location container in nav (created by _Layout.cshtml)
     const locContainer = document.getElementById(`nav-loc-container-${rack}`);
     if (!locContainer) return;
 
@@ -133,7 +122,6 @@ function renderNavLocations(rack) {
         `;
         a.addEventListener('click', function (e) {
             e.preventDefault();
-            // Remove active from all locations
             document.querySelectorAll('.submenu-location-item').forEach(el => el.classList.remove('active'));
             a.classList.add('active');
             selectLocation(location.locationId, location.locationCode, rack);
@@ -142,12 +130,10 @@ function renderNavLocations(rack) {
         locContainer.appendChild(a);
     });
 
-    // Show container + rotate chevron
     locContainer.style.display = 'block';
     const chevron = document.getElementById(`nav-chevron-${rack}`);
     if (chevron) chevron.style.transform = 'rotate(180deg)';
 
-    // Active rack link
     const rackLink = document.getElementById(`nav-rack-${rack}`);
     if (rackLink) rackLink.classList.add('active');
 }
@@ -216,7 +202,6 @@ async function selectRack(rack, autoSelectFirstLocation = false) {
     const isAlreadyOpen = locContainer && locContainer.style.display !== 'none'
         && locContainer.innerHTML.trim() !== '';
 
-    // Toggle close if currently open and not auto select
     if (isAlreadyOpen && !autoSelectFirstLocation) {
         locContainer.style.display = 'none';
         const chevron = document.getElementById(`nav-chevron-${rack}`);
@@ -224,7 +209,6 @@ async function selectRack(rack, autoSelectFirstLocation = false) {
         return;
     }
 
-    // Close all other racks
     racksData.forEach(r => {
         if (r.rack !== rack) {
             const otherLoc = document.getElementById(`nav-loc-container-${r.rack}`);
@@ -238,18 +222,14 @@ async function selectRack(rack, autoSelectFirstLocation = false) {
 
     selectedRack = rack;
 
-    // Update breadcrumb header
     document.getElementById('header-rack').textContent = rack;
     document.getElementById('header-location').textContent = '--';
 
-    // Load locations -> auto render to nav via renderNavLocations()
     await loadLocations(rack);
 
-    // Auto select first location
     if (autoSelectFirstLocation && locationsData.length > 0) {
         const firstLoc = locationsData[0];
 
-        // Highlight first location in nav
         document.querySelectorAll('.submenu-location-item').forEach(el => el.classList.remove('active'));
         const firstLocLink = document.getElementById(`nav-loc-${firstLoc.locationId}`);
         if (firstLocLink) firstLocLink.classList.add('active');
@@ -261,11 +241,9 @@ async function selectRack(rack, autoSelectFirstLocation = false) {
 function selectLocation(locationId, locationCode, rack) {
     selectedLocationId = locationId;
 
-    // Update breadcrumb header
     document.getElementById('header-rack').textContent = rack || selectedRack;
     document.getElementById('header-location').textContent = locationCode;
 
-    // Update title trong card products
     document.getElementById('current-location-title').textContent =
         `Rack ${rack || selectedRack} › ${locationCode}`;
 

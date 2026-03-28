@@ -88,7 +88,6 @@ namespace EWMS.Controllers
                 "SupplierName"
             );
 
-            // Load products that are available in this warehouse
             var warehouseProducts = await _productRepository.Context.Inventories
                 .Where(i => i.Location.WarehouseId == warehouseId)
                 .Select(i => i.ProductId)
