@@ -25,18 +25,69 @@ namespace EWMS.Services
             _db = db;
         }
 
-        public async Task<StockOutReceiptListViewModel> GetStockOutReceiptsByWarehouseAsync(int warehouseId)
+        public async Task<StockOutReceiptListViewModel> GetStockOutReceiptsHistoryAsync(int warehouseId, DateTime? dateFrom, DateTime? dateTo, string? customer, string? issuedBy, int page, int pageSize)
         {
             var receipts = await _stockOutReceiptRepository.GetStockOutReceiptsByWarehouseAsync(warehouseId);
 
             // Filter to only show sales order receipts (exclude transfer receipts)
-            var salesOrderReceipts = receipts.Where(r => r.SalesOrderId.HasValue && r.TransferId == null).ToList();
+            IEnumerable<StockOutReceipt> filtered = receipts.Where(r => r.SalesOrderId.HasValue && r.TransferId == null);
+
+            // Apply date filters
+            if (dateFrom.HasValue)
+            {
+                filtered = filtered.Where(r => r.IssuedDate.HasValue && r.IssuedDate.Value >= dateFrom.Value.Date);
+            }
+
+            if (dateTo.HasValue)
+            {
+                var toExclusive = dateTo.Value.Date.AddDays(1);
+                filtered = filtered.Where(r => r.IssuedDate.HasValue && r.IssuedDate.Value < toExclusive);
+            }
+
+            // Apply customer filter
+            if (!string.IsNullOrWhiteSpace(customer))
+            {
+                var lc = customer.Trim().ToLower();
+                filtered = filtered.Where(r =>
+                    (!string.IsNullOrEmpty(r.SalesOrder?.CustomerName) && r.SalesOrder.CustomerName.ToLower().Contains(lc)) ||
+                    (!string.IsNullOrEmpty(r.SalesOrder?.CustomerPhone) && r.SalesOrder.CustomerPhone.ToLower().Contains(lc)));
+            }
+
+            // Apply issued by filter
+            if (!string.IsNullOrWhiteSpace(issuedBy))
+            {
+                var li = issuedBy.Trim().ToLower();
+                filtered = filtered.Where(r =>
+                    !string.IsNullOrEmpty(r.IssuedByNavigation.FullName) && r.IssuedByNavigation.FullName.ToLower().Contains(li) ||
+                    !string.IsNullOrEmpty(r.IssuedByNavigation.Username) && r.IssuedByNavigation.Username.ToLower().Contains(li));
+            }
+
+            var totalCount = filtered.Count();
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+            // Adjust page if out of range
+            if (page < 1) page = 1;
+            if (totalPages > 0 && page > totalPages) page = totalPages;
+
+            var paginatedReceipts = filtered
+                .OrderByDescending(r => r.IssuedDate ?? r.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
 
             var viewModel = new StockOutReceiptListViewModel
             {
                 WarehouseId = warehouseId,
-                WarehouseName = salesOrderReceipts.FirstOrDefault()?.Warehouse.WarehouseName ?? "Unknown",
-                Receipts = salesOrderReceipts.Select(r => new StockOutReceiptViewModel
+                WarehouseName = receipts.FirstOrDefault()?.Warehouse.WarehouseName ?? "Unknown",
+                DateFrom = dateFrom ?? null,
+                DateTo = dateTo ?? null,
+                FilterCustomer = customer ?? string.Empty,
+                FilterIssuedBy = issuedBy ?? string.Empty,
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = totalCount,
+                TotalPages = totalPages,
+                Receipts = paginatedReceipts.Select(r => new StockOutReceiptViewModel
                 {
                     StockOutId = r.StockOutId,
                     ReceiptNumber = $"STOCKOUT{r.StockOutId:D4}",
@@ -108,41 +159,6 @@ namespace EWMS.Services
                     Unit = d.Product.Unit
                 }).ToList()
             };
-        }
-
-        public async Task<List<SalesOrderForStockOutViewModel>> GetPendingSalesOrdersAsync(int warehouseId)
-        {
-            var orders = await _salesOrderRepository.GetSalesOrdersByWarehouseAsync(warehouseId);
-
-            var pendingOrders = orders
-                .Where(o => o.Status == "Pending" || o.Status == "Partial")
-                .Select(o => new SalesOrderForStockOutViewModel
-                {
-                    SalesOrderId = o.SalesOrderId,
-                    OrderNumber = $"SO{o.SalesOrderId:D4}",
-                    CustomerName = o.CustomerName,
-                    CustomerPhone = o.CustomerPhone,
-                    CustomerAddress = o.CustomerAddress,
-                    ExpectedDeliveryDate = o.ExpectedDeliveryDate,
-                    TotalAmount = o.TotalAmount,
-                    Status = o.Status,
-                    Notes = o.Notes,
-                    CreatedAt = o.CreatedAt,
-                    WarehouseName = o.Warehouse.WarehouseName,
-                    HasStockOutReceipt = o.StockOutReceipts.Any(),
-                    StockOutReceiptId = o.StockOutReceipts.FirstOrDefault()?.StockOutId,
-                    Details = o.SalesOrderDetails.Select(d => new SalesOrderDetailViewModel
-                    {
-                        ProductId = d.ProductId,
-                        ProductName = d.Product.ProductName,
-                        Quantity = d.Quantity,
-                        UnitPrice = d.UnitPrice,
-                        TotalPrice = d.TotalPrice ?? 0,
-                        Unit = d.Product.Unit ?? ""
-                    }).ToList()
-                }).ToList();
-
-            return pendingOrders;
         }
 
         public async Task<StockOutOrderListViewModel> GetPendingOrdersForIndexAsync(int warehouseId, string? customer, string? status, int page, int pageSize)

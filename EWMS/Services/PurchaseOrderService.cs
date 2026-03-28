@@ -85,14 +85,6 @@ namespace EWMS.Services
             return purchaseOrder;
         }
 
-        // Removed: MarkAsDeliveredAsync - This method was doing nothing (keeping status as "Ordered")
-        // Status is automatically updated when stock-in is performed via StockInService
-        public async Task<bool> MarkAsDeliveredAsync(int id, int warehouseId)
-        {
-            // This endpoint is kept for backward compatibility but does nothing
-            // The actual status update happens in StockInService when goods are received
-            return await Task.FromResult(true);
-        }
 
         public async Task<bool> CancelPurchaseOrderAsync(int id, int warehouseId, int userId)
         {
@@ -111,21 +103,6 @@ namespace EWMS.Services
             return true;
         }
 
-        public async Task<bool> DeletePurchaseOrderAsync(int id, int warehouseId, int userId)
-        {
-            var purchaseOrder = await _unitOfWork.PurchaseOrders.GetByIdWithDetailsAsync(id, warehouseId);
-
-            if (purchaseOrder == null || purchaseOrder.Status != "Ordered")
-                return false;
-
-            // Chỉ cho phép người tạo đơn xóa
-            if (purchaseOrder.CreatedBy != userId)
-                return false;
-
-            _unitOfWork.PurchaseOrders.Delete(purchaseOrder);
-            await _unitOfWork.SaveChangesAsync();
-            return true;
-        }
 
         public async Task<IEnumerable<ProductBySupplierDTO>> GetProductsBySupplierAsync(int supplierId)
         {
@@ -147,43 +124,5 @@ namespace EWMS.Services
             return filtered;
         }
 
-        public async Task<IEnumerable<PurchaseOrderListDTO>> GetPurchaseOrderListAsync(int warehouseId, string? status, string? search)
-        {
-            // Removed automatic status update - status should be manually updated
-            // await _unitOfWork.PurchaseOrders.UpdateToReadyToReceiveAsync(warehouseId);
-            // await _unitOfWork.SaveChangesAsync();
-
-            var purchaseOrders = await _unitOfWork.PurchaseOrders.GetByWarehouseIdAsync(warehouseId, status);
-
-            // Apply search filter
-            if (!string.IsNullOrEmpty(search))
-            {
-                purchaseOrders = purchaseOrders.Where(po =>
-                    po.PurchaseOrderId.ToString().Contains(search) ||
-                    po.Supplier.SupplierName.Contains(search));
-            }
-
-            return purchaseOrders.Select(po =>
-            {
-                var totalItems = po.PurchaseOrderDetails.Sum(d => d.Quantity);
-                var receivedItems = po.StockInReceipts
-                    .SelectMany(si => si.StockInDetails)
-                    .Sum(sid => sid.Quantity);
-
-                return new PurchaseOrderListDTO
-                {
-                    PurchaseOrderId = po.PurchaseOrderId,
-                    SupplierName = po.Supplier.SupplierName,
-                    ExpectedReceivingDate = po.ExpectedReceivingDate,
-                    TotalItems = totalItems,
-                    ReceivedItems = receivedItems,
-                    RemainingItems = totalItems - receivedItems,
-                    TotalAmount = po.PurchaseOrderDetails.Sum(d => d.TotalPrice ?? 0),
-                    CreatedBy = po.CreatedByNavigation.FullName ?? po.CreatedByNavigation.Username,
-                    Status = po.Status ?? "Unknown",
-                    CreatedAt = po.CreatedAt
-                };
-            }).ToList();
-        }
     }
 }

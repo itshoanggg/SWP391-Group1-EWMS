@@ -127,14 +127,6 @@ namespace EWMS.Controllers
             return RedirectToAction("Login", "Account");
         }
 
- 
-        [HttpGet]
-        public async Task<IActionResult> LogoutGet()
-        {
-            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return RedirectToAction("Login", "Account");
-        }
-
         [AllowAnonymous]
         [HttpGet]
         public IActionResult AccessDenied()

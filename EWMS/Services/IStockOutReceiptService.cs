@@ -5,9 +5,8 @@ namespace EWMS.Services
 {
     public interface IStockOutReceiptService
     {
-        Task<StockOutReceiptListViewModel> GetStockOutReceiptsByWarehouseAsync(int warehouseId);
+        Task<StockOutReceiptListViewModel> GetStockOutReceiptsHistoryAsync(int warehouseId, DateTime? dateFrom, DateTime? dateTo, string? customer, string? issuedBy, int page, int pageSize);
         Task<StockOutReceiptViewModel?> GetStockOutReceiptByIdAsync(int stockOutId);
-        Task<List<SalesOrderForStockOutViewModel>> GetPendingSalesOrdersAsync(int warehouseId);
         Task<StockOutOrderListViewModel> GetPendingOrdersForIndexAsync(int warehouseId, string? customer, string? status, int page, int pageSize);
         Task<SalesOrderForStockOutViewModel?> GetSalesOrderForStockOutAsync(int salesOrderId);
         Task<List<LocationInventoryDto>> GetAvailableLocationsForProductAsync(int warehouseId, int productId);

@@ -161,26 +161,6 @@ namespace EWMS.Controllers
             }
         }
 
-        // POST: PurchaseOrder/MarkAsDelivered
-        [HttpPost]
-        public async Task<IActionResult> MarkAsDelivered(int id)
-        {
-            try
-            {
-                var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(_userService.GetCurrentUserId());
-                var result = await _purchaseOrderService.MarkAsDeliveredAsync(id, warehouseId);
-
-                if (!result)
-                    return Json(new { success = false, message = "Unable to update purchase order" });
-
-                return Json(new { success = true, message = "Updated: Goods have arrived at warehouse" });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, message = $"Error: {ex.Message}" });
-            }
-        }
-
         // API: Get Products by Supplier
         [HttpGet]
         public async Task<IActionResult> GetProductsBySupplier(int supplierId)
@@ -243,19 +223,6 @@ namespace EWMS.Controllers
         }
 
         // DELETE: PurchaseOrder/Delete/5
-        [HttpPost]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var userId = _userService.GetCurrentUserId();
-            var warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
-            var result = await _purchaseOrderService.DeletePurchaseOrderAsync(id, warehouseId, userId);
-
-            if (!result)
-                return Json(new { success = false, message = "Unable to delete purchase order. Only the creator can delete this order." });
-
-            return Json(new { success = true, message = "Purchase order deleted successfully" });
-        }
-
         [HttpPost]
         public async Task<IActionResult> Cancel(int id)
         {

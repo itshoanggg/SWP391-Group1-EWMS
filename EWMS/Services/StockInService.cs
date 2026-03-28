@@ -115,74 +115,6 @@ namespace EWMS.Services
             }).ToList();
         }
 
-        public async Task<StockInReceipt> CreateStockInAsync(StockInCreateViewModel model, int warehouseId, int userId)
-        {
-            var stockInReceipt = new StockInReceipt
-            {
-                WarehouseId = warehouseId,
-                ReceivedBy = userId,
-                ReceivedDate = DateTime.Now,
-                Reason = "Purchase",
-                PurchaseOrderId = model.PurchaseOrderId,
-                CreatedAt = DateTime.Now
-            };
-
-            await _unitOfWork.StockIns.AddAsync(stockInReceipt);
-            await _unitOfWork.SaveChangesAsync();
-
-            decimal totalAmount = 0;
-
-            foreach (var detail in model.Details.Where(d => d.CurrentReceiving > 0))
-            {
-                var stockInDetail = new StockInDetail
-                {
-                    StockInId = stockInReceipt.StockInId,
-                    ProductId = detail.ProductId,
-                    LocationId = detail.LocationId,
-                    Quantity = detail.CurrentReceiving,
-                    UnitPrice = detail.UnitPrice
-                };
-
-                await _unitOfWork.StockIns.Context.StockInDetails.AddAsync(stockInDetail);
-                totalAmount += detail.CurrentReceiving * detail.UnitPrice;
-
-                // Update product prices using Moving Weighted Average BEFORE updating inventory
-                // (only for Purchase orders)
-                await _unitOfWork.Products.UpdateProductPricesByMovingAverageAsync(
-                    detail.ProductId, 
-                    detail.CurrentReceiving, 
-                    detail.UnitPrice);
-
-                // Update inventory AFTER price calculation
-                var inventory = await _unitOfWork.Inventories.GetByProductAndLocationAsync(detail.ProductId, detail.LocationId);
-
-                if (inventory != null)
-                {
-                    inventory.Quantity = (inventory.Quantity ?? 0) + detail.CurrentReceiving;
-                    inventory.LastUpdated = DateTime.Now;
-                }
-                else
-                {
-                    inventory = new Inventory
-                    {
-                        ProductId = detail.ProductId,
-                        LocationId = detail.LocationId,
-                        Quantity = detail.CurrentReceiving,
-                        LastUpdated = DateTime.Now
-                    };
-                    await _unitOfWork.Inventories.AddAsync(inventory);
-                }
-            }
-
-            stockInReceipt.TotalAmount = totalAmount;
-
-            // Update PO status
-            await UpdatePurchaseOrderStatusAsync(model.PurchaseOrderId, model.Details);
-
-            await _unitOfWork.SaveChangesAsync();
-            return stockInReceipt;
-        }
-
         public async Task<StockInReceipt> ConfirmStockInAsync(ConfirmStockInRequest request, int userId)
         {
             // Validate: Check if received quantities exceed ordered quantities
@@ -339,38 +271,6 @@ namespace EWMS.Services
                 MaxCapacity = location.Capacity,
                 CurrentStock = currentStock
             };
-        }
-
-        public async Task<List<StockInReceiptItemViewModel>> GetStockInReceiptsByWarehouseAsync(int warehouseId, DateTime? dateFrom = null, DateTime? dateTo = null)
-        {
-            var receipts = await _unitOfWork.StockIns.GetByWarehouseIdAsync(warehouseId);
-
-            if (dateFrom.HasValue)
-            {
-                receipts = receipts.Where(r => r.ReceivedDate.HasValue && r.ReceivedDate.Value.Date >= dateFrom.Value.Date);
-            }
-            if (dateTo.HasValue)
-            {
-                var toExclusive = dateTo.Value.Date.AddDays(1);
-                receipts = receipts.Where(r => r.ReceivedDate.HasValue && r.ReceivedDate.Value < toExclusive);
-            }
-
-            return receipts
-                .Select(r => new StockInReceiptItemViewModel
-                {
-                    StockInId = r.StockInId,
-                    WarehouseId = r.WarehouseId,
-                    WarehouseName = r.Warehouse.WarehouseName,
-                    ReceivedBy = r.ReceivedBy,
-                    ReceivedByName = r.ReceivedByNavigation.FullName ?? r.ReceivedByNavigation.Username,
-                    ReceivedDate = r.ReceivedDate,
-                    Reason = r.Reason,
-                    PurchaseOrderId = r.PurchaseOrderId,
-                    TotalAmount = r.TotalAmount,
-                    CreatedAt = r.CreatedAt
-                })
-                .OrderByDescending(x => x.ReceivedDate ?? x.CreatedAt)
-                .ToList();
         }
 
         public async Task<IEnumerable<PurchaseOrderListDTO>> GetPurchaseOrdersHistoryAsync(int warehouseId, string? search)

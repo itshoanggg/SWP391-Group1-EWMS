@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace EWMS.Controllers
 {
-    [Authorize(Roles = "Admin,Inventory Staff,Warehouse Manager,Sales Staff")]
+    [Authorize(Roles = "Inventory Staff,Warehouse Manager")]
     public class StockOutReceiptController : Controller
     {
         private readonly IStockOutReceiptService _stockOutReceiptService;
@@ -53,6 +53,7 @@ namespace EWMS.Controllers
         {
             var userId = _userService.GetCurrentUserId();
             if (userId == 0) return RedirectToAction("Login", "Account");
+            
             int warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
             if (warehouseId == 0)
             {
@@ -60,68 +61,8 @@ namespace EWMS.Controllers
                 return RedirectToAction("Index", "Home");
             }
 
-            var vm =
-                await _stockOutReceiptService.GetStockOutReceiptsByWarehouseAsync(warehouseId);
-
-            IEnumerable<StockOutReceiptViewModel> filtered = vm.Receipts;
-
-            if (dateFrom.HasValue)
-            {
-                vm.DateFrom = dateFrom.Value.Date;
-                filtered = filtered.Where(r =>
-                    r.IssuedDate.HasValue &&
-                    r.IssuedDate.Value >= vm.DateFrom.Value);
-            }
-
-            if (dateTo.HasValue)
-            {
-                var toExclusive = dateTo.Value.Date.AddDays(1);
-                vm.DateTo = dateTo.Value.Date;
-
-                filtered = filtered.Where(r =>
-                    r.IssuedDate.HasValue &&
-                    r.IssuedDate.Value < toExclusive);
-            }
-
-            if (!string.IsNullOrWhiteSpace(customer))
-            {
-                var lc = customer.Trim().ToLower();
-                vm.FilterCustomer = customer;
-
-                filtered = filtered.Where(r =>
-                    (!string.IsNullOrEmpty(r.CustomerName) &&
-                     r.CustomerName.ToLower().Contains(lc))
-                    ||
-                    (!string.IsNullOrEmpty(r.CustomerPhone) &&
-                     r.CustomerPhone.ToLower().Contains(lc)));
-            }
-
-            if (!string.IsNullOrWhiteSpace(issuedBy))
-            {
-                var li = issuedBy.Trim().ToLower();
-                vm.FilterIssuedBy = issuedBy;
-
-                filtered = filtered.Where(r =>
-                    !string.IsNullOrEmpty(r.IssuedByName) &&
-                    r.IssuedByName.ToLower().Contains(li));
-            }
-
             const int pageSize = 5;
-
-            vm.PageSize = pageSize;
-            vm.TotalCount = filtered.Count();
-            vm.TotalPages =
-                (int)Math.Ceiling(vm.TotalCount / (double)pageSize);
-
-            vm.Page = page < 1 ? 1 : page;
-            if (vm.TotalPages > 0 && vm.Page > vm.TotalPages)
-                vm.Page = vm.TotalPages;
-
-            vm.Receipts = filtered
-                .OrderByDescending(r => r.IssuedDate ?? r.CreatedAt)
-                .Skip((vm.Page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
+            var vm = await _stockOutReceiptService.GetStockOutReceiptsHistoryAsync(warehouseId, dateFrom, dateTo, customer, issuedBy, page, pageSize);
 
             return View(vm);
         }

@@ -11,7 +11,7 @@ namespace EWMS.Services
     public class SalesOrderService : ISalesOrderService
     {
         private readonly ISalesOrderRepository _salesOrderRepository;
-        private readonly Repositories.IProductRepository _productRepository;
+        private readonly IProductRepository _productRepository;
         private readonly IInventoryCheckService _inventoryCheckService;
         private readonly IWarehouseRepository _warehouseRepository;
         private readonly Repositories.Interfaces.IInventoryRepository _inventoryRepository;
@@ -19,7 +19,7 @@ namespace EWMS.Services
 
         public SalesOrderService(
             ISalesOrderRepository salesOrderRepository,
-            Repositories.IProductRepository productRepository,
+            IProductRepository productRepository,
             IInventoryCheckService inventoryCheckService,
             IWarehouseRepository warehouseRepository,
             Repositories.Interfaces.IInventoryRepository inventoryRepository,

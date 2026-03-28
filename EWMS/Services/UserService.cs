@@ -49,31 +49,6 @@ namespace EWMS.Services
             return int.TryParse(idClaim.Value, out var userId) ? userId : 0;
         }
 
-        public async Task<UserDto?> ValidateUserAsync(string username, string password)
-        {
-            var user = await _context.Users
-                .Include(u => u.Role)
-                .Include(u => u.UserWarehouses)
-                    .ThenInclude(uw => uw.Warehouse)
-                .FirstOrDefaultAsync(u => u.Username == username && u.PasswordHash == password && u.IsActive == true);
-
-            if (user == null)
-                return null;
-
-            var warehouse = user.UserWarehouses.FirstOrDefault()?.Warehouse;
-
-            return new UserDto
-            {
-                UserId = user.UserId,
-                Username = user.Username,
-                FullName = user.FullName ?? user.Username,
-                Email = user.Email,
-                RoleName = user.Role?.RoleName ?? string.Empty,
-                WarehouseId = warehouse?.WarehouseId ?? 0,
-                WarehouseName = warehouse?.WarehouseName ?? string.Empty
-            };
-        }
-
         public async Task<List<Warehouse>> GetWarehousesForUserAsync(int userId)
         {
             return await _unitOfWork.UserWarehouses.GetWarehousesForUserAsync(userId);

@@ -53,7 +53,6 @@ namespace EWMS
             builder.Services.AddScoped<EWMS.Repositories.IInventoryRepository, InventoryRepository>();
             builder.Services.AddScoped<EWMS.Repositories.Interfaces.IInventoryRepository, InventoryRepository>();
             builder.Services.AddScoped<ISalesOrderRepository, SalesOrderRepository>();
-            builder.Services.AddScoped<EWMS.Repositories.IProductRepository, ProductRepository>();
             builder.Services.AddScoped<EWMS.Repositories.Interfaces.IProductRepository, ProductRepository>();
             builder.Services.AddScoped<IStockOutReceiptRepository, StockOutReceiptRepository>();
             builder.Services.AddScoped<EWMS.Repositories.ILocationRepository, LocationRepository>();
@@ -71,7 +70,6 @@ namespace EWMS
             builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
             builder.Services.AddScoped<IStockInService, StockInService>();
             builder.Services.AddScoped<IStockService, StockService>();
-            builder.Services.AddScoped<IDashboardService, DashboardService>();
             builder.Services.AddScoped<ISupplierService, SupplierService>();
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<IInventoryReportService, InventoryReportService>();

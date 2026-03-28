@@ -1,15 +1,16 @@
 ﻿using EWMS.DTOs;
 using EWMS.Repositories;
+using EWMS.Repositories.Interfaces;
 
 namespace EWMS.Services
 {
     public class InventoryCheckService : IInventoryCheckService
     {
-        private readonly IInventoryRepository _inventoryRepository;
+        private readonly Repositories.IInventoryRepository _inventoryRepository;
         private readonly IProductRepository _productRepository;
 
         public InventoryCheckService(
-            IInventoryRepository inventoryRepository,
+            Repositories.IInventoryRepository inventoryRepository,
             IProductRepository productRepository)
         {
             _inventoryRepository = inventoryRepository;

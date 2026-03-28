@@ -197,17 +197,6 @@ namespace EWMS.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetProducts()
-        {
-            var userId = _userService.GetCurrentUserId();
-            int warehouseId = await _userService.GetWarehouseIdByUserIdAsync(userId);
-            
-            var products = await _salesOrderService.GetProductsForSelectionAsync(warehouseId);
-
-            return Json(products);
-        }
-
-        [HttpGet]
         public async Task<IActionResult> GetCustomerByPhone(string phone)
         {
             if (string.IsNullOrWhiteSpace(phone))

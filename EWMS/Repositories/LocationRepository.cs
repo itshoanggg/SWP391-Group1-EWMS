@@ -13,11 +13,11 @@ namespace EWMS.Repositories
         {
         }
 
-        // Legacy (Interfaces) methods used by StockService via UnitOfWork
+        // Legacy methods used by StockService via UnitOfWork (Interfaces namespace)
         public async Task<IEnumerable<Location>> GetByWarehouseIdAsync(int warehouseId)
         {
             return await _dbSet
-                .Include(l => l.Inventories)  // ✅ Include Inventories để tính CurrentStock
+                .Include(l => l.Inventories)
                 .Where(l => l.WarehouseId == warehouseId)
                 .OrderBy(l => l.LocationCode)
                 .ToListAsync();
@@ -26,7 +26,7 @@ namespace EWMS.Repositories
         public async Task<IEnumerable<Location>> GetByRackAsync(int warehouseId, string rack)
         {
             return await _dbSet
-                .Include(l => l.Inventories)  // ✅ Include Inventories để tính CurrentStock
+                .Include(l => l.Inventories)
                 .Where(l => l.WarehouseId == warehouseId && l.Rack == rack)
                 .OrderBy(l => l.LocationCode)
                 .ToListAsync();
@@ -42,7 +42,7 @@ namespace EWMS.Repositories
                 .ToListAsync();
         }
 
-        // New (master) methods used by StockOutReceiptService, etc.
+        // Stock-Out/Sales/WarehouseManager methods (EWMS.Repositories namespace)
         public async Task<List<Location>> GetLocationsByWarehouseAsync(int warehouseId)
         {
             return await _context.Locations

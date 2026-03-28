@@ -7,7 +7,6 @@ namespace EWMS.Repositories.Interfaces
         Task<string?> GetWarehouseNameByIdAsync(int warehouseId);
         Task<(List<Warehouse> Warehouses, int TotalCount)> GetWarehousesPagedAsync(int page, int pageSize, string? searchQuery);
         Task<Warehouse?> GetWarehouseWithLocationsAsync(int warehouseId);
-        Task<bool> WarehouseExistsAsync(int warehouseId);
         Task<List<Warehouse>> GetAllWarehousesAsync();
         Task<bool> IsDuplicateWarehouseAsync(string warehouseName, string address, int? excludeWarehouseId = null);
     }

@@ -85,11 +85,6 @@ namespace EWMS.Repositories
             return salesOrder;
         }
 
-        public async Task UpdateSalesOrderAsync(SalesOrder salesOrder)
-        {
-            _context.SalesOrders.Update(salesOrder);
-            await _context.SaveChangesAsync();
-        }
 
         public async Task<bool> UpdateSalesOrderStatusAsync(int salesOrderId, string status)
         {
@@ -118,9 +113,5 @@ namespace EWMS.Repositories
             return (record.CustomerName, record.CustomerAddress);
         }
 
-        public async Task<bool> SaveChangesAsync()
-        {
-            return await _context.SaveChangesAsync() > 0;
-        }
     }
 }

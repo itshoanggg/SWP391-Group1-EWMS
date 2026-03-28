@@ -57,11 +57,6 @@ namespace EWMS.Repositories
                 .FirstOrDefaultAsync(w => w.WarehouseId == warehouseId);
         }
 
-        public async Task<bool> WarehouseExistsAsync(int warehouseId)
-        {
-            return await _context.Warehouses.AnyAsync(w => w.WarehouseId == warehouseId);
-        }
-
         public async Task<List<Warehouse>> GetAllWarehousesAsync()
         {
             return await _context.Warehouses
