@@ -1,0 +1,1363 @@
+================================================================================
+PHAN 8: GHI CHU & NHAN XET (NOTES)
+================================================================================
+
+8.1. VE RACK (QUAN TRONG)
+-----------------------------------------------------------------------
+   GHI CHU: Rack KHONG PHAI la 1 bang rieng trong database.
+   Rack chi la 1 TRUONG (column) trong bang Location.
+   
+   Vi du du lieu trong bang Location:
+   +------------+--------------+------+----------+
+   | LocationID | LocationCode | Rack | Capacity |
+   +------------+--------------+------+----------+
+   | 1          | A-01-01      | A    | 100      |
+   | 2          | A-01-02      | A    | 100      |
+   | 3          | B-01-01      | B    | 100      |
+   | 4          | B-01-02      | B    | 100      |
+   +------------+--------------+------+----------+
+   
+   -> Lay rack bang cach SELECT DISTINCT Rack FROM Location
+   -> Khong co bang Rack rieng, khong co PK cho rack
+
+
+8.2. VE INVENTORY (QUAN TRONG)
+-----------------------------------------------------------------------
+   GHI CHU: Inventory la bang trung gian giua Product va Location.
+   Moi san pham tai 1 vi tri chi co 1 ban ghi Inventory.
+   Unique Index: (ProductID, LocationID)
+   
+   Vi du:
+   +-------------+-----------+------------+----------+
+   | InventoryID | ProductID | LocationID | Quantity |
+   +-------------+-----------+------------+----------+
+   | 1           | 1         | 1          | 50       |
+   | 2           | 1         | 2          | 30       |
+   | 3           | 2         | 1          | 20       |
+   +-------------+-----------+------------+----------+
+   
+   -> San pham 1 co tong 80 units (50 tai vi tri 1 + 30 tai vi tri 2)
+   -> San pham 2 co tong 20 units (tai vi tri 1)
+   
+   LUU Y: Khi nhap kho, neu Inventory chua ton tai tai vi tri do,
+   he thong TU DONG TAO ban ghi Inventory moi.
+   Dieu nay co the tao ra Inventory cho nhung vi tri chua tung co hang.
+
+
+8.3. VE PARTIAL TRANSFER (CHUYEN MOT PHAN)
+-----------------------------------------------------------------------
+   GHI CHU: He thong ho tro chuyen mot phan (partial).
+   
+   +-----------+----------------------------------------------------------+
+   | Giai doan | Hanh dong partial                                      |
+   +-----------+----------------------------------------------------------+
+   | Stock-Out | Co the xuat it hon so luong yeu cau                    |
+   |           | Status chuyen thanh "Partial" thay vi "In Transit"     |
+   |           | Co the xuat tiep sau (multiple stock-out)               |
+   +-----------+----------------------------------------------------------+
+   | Stock-In  | Co the nhap it hon so luong da xuat                     |
+   |           | Status giu nguyen "In Transit"                         |
+   |           | Co the nhap tiep sau (multiple stock-in)                |
+   |           | Moi lan nhap tao StockInReceipt RIENG                  |
+   +-----------+----------------------------------------------------------+
+   
+   Dieu nay co nghia:
+   - 1 TransferRequest co the co NHIEU StockInReceipt
+   - StockOutReceipt chi co 1 (vi chi xuat 1 lan)
+   - Kiem tra "fully received" bang cach so sanh:
+     SUM(StockInDetail.Quantity) >= SUM(StockOutDetail.Quantity)
+
+
+8.4. VE KIEM TRA TON KHO (STOCK VALIDATION)
+-----------------------------------------------------------------------
+   GHI CHU: Ton kho duoc kiem tra o 3 thoi diem:
+   
+   1. KHI TAO TRANSFER (client-side JavaScript):
+      - Load ton kho qua AJAX: GetProductStockByLocation
+      - Validate so luong <= available tai vi tri nguon
+      - Validate so luong <= available space tai vi tri dich
+   
+   2. KHI TAO TRANSFER (server-side trong CreateCompleteTransferAsync):
+      - Validate lai ton kho tai vi tri nguon
+      - Validate lai suc chua tai vi tri dich
+      - DUNG TRANSACTION de dam bao toan ven
+   
+   3. KHI XUAT KHO (ProcessTransferStockOutAsync):
+      - Validate ton kho tai thoi diem xuat
+      - Neu khong du -> throw exception
+   
+   LUU Y: Khong co optimistic locking (RowVersion).
+   Neu 2 nguoi cung 1 luc xuat cung 1 vi tri, co the xay ra race condition.
+   -> De xuat: Them RowVersion hoac SELECT FOR UPDATE.
+
+
+8.5. VE STATUS FLOW (QUY TRINH TRANG THAI)
+-----------------------------------------------------------------------
+   GHI CHU: Quy trinh trang thai day du:
+   
+   Pending --> Approved --> In Transit --> Completed
+      |            |            |
+      v            v            v
+   Rejected    Rejected     Partial
+                                |
+                                v
+                           In Transit --> Completed
+   
+   Dieu kien chuyen trang thai:
+   - Pending -> Approved:   Warehouse Manager cua kho nguon phe duyet
+   - Pending -> Rejected:   Warehouse Manager cua kho dich tu choi
+   - Approved -> In Transit: Kho nguon xuat kho (full)
+   - Approved -> Partial:   Kho nguon xuat kho (partial)
+   - In Transit -> Completed: Kho dich nhap du so luong
+   - In Transit -> In Transit: Kho dich nhap mot phan (tiep tuc)
+   
+   LUU Y: Trong code Reject co kiem tra "Pending Destination" nhung
+   khong thay Status nay duoc set o dau. Co the la code chua hoan thien
+   hoac tinh nang chua su dung.
+
+
+8.6. VE JS INLINE TRONG CREATE.CSHTML
+-----------------------------------------------------------------------
+   GHI CHU: File Create.cshtml co ~874 dong, trong do ~600 dong la
+   JavaScript inline. Dieu nay co nhieu bat loi:
+   
+   - Kho maintain va debug
+   - Khong the cache JavaScript
+   - Tron logic client voi markup HTML
+   - De xuat: Tach JS ra file rieng nhu transfer-create.js
+
+
+8.7. VE CLIENT-SIDE CACHING
+-----------------------------------------------------------------------
+   GHI CHU: JavaScript trong Create.cshtml su dung client-side cache:
+   
+   let rackCache = {};        // Cache rack theo warehouseId
+   let locationCache = {};    // Cache location theo warehouseId-rack
+   let stockLocationCache = {}; // Cache stock theo warehouseId-productId
+   
+   -> Tot: Giam so luong AJAX request
+   -> Can luu y: Neu ton kho thay doi giua cac lan load, cache co the
+      tra ve du lieu cu. Nen invalidate cache khi chuyen kho.
+
+
+8.8. VE STOCK-OUT RECEIPT (PHIEU XUAT)
+-----------------------------------------------------------------------
+   GHI CHU: StockOutReceipt duoc lien ket voi TransferRequest qua
+   cot TransferID (nullable). Dieu nay co nghia:
+   
+   - StockOutReceipt co the lien ket voi SalesOrder (qua SalesOrderID)
+   - HOAC lien ket voi TransferRequest (qua TransferID)
+   - 1 trong 2 se la NULL
+   
+   -> Khi xuat cho transfer: TransferID != NULL, SalesOrderID = NULL
+   -> Khi xuat cho don ban: SalesOrderID != NULL, TransferID = NULL
+
+
+8.9. VE CAP NHAT INVENTORY KHI NHAP KHO
+-----------------------------------------------------------------------
+   GHI CHU: Trong ProcessTransferStockInAsync, co logic kiem tra:
+   
+   var inventory = await _db.Inventories
+       .FirstOrDefaultAsync(i => i.ProductId == item.ProductId 
+                               && i.LocationId == item.LocationId);
+   
+   if (inventory == null) {
+       // TAO MOI
+       inventory = new Inventory {
+           ProductId = item.ProductId,
+           LocationId = item.LocationId,
+           Quantity = item.Quantity,
+           LastUpdated = DateTime.Now
+       };
+       _db.Inventories.Add(inventory);
+   } else {
+       // CONG THEM
+       inventory.Quantity = (inventory.Quantity ?? 0) + item.Quantity;
+       inventory.LastUpdated = DateTime.Now;
+   }
+   
+   -> Day la cach xu ly "upsert" (insert or update)
+   -> Neu Inventory chua ton tai -> tao moi
+   -> Neu Inventory da ton tai -> cong them so luong
+
+
+8.10. VE SECURITY (BAO MAT)
+-----------------------------------------------------------------------
+   GHI CHU: He thong su dung role-based authorization:
+   
+   +---------------------+----------------------------------------------+
+   | Role                | Co the lam gi voi Transfer                  |
+   +---------------------+----------------------------------------------+
+   | Admin               | Xem tat ca                                  |
+   | Warehouse Manager   | Tao, phe duyet, tu choi, xuat/nhap kho     |
+   | Inventory Staff     | Xem, xu ly xuat/nhap kho                    |
+   +---------------------+----------------------------------------------+
+   
+   LUU Y: Khi phe duyet, kiem tra:
+   - Approve: user phai la Manager cua KHO NGUON
+   - Reject:  user phai la Manager cua KHO DICH (status=Pending)
+             hoac KHO NGUON (status=Pending Destination)
+   
+   -> Day la quan ly quyen theo tung kho, khong phai toan he thong.
+
+
+8.11. VE TONG TIEN (TOTAL AMOUNT)
+-----------------------------------------------------------------------
+   GHI CHU: TotalAmount trong StockOutReceipt va StockInReceipt
+   duoc tinh = SUM(Quantity * UnitPrice) cua tung detail.
+   
+   Tuy nhien, UnitPrice lay tu Product.SellingPrice (gia ban).
+   Dieu nay co ve KHONG PHU HOP voi transfer noi bo vi:
+   - Transfer la chuyen hang giua cac kho, khong phai ban hang
+   - Nen dung CostPrice (gia nhap) thay vi SellingPrice (gia ban)
+   
+   -> De xuat: Xem lai viec su dung UnitPrice trong transfer.
+
+
+8.12. VE TRANSACTION (GIAO DICH)
+-----------------------------------------------------------------------
+   GHI CHU: Chi CreateCompleteTransferAsync su dung database transaction
+   (BeginTransactionAsync). Cac phuong thuc khac KHONG dung transaction:
+   
+   - ProcessTransferStockOutAsync: KHONG co transaction
+   - ProcessTransferStockInAsync: KHONG co transaction
+   
+   -> Neu xay ra loi giua chung (INSERT StockOutReceipt OK nhung
+      UPDATE Inventory FAIL), du lieu se bi INCONSISTENT.
+   -> De xuat: Them transaction cho cac phuong thuc nay.
+
+
+================================================================================
+                         END OF REVIEW (WITH NOTES)
+================================================================================
+
+
+===============================================================================
+PHAN 1: CAC BANG DU LIEU (DATABASE TABLES)
+===============================================================================
+
+1.1. BANG TransferRequest
+-----------------------------------------------------------------------
+   Ten bang trong DB: TransferRequest
+   Cot chinh:        TransferID (PK, auto-increment)
+   
+   Cac cot:
+   +--------------------+--------------+--------------------------------+
+   | Cot                | Kieu du lieu | Mo ta                          |
+   +--------------------+--------------+--------------------------------+
+   | TransferID         | int (PK)     | Ma transfer                    |
+   | FromWarehouseID    | int (FK)     | Kho nguon -> Warehouse         |
+   | ToWarehouseID      | int (FK)     | Kho dich -> Warehouse          |
+   | TransferType       | nvarchar(30) | Loai chuyen ("Transfer")       |
+   | FromRack           | nvarchar(20) | Rack nguon (nullable)          |
+   | ToRack             | nvarchar(20) | Rack dich (nullable)           |
+   | RequestedBy        | int (FK)     | Nguoi tao -> User              |
+   | ApprovedBy         | int (FK)     | Nguoi phe duyet -> User        |
+   | RequestedDate      | datetime     | Ngay tao                       |
+   | ApprovedDate       | datetime     | Ngay phe duyet                 |
+   | Status             | nvarchar(30) | Trang thai                     |
+   | Reason             | nvarchar(500)| Ly do chuyen                   |
+   +--------------------+--------------+--------------------------------+
+   
+   Quan he:
+   - FK FromWarehouseID  -> Warehouse.WarehouseID
+   - FK ToWarehouseID    -> Warehouse.WarehouseID
+   - FK RequestedBy       -> User.UserID
+   - FK ApprovedBy        -> User.UserID
+   - 1-N voi TransferDetail
+   - 1-N voi StockOutReceipt (qua TransferID)
+   - 1-N voi StockInReceipt (qua TransferID)
+
+
+1.2. BANG TransferDetail
+-----------------------------------------------------------------------
+   Ten bang trong DB: TransferDetail
+   Cot chinh:        TransferDetailID (PK, auto-increment)
+   
+   Cac cot:
+   +--------------------+--------------+--------------------------------+
+   | Cot                | Kieu du lieu | Mo ta                          |
+   +--------------------+--------------+--------------------------------+
+   | TransferDetailID   | int (PK)     | Ma chi tiet                    |
+   | TransferID         | int (FK)     | Ma transfer -> TransferRequest |
+   | ProductID          | int (FK)     | San pham -> Product            |
+   | Quantity           | int          | So luong chuyen                |
+   | FromLocationID     | int (FK)     | Vi tri nguon -> Location       |
+   | ToLocationID       | int (FK)     | Vi tri dich -> Location        |
+   +--------------------+--------------+--------------------------------+
+   
+   Quan he:
+   - FK TransferID      -> TransferRequest.TransferID
+   - FK ProductID        -> Product.ProductID
+   - FK FromLocationID   -> Location.LocationID
+   - FK ToLocationID     -> Location.LocationID
+
+
+1.3. BANG Inventory
+-----------------------------------------------------------------------
+   Ten bang trong DB: Inventory
+   Cot chinh:        InventoryID (PK, auto-increment)
+   Unique Index:     (ProductID, LocationID) - moi san pham chi co 1 ban ghi tai 1 vi tri
+   
+   Cac cot:
+   +--------------------+--------------+--------------------------------+
+   | Cot                | Kieu du lieu | Mo ta                          |
+   +--------------------+--------------+--------------------------------+
+   | InventoryID        | int (PK)     | Ma ton kho                     |
+   | ProductID          | int (FK)     | San pham -> Product            |
+   | LocationID         | int (FK)     | Vi tri -> Location             |
+   | Quantity           | int (null)   | So luong ton kho               |
+   | LastUpdated        | datetime     | Lan cap nhat cuoi              |
+   +--------------------+--------------+--------------------------------+
+   
+   Quan he:
+   - FK ProductID  -> Product.ProductID
+   - FK LocationID -> Location.LocationID
+   
+   QUAN TRONG: Bang nay LUU TON KHO THUC TE. Khi xuat kho (stock-out),
+   Quantity bi TRU. Khi nhap kho (stock-in), Quantity duoc CONG.
+   Neu inventory chua ton tai tai vi tri do, se DUOC TAO MOI.
+
+
+1.4. BANG Location
+-----------------------------------------------------------------------
+   Ten bang trong DB: Location
+   Cot chinh:        LocationID (PK, auto-increment)
+   Unique Index:     (WarehouseID, LocationCode)
+   
+   Cac cot:
+   +--------------------+--------------+--------------------------------+
+   | Cot                | Kieu du lieu | Mo ta                          |
+   +--------------------+--------------+--------------------------------+
+   | LocationID         | int (PK)     | Ma vi tri                      |
+   | WarehouseID        | int (FK)     | Thuoc kho nao -> Warehouse     |
+   | LocationCode       | nvarchar(50) | Ma vi tri (VD: A-01-01)        |
+   | LocationName       | nvarchar(100)| Ten vi tri                     |
+   | Rack               | nvarchar(20) | Ten rack (VD: A, B, C)         |
+   | Capacity           | int          | Suc chua toi da                |
+   +--------------------+--------------+--------------------------------+
+   
+   Quan he:
+   - FK WarehouseID -> Warehouse.WarehouseID
+   - 1-N voi Inventory
+   - 1-N voi StockInDetail
+   - 1-N voi StockOutDetail
+   
+   GIAI THICH: Rack KHONG PHAI la 1 bang rieng. Rack la mot TRUONG (column)
+   trong bang Location. Cac vi tri cung 1 rack se co cung gia tri Rack.
+   VD: Location A-01-01 (Rack A), A-01-02 (Rack A), B-01-01 (Rack B)
+
+
+1.5. BANG Product
+-----------------------------------------------------------------------
+   Ten bang trong DB: Product
+   Cot chinh:        ProductID (PK, auto-increment)
+   
+   Cac cot lien quan den Transfer:
+   +--------------------+--------------+--------------------------------+
+   | Cot                | Kieu du lieu | Mo ta                          |
+   +--------------------+--------------+--------------------------------+
+   | ProductID          | int (PK)     | Ma san pham                    |
+   | ProductName        | nvarchar(150)| Ten san pham                   |
+   | CategoryID         | int (FK)     | Danh muc -> ProductCategory    |
+   | Unit               | nvarchar(20) | Don vi tinh (cai, hop, kg)     |
+   | CostPrice          | decimal(18,2)| Gia nhap                       |
+   | SellingPrice       | decimal(18,2)| Gia ban                        |
+   +--------------------+--------------+--------------------------------+
+
+
+1.6. BANG Warehouse
+-----------------------------------------------------------------------
+   Ten bang trong DB: Warehouse
+   Cot chinh:        WarehouseID (PK, auto-increment)
+   
+   Cac cot:
+   +--------------------+--------------+--------------------------------+
+   | Cot                | Kieu du lieu | Mo ta                          |
+   +--------------------+--------------+--------------------------------+
+   | WarehouseID        | int (PK)     | Ma kho                         |
+   | WarehouseName      | nvarchar(100)| Ten kho                        |
+   | Address            | nvarchar(255)| Dia chi kho                    |
+   | CreatedAt          | datetime     | Ngay tao                       |
+   +--------------------+--------------+--------------------------------+
+   
+   Quan he:
+   - 1-N voi Location
+   - 1-N voi TransferRequest (qua FromWarehouseID)
+   - 1-N voi TransferRequest (qua ToWarehouseID)
+
+
+1.7. BANG StockOutReceipt
+-----------------------------------------------------------------------
+   Ten bang trong DB: StockOutReceipt
+   Cot chinh:        StockOutID (PK, auto-increment)
+   
+   Cac cot lien quan den Transfer:
+   +--------------------+--------------+--------------------------------+
+   | Cot                | Kieu du lieu | Mo ta                          |
+   +--------------------+--------------+--------------------------------+
+   | StockOutID         | int (PK)     | Ma phieu xuat                  |
+   | WarehouseID        | int (FK)     | Kho xuat -> Warehouse          |
+   | IssuedBy           | int (FK)     | Nguoi xuat -> User             |
+   | IssuedDate         | datetime     | Ngay xuat                      |
+   | Reason             | nvarchar(30) | Ly do ("Transfer Out")         |
+   | SalesOrderID       | int (FK)     | Don ban hang (null neu transfer)|
+   | TransferID         | int (FK)     | Transfer -> TransferRequest    |
+   | TotalAmount        | decimal(18,2)| Tong tien                      |
+   | CreatedAt          | datetime     | Ngay tao phieu                 |
+   +--------------------+--------------+--------------------------------+
+   
+   KHI NAO DUOC TAO: Khi kho nguon xu ly xuat kho cho transfer.
+
+
+1.8. BANG StockOutDetail
+-----------------------------------------------------------------------
+   Ten bang trong DB: StockOutDetail
+   Composite PK:     (StockOutID, ProductID, LocationID)
+   
+   Cac cot:
+   +--------------------+--------------+--------------------------------+
+   | Cot                | Kieu du lieu | Mo ta                          |
+   +--------------------+--------------+--------------------------------+
+   | StockOutID         | int (PK,FK)  | Phieu xuat -> StockOutReceipt  |
+   | ProductID          | int (PK,FK)  | San pham -> Product            |
+   | LocationID         | int (PK,FK)  | Vi tri xuat -> Location        |
+   | Quantity           | int          | So luong xuat                  |
+   | UnitPrice          | decimal(18,2)| Don gia                        |
+   | TotalPrice         | decimal(18,2)| Thanh tien (computed)          |
+   +--------------------+--------------+--------------------------------+
+
+
+1.9. BANG StockInReceipt
+-----------------------------------------------------------------------
+   Ten bang trong DB: StockInReceipt
+   Cot chinh:        StockInID (PK, auto-increment)
+   
+   Cac cot lien quan den Transfer:
+   +--------------------+--------------+--------------------------------+
+   | Cot                | Kieu du lieu | Mo ta                          |
+   +--------------------+--------------+--------------------------------+
+   | StockInID          | int (PK)     | Ma phieu nhap                  |
+   | WarehouseID        | int (FK)     | Kho nhap -> Warehouse          |
+   | ReceivedBy         | int (FK)     | Nguoi nhap -> User             |
+   | ReceivedDate       | datetime     | Ngay nhap                      |
+   | Reason             | nvarchar(30) | Ly do ("Transfer In")          |
+   | PurchaseOrderID    | int (FK)     | Don nhap (null neu transfer)   |
+   | TransferID         | int (FK)     | Transfer -> TransferRequest    |
+   | TotalAmount        | decimal(18,2)| Tong tien                      |
+   | CreatedAt          | datetime     | Ngay tao phieu                 |
+   +--------------------+--------------+--------------------------------+
+   
+   KHI NAO DUOC TAO: Khi kho dich xu ly nhap kho cho transfer.
+   LAY UU: Cho phep nhap NHIEU LAN (partial). Moi lan nhap tao 1 StockInReceipt moi.
+
+
+1.10. BANG StockInDetail
+-----------------------------------------------------------------------
+   Ten bang trong DB: StockInDetail
+   Composite PK:     (StockInID, ProductID, LocationID)
+   
+   Cac cot:
+   +--------------------+--------------+--------------------------------+
+   | Cot                | Kieu du lieu | Mo ta                          |
+   +--------------------+--------------+--------------------------------+
+   | StockInID          | int (PK,FK)  | Phieu nhap -> StockInReceipt   |
+   | ProductID          | int (PK,FK)  | San pham -> Product            |
+   | LocationID         | int (PK,FK)  | Vi tri nhap -> Location        |
+   | Quantity           | int          | So luong nhap                  |
+   | UnitPrice          | decimal(18,2)| Don gia                        |
+   | TotalPrice         | decimal(18,2)| Thanh tien (computed)          |
+   +--------------------+--------------+--------------------------------+
+
+
+1.11. BANG User
+-----------------------------------------------------------------------
+   Ten bang trong DB: User
+   Cot chinh:        UserID (PK)
+   
+   Cac cot lien quan:
+   +--------------------+--------------+--------------------------------+
+   | Cot                | Kieu du lieu | Mo ta                          |
+   +--------------------+--------------+--------------------------------+
+   | UserID             | int (PK)     | Ma nguoi dung                  |
+   | FullName           | nvarchar     | Ho ten                         |
+   | Role               | nvarchar     | Vai tro                        |
+   | ...                | ...          | ...                            |
+   +--------------------+--------------+--------------------------------+
+   
+   Quan he: Tham chieu boi TransferRequest.RequestedBy va ApprovedBy
+
+
+===============================================================================
+PHAN 2: MOI QUAN HE GIUA CAC BANG (ENTITY RELATIONSHIP)
+===============================================================================
+
+  [Warehouse] <--- FromWarehouseID --- [TransferRequest] --- ToWarehouseID ---> [Warehouse]
+                                          |           |
+                                          |           +--- ApprovedBy ---> [User]
+                                          |           |
+                                          +--- RequestedBy ---> [User]
+                                          |
+                                          | (1-N)
+                                          v
+                                    [TransferDetail]
+                                      |         |         |
+                               ProductID  FromLocationID  ToLocationID
+                                      |         |         |
+                                      v         v         v
+                                  [Product] [Location] [Location]
+                                               |           |
+                                          WarehouseID   WarehouseID
+                                               |           |
+                                               v           v
+                                           [Warehouse] [Warehouse]
+
+  [TransferRequest] --- TransferID ---> [StockOutReceipt] --- 1-N ---> [StockOutDetail]
+                                               |                          |
+                                          WarehouseID               ProductID, LocationID
+                                               |                          |
+                                               v                          v
+                                           [Warehouse]              [Product], [Location]
+
+  [TransferRequest] --- TransferID ---> [StockInReceipt] --- 1-N ---> [StockInDetail]
+                                               |                          |
+                                          WarehouseID               ProductID, LocationID
+                                               |                          |
+                                               v                          v
+                                           [Warehouse]              [Product], [Location]
+
+  [Location] --- WarehouseID ---> [Warehouse]
+  [Location] --- Rack (field) ---> Gia tri rack (A, B, C...)
+  [Inventory] --- ProductID + LocationID ---> [Product] + [Location]
+  Inventory.Quantity = Ton kho THUC TE tai vi tri do
+
+
+===============================================================================
+PHAN 3: DU LIEU LAY TU BANG NAO (DATA SOURCE MAPPING)
+===============================================================================
+
+3.1. TRANG TAO TRANSFER (Transfer/Create.cshtml)
+-----------------------------------------------------------------------
+
+BUOC 1: Chon kho nguon / kho dich
+----------------------------------
+   +-------------------------------+------------------------------------------+
+   | Du lieu hien thi              | Nguon du lieu                            |
+   +-------------------------------+------------------------------------------+
+   | Danh sach kho (dropdown)      | BANG Warehouse                           |
+   |                               | Service: GetWarehousesAsync()            |
+   |                               | Query: _db.Warehouses.ToListAsync()      |
+   +-------------------------------+------------------------------------------+
+   
+   -> Controller Create() (GET):
+      ViewBag.Warehouses = await _transferService.GetWarehousesAsync();
+      ViewBag.Products = await _transferService.GetProductsAsync();
+
+
+BUOC 2: Lay san pham co ton trong kho nguon (AJAX)
+---------------------------------------------------
+   Khi chon kho nguon, JavaScript goi:
+   fetch('/Transfer/GetProductsByWarehouse?warehouseId=' + fromWh)
+   
+   +-------------------------------+------------------------------------------+
+   | Du lieu hien thi              | Nguon du lieu                            |
+   +-------------------------------+------------------------------------------+
+   | Ten san pham                  | BANG Product (join tu Inventory)         |
+   | Ma SKU                        | Tao tu ProductID: "SKU-00001"           |
+   | So luong ton                  | BANG Inventory (SUM Quantity)            |
+   +-------------------------------+------------------------------------------+
+   
+   -> Service: GetAvailableProductsByWarehouseAsync(warehouseId)
+   
+   QUERY CU THE:
+   SELECT ProductID, ProductName, SUM(Quantity) as AvailableQuantity
+   FROM Inventory
+   JOIN Location ON Inventory.LocationID = Location.LocationID
+   JOIN Product ON Inventory.ProductID = Product.ProductID
+   WHERE Location.WarehouseID = @warehouseId AND Quantity > 0
+   GROUP BY ProductID, ProductName
+   ORDER BY ProductName
+
+
+BUOC 3: Lay rack trong kho (AJAX)
+----------------------------------
+   Khi chon kho, JavaScript goi:
+   fetch('/Transfer/GetRacksByWarehouse?warehouseId=' + warehouseId)
+   
+   +-------------------------------+------------------------------------------+
+   | Du lieu hien thi              | Nguon du lieu                            |
+   +-------------------------------+------------------------------------------+
+   | Danh sach ten rack (A, B, C)  | BANG Location (DISTINCT Rack)            |
+   +-------------------------------+------------------------------------------+
+   
+   -> Service: GetRacksByWarehouseAsync(warehouseId)
+   
+   QUERY CU THE:
+   SELECT DISTINCT Rack
+   FROM Location
+   WHERE WarehouseID = @warehouseId AND Rack IS NOT NULL
+   ORDER BY Rack
+   
+   LUU Y: Rack KHONG PHAI bang rieng. Lay DISTINCT tu truong Rack cua bang Location.
+
+
+BUOC 4: Lay vi tri trong rack (AJAX)
+-------------------------------------
+   Khi chon rack, JavaScript goi:
+   fetch('/Transfer/GetLocationsByRack?warehouseId=' + wh + '&rack=' + rack)
+   
+   +-------------------------------+------------------------------------------+
+   | Du lieu hien thi              | Nguon du lieu                            |
+   +-------------------------------+------------------------------------------+
+   | Ma vi tri (LocationCode)      | BANG Location                            |
+   | Ten vi tri (LocationName)     | BANG Location                            |
+   | Suc chua (Capacity)           | BANG Location                            |
+   | Ton kho hien tai (CurrentStock)| BANG Inventory (SUM Quantity)           |
+   | Con trong (AvailableSpace)    | Tinh: Capacity - CurrentStock            |
+   +-------------------------------+------------------------------------------+
+   
+   -> Service: GetLocationsByRackWithCapacityAsync(warehouseId, rack)
+   
+   QUERY CU THE:
+   -- Buoc 1: Lay vi tri
+   SELECT * FROM Location
+   WHERE WarehouseID = @warehouseId AND Rack = @rack
+   
+   -- Buoc 2: Voi moi vi tri, tinh ton kho
+   SELECT SUM(Quantity) FROM Inventory
+   WHERE LocationID = @locationId
+   
+   -- Buoc 3: Tinh AvailableSpace = Capacity - CurrentStock
+
+
+BUOC 5: Lay ton kho theo vi tri (AJAX)
+---------------------------------------
+   Khi chon san pham, JavaScript goi:
+   fetch('/Transfer/GetProductStockByLocation?warehouseId=' + wh + '&productId=' + pid)
+   
+   +-------------------------------+------------------------------------------+
+   | Du lieu hien thi              | Nguon du lieu                            |
+   +-------------------------------+------------------------------------------+
+   | Vi tri (LocationCode)         | BANG Location (join tu Inventory)        |
+   | Rack                          | BANG Location.Rack                       |
+   | So luong ton (Quantity)       | BANG Inventory.Quantity                  |
+   +-------------------------------+------------------------------------------+
+   
+   -> Service: GetProductStockByLocationAsync(warehouseId, productId)
+   
+   QUERY CU THE:
+   SELECT Location.LocationID, LocationCode, LocationName, Rack, Quantity
+   FROM Inventory
+   JOIN Location ON Inventory.LocationID = Location.LocationID
+   WHERE ProductID = @productId
+     AND Location.WarehouseID = @warehouseId
+     AND Quantity > 0
+   ORDER BY Rack, LocationCode
+
+
+BUOC 6: Submit tao transfer
+----------------------------
+   JavaScript gui AJAX POST lenh CreateComplete:
+   
+   Payload: {
+     fromWarehouseId, toWarehouseId, reason,
+     items: [{ productId, fromLocationId, toLocationId, quantity }]
+   }
+   
+   -> Service: CreateCompleteTransferAsync(model, userId)
+   
+   CAC BANG DUOC CAP NHAT:
+   +-------------------------------+------------------------------------------+
+   | Bang                          | Hanh dong                                |
+   +-------------------------------+------------------------------------------+
+   | TransferRequest               | INSERT (Status = "Pending")              |
+   | TransferDetail                | INSERT moi item trong items[]            |
+   +-------------------------------+------------------------------------------+
+   
+   CAC BANG DUOC DOC DE VALIDATE:
+   +-------------------------------+------------------------------------------+
+   | Bang                          | Muc dich                                 |
+   +-------------------------------+------------------------------------------+
+   | Warehouse                     | Kiem tra kho nguon/dich ton tai          |
+   | Product                       | Kiem tra san pham ton tai                |
+   | Location                      | Kiem tra vi tri thuoc dung kho           |
+   | Inventory                     | Kiem tra ton kho du tai vi tri nguon     |
+   | Inventory                     | Kiem tra suc chua tai vi tri dich        |
+   +-------------------------------+------------------------------------------+
+
+
+3.2. TRANG DANH SACH TRANSFER (Transfer/Index.cshtml)
+-----------------------------------------------------------------------
+
+   -> Controller Index():
+      isAdmin ? GetAllTransfersAsync() : GetTransfersForWarehouseAsync(warehouseId)
+   
+   +-------------------------------+------------------------------------------+
+   | Du lieu hien thi              | Nguon du lieu                            |
+   +-------------------------------+------------------------------------------+
+   | Ma transfer (TR-0001)         | TransferRequest.TransferID               |
+   | Kho nguon (From)              | TransferRequest.FromWarehouseID          |
+   |                               | -> Warehouse.WarehouseName               |
+   | Kho dich (To)                 | TransferRequest.ToWarehouseID            |
+   |                               | -> Warehouse.WarehouseName               |
+   | San pham (Products)           | TransferDetail.ProductID                 |
+   |                               | -> Product.ProductName                   |
+   | Nguoi tao (Created By)        | TransferRequest.RequestedBy              |
+   |                               | -> User.FullName                         |
+   | Ngay tao (Date)               | TransferRequest.RequestedDate            |
+   | Trang thai (Status)           | TransferRequest.Status                   |
+   +-------------------------------+------------------------------------------+
+   
+   QUERY CU THE (GetAllTransfersAsync):
+   SELECT t.*, 
+          fw.WarehouseName as FromWarehouseName,
+          tw.WarehouseName as ToWarehouseName,
+          u.FullName as RequestedByName,
+          au.FullName as ApprovedByName,
+          d.*, p.ProductName
+   FROM TransferRequest t
+   LEFT JOIN Warehouse fw ON t.FromWarehouseID = fw.WarehouseID
+   LEFT JOIN Warehouse tw ON t.ToWarehouseID = tw.WarehouseID
+   LEFT JOIN User u ON t.RequestedBy = u.UserID
+   LEFT JOIN User au ON t.ApprovedBy = au.UserID
+   LEFT JOIN TransferDetail d ON t.TransferID = d.TransferID
+   LEFT JOIN Product p ON d.ProductID = p.ProductID
+   ORDER BY t.RequestedDate DESC
+
+
+3.3. TRANG CHI TIET TRANSFER (Transfer/Details.cshtml)
+-----------------------------------------------------------------------
+
+   -> Service: GetTransferByIdAsync(id)
+   
+   +-------------------------------+------------------------------------------+
+   | Du lieu hien thi              | Nguon du lieu                            |
+   +-------------------------------+------------------------------------------+
+   | Thong tin transfer            | TransferRequest (tat ca cot)             |
+   | Kho nguon/dich                | Warehouse.WarehouseName                  |
+   | Nguoi tao/phe duyet           | User.FullName                            |
+   | Danh sach san pham            | TransferDetail + Product                 |
+   | Vi tri nguon                  | TransferDetail.FromLocationID            |
+   |                               | -> Location.LocationCode                 |
+   | Vi tri dich                   | TransferDetail.ToLocationID              |
+   |                               | -> Location.LocationCode                 |
+   +-------------------------------+------------------------------------------+
+   
+   QUERY: Include tat ca navigation properties:
+   TransferRequests
+     .Include(FromWarehouse)
+     .Include(ToWarehouse)
+     .Include(RequestedByNavigation)
+     .Include(ApprovedByNavigation)
+     .Include(TransferDetails)
+       .ThenInclude(Product)
+     .Include(TransferDetails)
+       .ThenInclude(FromLocation)
+     .Include(TransferDetails)
+       .ThenInclude(ToLocation)
+
+
+3.4. PHE DUYET / TU CHOI TRANSFER
+-----------------------------------------------------------------------
+
+   -> Service: ApproveTransferAsync(transferId, approvedBy, userWarehouseId)
+   
+   BANG DUOC CAP NHAT:
+   +-------------------------------+------------------------------------------+
+   | Bang                          | Hanh dong                                |
+   +-------------------------------+------------------------------------------+
+   | TransferRequest               | UPDATE Status = "Approved"              |
+   |                               | UPDATE ApprovedBy = userId               |
+   |                               | UPDATE ApprovedDate = NOW                |
+   +-------------------------------+------------------------------------------+
+   
+   VALIDATE:
+   - Doc TransferRequest de kiem tra Status = "Pending"
+   - Doc TransferRequest de kiem tra FromWarehouseId == userWarehouseId
+
+
+3.5. TRANG XUAT KHO CHO TRANSFER (StockOutReceipt/CreateTransfer)
+-----------------------------------------------------------------------
+
+   -> Service: GetTransferForStockOutAsync(transferId, warehouseId)
+   
+   +-------------------------------+------------------------------------------+
+   | Du lieu hien thi              | Nguon du lieu                            |
+   +-------------------------------+------------------------------------------+
+   | Ma don (TR-0001)              | TransferRequest.TransferID               |
+   | Kho xuat                      | TransferRequest.FromWarehouseID          |
+   |                               | -> Warehouse.WarehouseName               |
+   | Kho nhan                      | TransferRequest.ToWarehouseID            |
+   |                               | -> Warehouse.WarehouseName               |
+   | San pham, so luong            | TransferDetail + Product                 |
+   | Don gia                       | Product.SellingPrice                     |
+   | Vi tri xuat                   | TransferDetail.FromLocationID            |
+   |                               | -> Location.LocationName                 |
+   | Ton kho tai vi tri            | Product -> Inventory -> Location         |
+   +-------------------------------+------------------------------------------+
+   
+   QUERY: Complex Include chain:
+   TransferRequests
+     .Include(FromWarehouse)
+     .Include(ToWarehouse)
+     .Include(TransferDetails)
+       .ThenInclude(Product)
+         .ThenInclude(Inventories)
+           .ThenInclude(Location)
+     .Include(TransferDetails)
+       .ThenInclude(FromLocation)
+     .Include(StockOutReceipts)
+
+
+3.6. XU LY XUAT KHO (ProcessTransferStockOut)
+-----------------------------------------------------------------------
+
+   -> Service: ProcessTransferStockOutAsync(model, userId)
+   
+   CAC BANG DUOC DOC:
+   +-------------------------------+------------------------------------------+
+   | Bang                          | Muc dich                                 |
+   +-------------------------------+------------------------------------------+
+   | TransferRequest               | Lay TransferDetails, kiem tra Status     |
+   | Inventory                     | Kiem tra ton kho du tai vi tri xuat      |
+   |                               | (Include Location de kiem tra Warehouse) |
+   | StockOutReceipt               | Kiem tra da xuat chua                   |
+   +-------------------------------+------------------------------------------+
+   
+   CAC BANG DUOC CAP NHAT (INSERT/UPDATE):
+   +-------------------------------+------------------------------------------+
+   | Bang                          | Hanh dong                                |
+   +-------------------------------+------------------------------------------+
+   | StockOutReceipt               | INSERT (neu chua ton tai)               |
+   |                               | Hoac UPDATE IssuedBy, IssuedDate, Total  |
+   | StockOutDetail                | INSERT moi item                         |
+   | Inventory                     | UPDATE Quantity = Quantity - SoLuongXuat |
+   |                               | UPDATE LastUpdated = NOW                 |
+   | TransferRequest               | UPDATE Status = "In Transit"            |
+   |                               | (hoac "Partial" neu xuat mot phan)      |
+   +-------------------------------+------------------------------------------+
+
+
+3.7. TRANG NHAP KHO CHO TRANSFER (StockIn/TransferDetails)
+-----------------------------------------------------------------------
+
+   -> Service: GetTransferStockInAsync(transferId, warehouseId)
+   
+   +-------------------------------+------------------------------------------+
+   | Du lieu hien thi              | Nguon du lieu                            |
+   +-------------------------------+------------------------------------------+
+   | Kho nhan                      | TransferRequest.ToWarehouseID            |
+   |                               | -> Warehouse.WarehouseName               |
+   | Kho gui                       | TransferRequest.FromWarehouseID          |
+   |                               | -> Warehouse.WarehouseName               |
+   | San pham da xuat              | StockOutReceipt -> StockOutDetail        |
+   |                               | -> Product.ProductName                   |
+   | So luong da xuat              | StockOutDetail.Quantity (SUM)            |
+   | So luong da nhan              | StockInReceipt -> StockInDetail          |
+   |                               | (SUM theo ProductID)                     |
+   | So luong con lai              | Tinh: DaXuat - DaNhan                    |
+   | Don vi                        | Product.Unit                             |
+   | Don gia                       | StockOutDetail.UnitPrice                 |
+   +-------------------------------+------------------------------------------+
+   
+   QUERY: Doc tu nhieu bang:
+   TransferRequest
+     .Include(FromWarehouse)
+     .Include(ToWarehouse)
+     .Include(TransferDetails).ThenInclude(Product)
+     .Include(StockOutReceipts).ThenInclude(StockOutDetails).ThenInclude(Product)
+     .Include(StockInReceipts).ThenInclude(StockInDetails)
+   
+   Sau do tinh:
+   shippedMap = SUM(StockOutDetail.Quantity) GROUP BY ProductID
+   receivedMap = SUM(StockInDetail.Quantity) GROUP BY ProductID
+   remainingMap = shippedMap - receivedMap
+
+
+3.8. XU LY NHAP KHO (ProcessTransferStockIn)
+-----------------------------------------------------------------------
+
+   -> Service: ProcessTransferStockInAsync(request, userId)
+   
+   CAC BANG DUOC DOC:
+   +-------------------------------+------------------------------------------+
+   | Bang                          | Muc dich                                 |
+   +-------------------------------+------------------------------------------+
+   | TransferRequest               | Kiem tra Status = "In Transit"          |
+   | StockOutReceipt+Detail        | Lay so luong da xuat                     |
+   | StockInReceipt+Detail         | Lay so luong da nhan (cho partial)       |
+   | Location                      | Kiem tra vi tri thuoc kho dich           |
+   | Inventory                     | Kiem tra suc chua tai vi tri dich        |
+   |                               | = Capacity - SUM(Quantity)               |
+   +-------------------------------+------------------------------------------+
+   
+   CAC BANG DUOC CAP NHAT:
+   +-------------------------------+------------------------------------------+
+   | Bang                          | Hanh dong                                |
+   +-------------------------------+------------------------------------------+
+   | StockInReceipt                | INSERT (MOI LAN NHAP TAO 1 PHIEU MOI)  |
+   | StockInDetail                 | INSERT moi item                         |
+   | Inventory                     | Neu ton tai: UPDATE Quantity += SoLuong  |
+   |                               | Neu KHONG ton tai: INSERT moi           |
+   |                               | (ProductID + LocationID)                |
+   | TransferRequest               | UPDATE Status = "Completed"             |
+   |                               | (neu da nhan du)                        |
+   |                               | Hoac giu "In Transit" (neu con lai)     |
+   +-------------------------------+------------------------------------------+
+   
+   LUU Y QUAN TRONG VE INVENTORY:
+   Khi nhap kho, kiem tra Inventory da ton tai chua:
+   - Neu CO:  Inventory.Quantity += soLuongNhap
+   - Neu KHONG: Tao Inventory moi voi ProductID, LocationID, Quantity = soLuongNhap
+   -> Dieu nay co nghia: Neu san pham chua ton tai tai vi tri dich,
+      he thong TU DONG TAO ban ghi Inventory moi.
+
+
+3.9. TRANG INTERNAL TRANSFER (Stock/InternalTransfer)
+-----------------------------------------------------------------------
+
+   -> Controller: StockController.InternalTransfer()
+   
+   +-------------------------------+------------------------------------------+
+   | Du lieu hien thi              | Nguon du lieu                            |
+   +-------------------------------+------------------------------------------+
+   | Danh sach kho                 | BANG Warehouse                           |
+   | Rack trong kho                | BANG Location (DISTINCT Rack)            |
+   | Vi tri trong rack             | BANG Location (WHERE Rack = @rack)       |
+   | San pham tai vi tri           | BANG Inventory (WHERE LocationID)        |
+   |                               | -> Product.ProductName                   |
+   +-------------------------------+------------------------------------------+
+   
+   -> Service: PerformInternalTransferAsync()
+   
+   CAC BANG DUOC CAP NHAT:
+   +-------------------------------+------------------------------------------+
+   | Bang                          | Hanh dong                                |
+   +-------------------------------+------------------------------------------+
+   | Inventory (vi tri nguon)      | UPDATE Quantity -= soLuongChuyen         |
+   | Inventory (vi tri dich)       | UPDATE Quantity += soLuongChuyen         |
+   +-------------------------------+------------------------------------------+
+
+
+===============================================================================
+PHAN 4: LUONG DU LIEU DAY DU (COMPLETE DATA FLOW)
+===============================================================================
+
+4.1. TAO TRANSFER (Create)
+-----------------------------------------------------------------------
+   NGUOI DUNG                         HE THONG
+   ----------                         --------
+   1. Chon kho nguon    ────────>    Doc Warehouse (GetWarehousesAsync)
+      (dropdown)                     -> SELECT * FROM Warehouse
+   
+   2. Chon kho dich     ────────>    Kiem tra kho nguon != kho dich
+      (dropdown)
+   
+   3. Chon san pham     ────────>    Doc Inventory + Product
+      (dropdown)                     -> GetAvailableProductsByWarehouseAsync
+                                      SELECT ProductID, ProductName, SUM(Quantity)
+                                      FROM Inventory JOIN Location JOIN Product
+                                      WHERE WarehouseID = @wh AND Quantity > 0
+                                      GROUP BY ProductID, ProductName
+   
+   4. He thong hien thi ────────>    Doc Inventory + Location
+      ton kho theo rack              -> GetProductStockByLocationAsync
+                                      SELECT LocationCode, Rack, Quantity
+                                      FROM Inventory JOIN Location
+                                      WHERE ProductID = @pid AND WarehouseID = @wh
+   
+   5. Chon rack nguon   ────────>    Doc Location (DISTINCT Rack)
+      (dropdown)                     -> GetRacksByWarehouseAsync
+                                      SELECT DISTINCT Rack FROM Location
+                                      WHERE WarehouseID = @wh
+   
+   6. Chon vi tri nguon ────────>    Doc Location + Inventory
+      (dropdown)                     -> GetLocationsByRackWithCapacityAsync
+                                      SELECT * FROM Location WHERE Rack = @rack
+                                      + SELECT SUM(Quantity) FROM Inventory
+                                        WHERE LocationID = @locId
+   
+   7. Nhap so luong     ────────>    JavaScript validate:
+      (input)                        - So luong <= ton kho tai vi tri nguon
+                                      - So luong <= suc con trong tai vi tri dich
+   
+   8. Chon rack dich    ────────>    Doc Location (DISTINCT Rack)
+      (dropdown)                     -> GetRacksByWarehouseAsync
+   
+   9. Chon vi tri dich  ────────>    Doc Location + Inventory
+      (dropdown)                     -> GetLocationsByRackWithCapacityAsync
+                                      Hien thi: MaViTri - X space left (cap: Y)
+   
+   10. Xac nhan         ────────>    Validate lai 1 lan nua
+      (Confirm button)               Client-side: so luong <= available, <= space
+   
+   11. Submit           ────────>    AJAX POST /Transfer/CreateComplete
+      (Submit button)                Server-side validate:
+                                      - Warehouse ton tai (doc Warehouse)
+                                      - Product ton tai (doc Product)
+                                      - Vi tri nguon thuoc kho nguon (doc Location)
+                                      - Ton kho du (doc Inventory)
+                                      - Vi tri dich thuoc kho dich (doc Location)
+                                      - Suc chua du (doc Inventory SUM)
+                                      
+                                      Sau validate OK:
+                                      - INSERT TransferRequest (Status="Pending")
+                                      - INSERT TransferDetail[]
+
+
+4.2. XUAT KHO (Stock-Out)
+-----------------------------------------------------------------------
+   NGUOI DUNG                         HE THONG
+   ----------                         --------
+   1. Vao trang Stock   ────────>    Doc TransferRequest
+      Out, chon transfer              -> GetPendingTransferStockOutAsync
+                                      SELECT TransferID, WarehouseName, 
+                                             ProductSummary, TotalQuantity
+                                      FROM TransferRequest
+                                      JOIN Warehouse ON FromWarehouseID
+                                      JOIN TransferDetail ON TransferID
+                                      JOIN Product ON ProductID
+                                      WHERE FromWarehouseID = @wh
+                                        AND Status IN ('Pending','Approved','Partial')
+   
+   2. Xem chi tiet     ────────>    Doc TransferRequest + TransferDetail + Product
+      transfer                        -> GetTransferForStockOutAsync
+                                      Include: FromWarehouse, ToWarehouse,
+                                      TransferDetails.Product.Inventories.Location,
+                                      TransferDetails.FromLocation,
+                                      StockOutReceipts
+   
+   3. Chon vi tri xuat ────────>    Doc Product -> Inventories -> Location
+      cho tung san pham              Hien thi: vi tri + so luong ton tai vi tri do
+   
+   4. Nhap so luong     ────────>    JavaScript validate: so luong <= ton kho
+      xuat cho tung vi tri
+   
+   5. Xac nhan xuat     ────────>    AJAX POST
+      kho                              -> ProcessTransferStockOutAsync
+                                        
+                                        Doc: TransferRequest + TransferDetails
+                                        Doc: Inventory (de kiem tra ton kho)
+                                        Doc: StockOutReceipt (de kiem tra da xuat)
+                                        
+                                        INSERT: StockOutReceipt
+                                        INSERT: StockOutDetail[]
+                                        UPDATE: Inventory.Quantity -= soLuongXuat
+                                        UPDATE: TransferRequest.Status
+                                                = "In Transit" (hoac "Partial")
+
+
+4.3. NHAP KHO (Stock-In)
+-----------------------------------------------------------------------
+   NGUOI DUNG                         HE THONG
+   ----------                         --------
+   1. Vao trang Stock   ────────>    Doc TransferRequest
+      In, chon transfer               -> GetPendingTransferStockInAsync
+                                      WHERE ToWarehouseID = @wh
+                                        AND Status = "In Transit"
+   
+   2. Xem chi tiet     ────────>    Doc tu nhieu bang:
+      transfer                        - StockOutReceipt -> StockOutDetail
+                                        (so luong da xuat)
+                                      - StockInReceipt -> StockInDetail
+                                        (so luong da nhan)
+                                      - Tinh: conLai = daXuat - daNhan
+   
+   3. Chon vi tri nhap ────────>    Doc Location (thuoc kho dich)
+      cho tung san pham              Doc Inventory (de tinh suc chua con lai)
+                                      AvailableSpace = Capacity - SUM(Quantity)
+   
+   4. Nhap so luong     ────────>    JavaScript validate:
+      nhap cho tung vi tri            - so luong <= so luong con lai
+                                      - so luong <= suc chua vi tri dich
+   
+   5. Xac nhan nhap     ────────>    AJAX POST
+      kho                              -> ProcessTransferStockInAsync
+                                        
+                                        Doc: TransferRequest
+                                        Doc: StockOutDetail (so luong da xuat)
+                                        Doc: StockInDetail (so luong da nhan)
+                                        Doc: Location (kiem tra kho dich)
+                                        Doc: Inventory (kiem tra suc chua)
+                                        
+                                        INSERT: StockInReceipt (MOI LAN 1 PHIEU)
+                                        INSERT: StockInDetail[]
+                                        UPDATE/INSERT: Inventory
+                                          Neu ton tai: Quantity += soLuong
+                                          Neu khong: Tao moi
+                                        UPDATE: TransferRequest.Status
+                                                = "Completed" (neu nhan du)
+                                                = "In Transit" (neu con lai)
+
+
+===============================================================================
+PHAN 5: HIEN THI DU LIEU TREN GIAO DIEN (UI DISPLAY)
+===============================================================================
+
+5.1. TRANG INDEX (Danh sach Transfer)
+-----------------------------------------------------------------------
+   View: Transfer/Index.cshtml
+   Model: List<TransferRequest>
+   
+   Bang hien thi:
+   +--------+------+--------+----------+-----------+--------+--------+---------+
+   | Code   | From | To     | Products | CreatedBy | Date   | Status | Actions |
+   +--------+------+--------+----------+-----------+--------+--------+---------+
+   | TR-001 | WH A | WH B   | SP1, SP2 | Nguyen    | 01/04  |Pending | View    |
+   | TR-002 | WH B | WH C   | SP3      | Tran      | 01/04  |Approved| View    |
+   +--------+------+--------+----------+-----------+--------+--------+---------+
+   
+   Nguon du lieu cho tung cot:
+   - Code:     TransferRequest.TransferID (format: "TR-{id:D4}")
+   - From:     TransferRequest.FromWarehouse -> Warehouse.WarehouseName
+   - To:       TransferRequest.ToWarehouse -> Warehouse.WarehouseName
+   - Products: TransferRequest.TransferDetails -> Product.ProductName
+               (Join boi dau phay: "SP1, SP2")
+   - CreatedBy:TransferRequest.RequestedByNavigation -> User.FullName
+   - Date:     TransferRequest.RequestedDate (format: "dd/MM/yyyy HH:mm")
+   - Status:   TransferRequest.Status (badge mau: Pending=vang, Approved=xanh,
+               In Transit=xanh duong, Completed=xanh la, Rejected=do)
+   - Actions:  Link den trang Details
+   
+   JavaScript search: Client-side filter bang innerText
+
+
+5.2. TRANG CREATE (Tao Transfer)
+-----------------------------------------------------------------------
+   View: Transfer/Create.cshtml
+   
+   PHAN 1 - Chon kho:
+   - Dropdown From Warehouse: ViewBag.Warehouses (tu Warehouse table)
+   - Dropdown To Warehouse:   ViewBag.Warehouses (tu Warehouse table)
+   
+   PHAN 2 - Chon san pham:
+   - Dropdown Product: AJAX goi GetProductsByWarehouse
+     Hien thi: ProductName (du lieu tu Product table, loc boi Inventory)
+   
+   PHAN 3 - Rack Distribution:
+   - Source Rack dropdown: AJAX goi GetRacksByWarehouse
+     Dữ liệu: DISTINCT Rack tu Location table
+   
+   - Source Location dropdown: AJAX goi GetLocationsByRack
+     Hien thi: "LocationCode — X units available"
+     Dữ liệu: Location + Inventory (tinh available)
+   
+   - Qty input: JavaScript validate voi so luong ton
+   
+   - Dest Rack dropdown: AJAX goi GetRacksByWarehouse
+     Dữ liệu: DISTINCT Rack tu Location table (kho dich)
+   
+   - Dest Location dropdown: AJAX goi GetLocationsByRack
+     Hien thi: "LocationCode — X space left (cap: Y)"
+     Dữ liệu: Location + Inventory (tinh available space)
+   
+   PHAN 4 - Summary:
+   - Hien thi tat ca item da confirm
+   - Moi item: "Xx from SourceLoc → to DestLoc"
+   - Reason textarea
+   
+   PHAN 5 - Submit:
+   - AJAX POST JSON payload
+   - Sau thanh cong: redirect ve Index
+
+
+5.3. TRANG DETAILS (Chi tiet Transfer)
+-----------------------------------------------------------------------
+   View: Transfer/Details.cshtml
+   Model: TransferRequest (voi Include tat ca navigation properties)
+   
+   Hien thi:
+   - Thong tin transfer: ID, Status, Type, RequestedDate, ApprovedDate
+   - Kho nguon: FromWarehouse.WarehouseName
+   - Kho dich: ToWarehouse.WarehouseName
+   - Nguoi tao: RequestedByNavigation.FullName
+   - Nguoi phe duyet: ApprovedByNavigation.FullName
+   - Ly do: Reason
+   
+   Bang san pham:
+   +----------+--------+----------+-------------+-------------+
+   | Product  | Qty    | From Loc | To Loc      | Status      |
+   +----------+--------+----------+-------------+-------------+
+   | San pham 1| 10   | A-01-01  | B-01-01     | Pending     |
+   | San pham 2| 5    | A-02-01  | B-02-01     | Pending     |
+   +----------+--------+----------+-------------+-------------+
+   
+   Nguon:
+   - Product: TransferDetail -> Product.ProductName
+   - Qty: TransferDetail.Quantity
+   - From Loc: TransferDetail.FromLocation -> Location.LocationCode
+   - To Loc: TransferDetail.ToLocation -> Location.LocationCode
+
+
+===============================================================================
+PHAN 6: TONG HOP BANG DUOC SU DUNG
+===============================================================================
+
++----+------------------+-----------------------------------------------+
+| #  | Bang             | Su dung trong tinh nang Transfer              |
++----+------------------+-----------------------------------------------+
+| 1  | TransferRequest  | Tao, doc, cap nhat trang thai transfer       |
+| 2  | TransferDetail   | Tao chi tiet san pham trong transfer         |
+| 3  | Warehouse        | Doc ten kho, dia chi (nguon/dich)           |
+| 4  | Product          | Doc ten SP, don vi, don gia                  |
+| 5  | Location         | Doc rack, vi tri, suc chua                   |
+| 6  | Inventory        | Doc ton kho, tinh suc chua con lai           |
+| 7  |                  | Cap nhat ton kho (tru khi xuat, cong khi nhap)|
+| 8  | User             | Doc ten nguoi tao, nguoi phe duyet          |
+| 9  | StockOutReceipt  | Tao phieu xuat kho                          |
+| 10 | StockOutDetail   | Tao chi tiet phieu xuat                     |
+| 11 | StockInReceipt   | Tao phieu nhap kho                          |
+| 12 | StockInDetail    | Tao chi tiet phieu nhap                     |
++----+------------------+-----------------------------------------------+
+
+TONG CONG: 12 bang du lieu duoc su dung trong tinh nang Transfer.
+
+
+===============================================================================
+PHAN 7: SQL QUERY THUC TE TRONG CODE
+===============================================================================
+
+7.1. Lay san pham co ton trong kho (GetAvailableProductsByWarehouseAsync)
+-----------------------------------------------------------------------
+   FROM: _db.Inventories
+   JOIN: Product, Location
+   WHERE: Location.WarehouseId == warehouseId && Quantity > 0
+   GROUP BY: ProductId, ProductName
+   SELECT: ProductId, ProductName, "SKU-{ProductId}", SUM(Quantity)
+   ORDER BY: ProductName
+
+
+7.2. Lay rack trong kho (GetRacksByWarehouseAsync)
+-----------------------------------------------------------------------
+   FROM: _db.Locations
+   WHERE: WarehouseId == warehouseId && Rack != null
+   SELECT DISTINCT: Rack
+   ORDER BY: Rack
+
+
+7.3. Lay vi tri trong rack voi suc chua (GetLocationsByRackWithCapacityAsync)
+-----------------------------------------------------------------------
+   FROM: _db.Locations
+   WHERE: WarehouseId == warehouseId && Rack == rack
+   
+   VOI MOI LOCATION:
+     SUM Inventory.Quantity WHERE LocationId == loc.LocationId
+     -> CurrentStock
+     -> AvailableSpace = Capacity - CurrentStock
+
+
+7.4. Lay ton kho theo vi tri (GetProductStockByLocationAsync)
+-----------------------------------------------------------------------
+   FROM: _db.Inventories
+   JOIN: Location
+   WHERE: ProductId == productId 
+     && Location.WarehouseId == warehouseId 
+     && Quantity > 0
+   SELECT: LocationId, LocationCode, LocationName, Rack, Quantity
+   ORDER BY: Rack, LocationCode
+
+
+7.5. Kiem tra suc chua vi tri dich (GetLocationCapacityAsync)
+-----------------------------------------------------------------------
+   FROM: _db.Locations.Find(locationId)
+   
+   SUM Inventory.Quantity WHERE LocationId == locationId -> CurrentStock
+   
+   SUM Inventory.Quantity WHERE LocationId == locationId && ProductId == productId
+     -> ProductStock (ton kho cua 1 SP tai vi tri)
+   
+   AvailableSpace = Capacity - CurrentStock
+
+
+7.6. Tao transfer (CreateCompleteTransferAsync)
+-----------------------------------------------------------------------
+   VALIDATE 1: Kiem tra kho nguon ton tai
+     FROM: _db.Warehouses.Find(FromWarehouseId)
+   
+   VALIDATE 2: Kiem tra kho dich ton tai
+     FROM: _db.Warehouses.Find(ToWarehouseId)
+   
+   VALIDATE 3: Voi moi san pham, kiem tra ton kho tong
+     FROM: _db.Inventories
+     JOIN: Location
+     WHERE: ProductId == productId && Location.WarehouseId == FromWarehouseId
+     SUM: Quantity -> totalAvailable
+     COMPARE: totalRequested <= totalAvailable
+   
+   VALIDATE 4: Voi moi item, kiem tra vi tri nguon
+     FROM: _db.Locations
+     WHERE: LocationId == FromLocationId && WarehouseId == FromWarehouseId
+   
+   VALIDATE 5: Voi moi item, kiem tra ton kho tai vi tri nguon
+     FROM: _db.Inventories
+     WHERE: ProductId == productId && LocationId == FromLocationId
+     COMPARE: Quantity >= item.Quantity
+   
+   VALIDATE 6: Voi moi item, kiem tra vi tri dich
+     FROM: _db.Locations
+     WHERE: LocationId == ToLocationId && WarehouseId == ToWarehouseId
+   
+   VALIDATE 7: Voi moi item, kiem tra suc chua vi tri dich
+     FROM: _db.Inventories
+     WHERE: LocationId == ToLocationId
+     SUM: Quantity -> destCurrentStock
+     COMPARE: item.Quantity <= (Capacity - destCurrentStock)
+   
+   INSERT: TransferRequest
+   INSERT: TransferDetail[]
+
+
+7.7. Xu ly xuat kho (ProcessTransferStockOutAsync)
+-----------------------------------------------------------------------
+   DOC: TransferRequest + TransferDetails
+   
+   DOC: Inventory (de kiem tra ton kho)
+     FROM: _db.Inventories
+     JOIN: Location
+     WHERE: ProductId == detail.ProductId 
+       && LocationId == detail.LocationId 
+       && Location.WarehouseId == warehouseId
+   
+   DOC: StockOutReceipt (neu da ton tai)
+     FROM: _db.StockOutReceipts
+     WHERE: TransferId == model.TransferId
+   
+   INSERT/UPDATE: StockOutReceipt
+   INSERT: StockOutDetail[]
+   UPDATE: Inventory.Quantity -= detail.Quantity
+   UPDATE: TransferRequest.Status = "In Transit" | "Partial"
+
+
+7.8. Xu ly nhap kho (ProcessTransferStockInAsync)
+-----------------------------------------------------------------------
+   DOC: TransferRequest + TransferDetails + StockOutReceipts + StockOutDetails
+   DOC: StockInReceipts + StockInDetails (de tinh da nhan)
+   
+   VOI MOI ITEM:
+     DOC: Location
+       FROM: _db.Locations
+       WHERE: LocationId == item.LocationId && WarehouseId == warehouseId
+     
+     DOC: Inventory (de tinh suc chua)
+       FROM: _db.Inventories
+       WHERE: LocationId == item.LocationId
+       SUM: Quantity -> currentStock
+       COMPARE: item.Quantity <= (Capacity - currentStock)
+   
+   INSERT: StockInReceipt
+   INSERT: StockInDetail[]
+   
+   VOI MOI ITEM:
+     DOC: Inventory (co ton tai khong?)
+       FROM: _db.Inventories
+       WHERE: ProductId == item.ProductId && LocationId == item.LocationId
+     
+     NEU CO:   UPDATE Quantity += item.Quantity
+     NEU KHONG: INSERT Inventory (ProductId, LocationId, Quantity, LastUpdated)
+   
+   UPDATE: TransferRequest.Status = "Completed" | "In Transit"
+
+
+===============================================================================
+                              END OF REVIEW
+===============================================================================
